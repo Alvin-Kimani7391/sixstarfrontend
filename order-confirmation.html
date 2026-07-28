@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Order Placed — Six Star Suppliers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://kit.fontawesome.com/e1426ab85b.js" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="order-confirmation.html">
+<div id="pageLoader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+
+<header class="site-header" id="site-header"></header>
+
+<main>
+  <div class="wrap">
+    <div class="confirm-card">
+      <div class="confirm-icon"><i class="fa-solid fa-check"></i></div>
+      <h1 style="font-size:1.5rem;">Order placed!</h1>
+      <p style="color:var(--ink-soft);margin-top:8px;">We're verifying your M-Pesa payment now. You'll get a confirmation once it's checked — usually within a few hours.</p>
+      <div class="confirm-id" id="orderIdBox">Order reference: —</div>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:10px;">
+        <a href="track-order.html" class="btn btn-primary">Track this order</a>
+        <a href="product.html" class="btn btn-outline">Keep shopping</a>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer" id="site-footer"></footer>
+<a href="#" class="wa-float" id="wa-float"></a>
+<div id="toast"></div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/cart.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/ui.js"></script>
+<script>
+  const oid = sessionStorage.getItem("ss_last_order");
+  if (oid) document.getElementById("orderIdBox").textContent = "Order reference: " + oid;
+</script>
+</body>
+</html>

@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wholesale — Six Star Suppliers</title>
+<meta name="description" content="Buy in bulk at wholesale prices. Premium products for retailers and businesses from Six Star Suppliers.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://kit.fontawesome.com/e1426ab85b.js" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="css/style.css">
+<style>
+/* ============================================================
+   WHOLESALE PAGE - SIX STAR SUPPLIERS
+   Premium wholesale section with brand-aligned styling
+   ============================================================ */
+
+/* ---- Wholesale Hero ---- */
+.wholesale-hero {
+  background: linear-gradient(135deg, var(--pop), #5B21B6);
+  padding: 48px 32px;
+  border-radius: var(--radius-lg);
+  margin: 20px 0 28px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(124, 58, 237, 0.25);
+}
+.wholesale-hero::before {
+  content: '';
+  position: absolute;
+  top: -60%;
+  right: -10%;
+  width: 400px;
+  height: 400px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 50%;
+}
+.wholesale-hero::after {
+  content: '';
+  position: absolute;
+  bottom: -50%;
+  left: -5%;
+  width: 300px;
+  height: 300px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 50%;
+}
+.wholesale-hero .hero-content {
+  position: relative;
+  z-index: 1;
+}
+.wholesale-hero .badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.18);
+  backdrop-filter: blur(4px);
+  padding: 6px 18px;
+  border-radius: 30px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #fff;
+  margin-bottom: 16px;
+  border: 1px solid rgba(255,255,255,0.12);
+}
+.wholesale-hero h1 {
+  font-family: var(--font-display);
+  font-size: 38px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 8px;
+  letter-spacing: -0.5px;
+}
+.wholesale-hero p {
+  color: rgba(255,255,255,0.85);
+  font-size: 15px;
+  max-width: 520px;
+  line-height: 1.6;
+}
+.wholesale-hero .hero-stats {
+  display: flex;
+  gap: 40px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255,255,255,0.12);
+}
+.wholesale-hero .stat-item {
+  text-align: left;
+}
+.wholesale-hero .stat-number {
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.2;
+}
+.wholesale-hero .stat-label {
+  font-size: 12px;
+  color: rgba(255,255,255,0.7);
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+/* ---- Wholesale Filter Bar ---- */
+.wholesale-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+  padding: 16px 20px;
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-soft);
+  align-items: center;
+}
+.wholesale-filter-bar select,
+.wholesale-filter-bar input {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--line);
+  background: var(--bg-page);
+  font-size: 13px;
+  flex: 1;
+  min-width: 150px;
+  color: var(--ink);
+  font-family: var(--font-body);
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+.wholesale-filter-bar select:focus,
+.wholesale-filter-bar input:focus {
+  border-color: var(--pop);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+  outline: none;
+}
+.wholesale-filter-bar .filter-actions {
+  display: flex;
+  gap: 8px;
+}
+.wholesale-filter-bar button {
+  padding: 10px 22px;
+  border-radius: var(--radius-sm);
+  border: none;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: .25s ease;
+  font-family: var(--font-body);
+}
+.btn-wholesale {
+  background: linear-gradient(135deg, var(--pop), #5B21B6);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.25);
+}
+.btn-wholesale:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(124, 58, 237, 0.35);
+}
+.btn-wholesale:active {
+  transform: translateY(0);
+}
+.btn-outline-wholesale {
+  background: transparent;
+  border: 1.5px solid var(--line);
+  color: var(--ink-soft);
+}
+.btn-outline-wholesale:hover {
+  border-color: var(--pop);
+  color: var(--pop);
+  background: rgba(124, 58, 237, 0.04);
+}
+
+/* ---- Results Bar ---- */
+.result-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.result-bar .count {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.result-bar .count strong {
+  color: var(--ink);
+}
+.result-bar .view-info {
+  font-size: 12px;
+  color: var(--ink-faint);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.result-bar .view-info i {
+  color: var(--pop);
+}
+
+/* ---- Wholesale Product Card Enhancements ---- */
+.p-card.wholesale {
+  border-top: 3px solid var(--pop);
+  border-radius: var(--radius-md);
+  position: relative;
+  background: var(--surface);
+  transition: transform .25s ease, box-shadow .25s ease;
+}
+.p-card.wholesale:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-card-hover);
+}
+.p-card .wholesale-tag {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: linear-gradient(135deg, var(--pop), #5B21B6);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 3px 12px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  z-index: 3;
+  box-shadow: 0 2px 10px rgba(124, 58, 237, 0.3);
+}
+.p-card .seller-info {
+  font-size: 10.5px;
+  color: var(--ink-faint);
+  margin-top: 1px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.p-card .seller-info i {
+  color: var(--pop);
+  font-size: 10px;
+}
+.p-card .wholesale-details {
+  margin-top: 5px;
+  font-size: 11px;
+  color: var(--ink-soft);
+  line-height: 1.6;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+.p-card .moq-badge {
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.p-card .moq-badge i {
+  color: var(--pop);
+}
+.p-card .bulk-price {
+  display: inline-block;
+  background: var(--wholesale-bg, #F5F0FF);
+  color: var(--pop);
+  font-weight: 700;
+  padding: 1px 10px;
+  border-radius: 12px;
+  font-size: 10.5px;
+}
+.p-card .free-delivery-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #E8F5E9;
+  color: #2E7D32;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 10px;
+  border-radius: 12px;
+}
+.p-card .free-delivery-tag i {
+  font-size: 9px;
+}
+.p-card .tier-more {
+  font-size: 10px;
+  color: var(--ink-faint);
+  font-weight: 600;
+}
+
+/* ---- Pagination ---- */
+.pagination-wrap {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 30px;
+  padding-bottom: 30px;
+  flex-wrap: wrap;
+}
+.pagination-wrap button {
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: .2s ease;
+  min-width: 44px;
+  font-family: var(--font-body);
+}
+.pagination-wrap button:hover:not(.active):not(:disabled) {
+  border-color: var(--pop);
+  color: var(--pop);
+}
+.pagination-wrap button.active {
+  background: linear-gradient(135deg, var(--pop), #5B21B6);
+  color: #fff;
+  border-color: var(--pop);
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.25);
+}
+.pagination-wrap button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 768px) {
+  .wholesale-hero {
+    padding: 32px 20px;
+    border-radius: var(--radius-md);
+  }
+  .wholesale-hero h1 {
+    font-size: 28px;
+  }
+  .wholesale-hero .hero-stats {
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .wholesale-hero .stat-number {
+    font-size: 22px;
+  }
+  .wholesale-filter-bar {
+    flex-direction: column;
+    padding: 14px 16px;
+  }
+  .wholesale-filter-bar select,
+  .wholesale-filter-bar input {
+    flex: none;
+    width: 100%;
+    min-width: unset;
+  }
+  .wholesale-filter-bar .filter-actions {
+    width: 100%;
+  }
+  .wholesale-filter-bar .filter-actions button {
+    flex: 1;
+  }
+  .result-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .p-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1px;
+  }
+}
+
+@media (max-width: 480px) {
+  .wholesale-hero {
+    padding: 24px 16px;
+  }
+  .wholesale-hero h1 {
+    font-size: 22px;
+  }
+  .wholesale-hero p {
+    font-size: 13px;
+  }
+  .wholesale-hero .hero-stats {
+    gap: 16px;
+  }
+  .wholesale-hero .stat-number {
+    font-size: 18px;
+  }
+  .wholesale-hero .stat-label {
+    font-size: 10px;
+  }
+  .p-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .pagination-wrap button {
+    padding: 8px 12px;
+    font-size: 12px;
+    min-width: 36px;
+  }
+}
+
+@media (max-width: 374px) {
+  .p-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .wholesale-hero h1 {
+    font-size: 19px;
+  }
+}
+</style>
+</head>
+<body data-page="wholesale.html">
+
+<div id="pageLoader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+
+<header class="site-header" id="site-header"></header>
+
+<main>
+  <div class="wrap">
+
+    <!-- Hero Section -->
+    <div class="wholesale-hero">
+      <div class="hero-content">
+        <div class="badge"><i class="fa-solid fa-wholesale"></i> Bulk Ordering</div>
+        <h1>Wholesale Collection</h1>
+        <p>Discover premium products at wholesale prices. Buy in bulk and save big on every order.</p>
+        <div class="hero-stats">
+          <div class="stat-item">
+            <div class="stat-number" id="statProducts">0</div>
+            <div class="stat-label">Products Available</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-number" id="statCategories">0</div>
+            <div class="stat-label">Categories</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-number" id="statSellers">0</div>
+            <div class="stat-label">Trusted Sellers</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="wholesale-filter-bar">
+      <select id="w-category">
+        <option value="">All Categories</option>
+      </select>
+      <input type="text" id="w-search" placeholder="Search wholesale products..." value="">
+      <select id="w-sort">
+        <option value="newest">Newest First</option>
+        <option value="price_asc">Price: Low to High</option>
+        <option value="price_desc">Price: High to Low</option>
+        <option value="rating">Top Rated</option>
+      </select>
+      <div class="filter-actions">
+        <button class="btn-wholesale" id="w-apply"><i class="fa-solid fa-filter"></i> Apply</button>
+        <button class="btn-outline-wholesale" id="w-clear"><i class="fa-solid fa-times"></i> Clear</button>
+      </div>
+    </div>
+
+    <!-- Results Bar -->
+    <div class="result-bar">
+      <span class="count" id="w-result-count">Loading wholesale products...</span>
+      <span class="view-info"><i class="fa-solid fa-wholesale"></i> Wholesale pricing available</span>
+    </div>
+
+    <!-- Product Grid -->
+    <div class="p-grid" id="wholesaleGrid"></div>
+
+    <!-- Pagination -->
+    <div class="pagination-wrap" id="w-pagination"></div>
+  </div>
+</main>
+
+<footer class="site-footer" id="site-footer"></footer>
+<a href="#" class="wa-float" id="wa-float"></a>
+<div id="toast"></div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/cart.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/ui.js"></script>
+<script>
+// ============================================================
+// WHOLESALE PAGE LOGIC
+// ============================================================
+(function() {
+  const grid = document.getElementById("wholesaleGrid");
+  const pagination = document.getElementById("w-pagination");
+  const resultCount = document.getElementById("w-result-count");
+  const catSelect = document.getElementById("w-category");
+  const searchInput = document.getElementById("w-search");
+  const sortSelect = document.getElementById("w-sort");
+
+  let currentPage = 1;
+  let totalPages = 1;
+  let allCategories = [];
+  let allProducts = [];
+  let filteredProducts = [];
+
+  function readParams() {
+    const p = new URLSearchParams(location.search);
+    return {
+      category: p.get("category") || "",
+      search: p.get("search") || "",
+      sort: p.get("sort") || "newest",
+      page: parseInt(p.get("page") || "1", 10)
+    };
+  }
+
+  let state = readParams();
+
+  function syncFormToState() {
+    catSelect.value = state.category || "";
+    searchInput.value = state.search || "";
+    sortSelect.value = state.sort || "newest";
+  }
+
+  function pushURL() {
+    const p = new URLSearchParams();
+    Object.entries(state).forEach(([k, v]) => {
+      if (v !== "" && v !== "newest" && !(k === "page" && v === 1)) p.set(k, v);
+    });
+    history.pushState({}, "", "wholesale.html" + (p.toString() ? "?" + p.toString() : ""));
+  }
+
+  function categoryId(c) {
+    return c._id || c.id;
+  }
+
+  async function populateCategories() {
+    try {
+      const cats = await ssLoadCategories();
+      allCategories = cats;
+      catSelect.innerHTML = `<option value="">All Categories</option>` +
+        cats.map(c => `<option value="${categoryId(c)}">${c.name}</option>`).join("");
+      catSelect.value = state.category || "";
+    } catch (e) {
+      console.warn('Failed to load categories', e);
+    }
+  }
+
+  function renderWholesaleCard(p) {
+    const price = p.displayPrice ?? p.finalPrice ?? p.sellerPrice ?? 0;
+    const hasDiscount = (p.discountPercent || 0) > 0 && p.finalPrice && price < p.finalPrice;
+    const discount = hasDiscount ? p.discountPercent : 0;
+    const minQty = p.minOrderQuantity || 1;
+    const hasTiers = p.pricingTiers && p.pricingTiers.length > 0;
+    const freeDelivery = p.freeDelivery || false;
+    const sellerName = p.seller?.businessName || p.seller?.name || 'Verified Seller';
+
+    let tierDisplay = '';
+    if (hasTiers) {
+      const sorted = [...p.pricingTiers].sort((a, b) => a.minQty - b.minQty);
+      tierDisplay = sorted.slice(0, 2).map(t => 
+        `<span class="bulk-price">${t.minQty}+ ${ssFmtPrice(t.price)}</span>`
+      ).join(' ');
+      if (sorted.length > 2) tierDisplay += `<span class="tier-more">+${sorted.length - 2} more</span>`;
+    }
+
+    return `
+      <div class="p-card wholesale" data-id="${p.id}">
+        <span class="wholesale-tag"><i class="fa-solid fa-wholesale"></i> Wholesale</span>
+        <div class="p-card__badges">
+          ${discount ? `<div class="p-card__discount">-${discount}%</div>` : "<span></span>"}
+          ${p.isHotDeal ? `<div class="p-card__hot"><i class="fa-solid fa-fire"></i> Hot</div>` : ""}
+        </div>
+        <div class="p-card__img">
+          <img src="${ssImg(p)}" alt="${p.name}" loading="lazy" onclick="location.href='product-detail.html?id=${p.id}'">
+        </div>
+        <div class="p-card__body">
+          <div class="p-card__name">${p.name}</div>
+          <div class="seller-info"><i class="fa-regular fa-store"></i> ${sellerName}</div>
+          <div class="wholesale-details">
+            <span class="moq-badge"><i class="fa-solid fa-box"></i> Min: ${minQty} units</span>
+            ${freeDelivery ? ` <span class="free-delivery-tag"><i class="fa-solid fa-truck-fast"></i> Free Delivery</span>` : ''}
+          </div>
+          ${hasTiers ? `<div class="wholesale-details">${tierDisplay}</div>` : ''}
+          ${p.ratingsCount ? `<div class="p-card__rating"><i class="fa-solid fa-star"></i> ${(p.ratingsAverage || 0).toFixed(1)} <span>(${p.ratingsCount})</span></div>` : ""}
+          ${hasDiscount ? `<div class="p-card__old">${ssFmtPrice(p.finalPrice)}</div>` : ""}
+          <div class="p-card__foot">
+            <span class="price-tag">${ssFmtPrice(price)}</span>
+            <button class="p-card__add" title="Add to cart" onclick="event.stopPropagation(); ssQuickAdd('${p.id}')">
+              <i class="fa-solid fa-plus"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderPagination() {
+    pagination.innerHTML = "";
+    if (totalPages <= 1) return;
+    
+    const make = (label, page, cls = "") => {
+      const btn = document.createElement("button");
+      btn.textContent = label;
+      if (cls) btn.classList.add(cls);
+      if (page === currentPage) btn.classList.add("active");
+      btn.disabled = page === currentPage;
+      btn.addEventListener("click", () => { 
+        state.page = page; 
+        pushURL(); 
+        renderPage(page); 
+        window.scrollTo({ top: 0, behavior: "smooth" }); 
+      });
+      return btn;
+    };
+    
+    if (currentPage > 1) pagination.appendChild(make("← Prev", currentPage - 1));
+    
+    const start = Math.max(1, currentPage - 2);
+    const end = Math.min(totalPages, start + 4);
+    for (let i = start; i <= end; i++) {
+      pagination.appendChild(make(i, i));
+    }
+    
+    if (currentPage < totalPages) pagination.appendChild(make("Next →", currentPage + 1));
+  }
+
+  function renderPage(page) {
+    currentPage = page;
+    const perPage = 24;
+    const start = (page - 1) * perPage;
+    const end = start + perPage;
+    const pageProducts = filteredProducts.slice(start, end);
+    
+    if (!pageProducts.length) {
+      grid.innerHTML = `
+        <div class="empty-state" style="grid-column:1/-1;">
+          <i class="fa-solid fa-box-open"></i>
+          <h3>No wholesale products found</h3>
+          <p>Try adjusting your filters or check back later for new wholesale listings.</p>
+          <div class="empty-actions" style="margin-top:16px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+            <button class="btn btn-outline btn-sm" onclick="window.clearFilters()">
+              <i class="fa-solid fa-times"></i> Clear Filters
+            </button>
+            <a href="product.html" class="btn btn-primary btn-sm">
+              <i class="fa-solid fa-box"></i> Browse All Products
+            </a>
+          </div>
+        </div>
+      `;
+      resultCount.innerHTML = "0 wholesale products found";
+      pagination.innerHTML = "";
+      return;
+    }
+    
+    grid.innerHTML = pageProducts.map(renderWholesaleCard).join("");
+    resultCount.innerHTML = `<strong>${filteredProducts.length}</strong> wholesale product${filteredProducts.length === 1 ? "" : "s"} found`;
+    renderPagination();
+  }
+
+  function applyFilters() {
+    const category = state.category;
+    const search = state.search.toLowerCase().trim();
+    const sort = state.sort;
+
+    filteredProducts = allProducts.filter(p => {
+      if (category) {
+        const pCat = p.category?._id || p.category?.id || p.category;
+        if (String(pCat) !== String(category)) return false;
+      }
+      if (search) {
+        const nameMatch = p.name.toLowerCase().includes(search);
+        const descMatch = p.description ? p.description.toLowerCase().includes(search) : false;
+        if (!nameMatch && !descMatch) return false;
+      }
+      return true;
+    });
+
+    switch(sort) {
+      case 'newest':
+        filteredProducts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        break;
+      case 'price_asc':
+        filteredProducts.sort((a, b) => (a.displayPrice || a.finalPrice || 0) - (b.displayPrice || b.finalPrice || 0));
+        break;
+      case 'price_desc':
+        filteredProducts.sort((a, b) => (b.displayPrice || b.finalPrice || 0) - (a.displayPrice || a.finalPrice || 0));
+        break;
+      case 'rating':
+        filteredProducts.sort((a, b) => (b.ratingsAverage || 0) - (a.ratingsAverage || 0));
+        break;
+      default:
+        break;
+    }
+
+    totalPages = Math.ceil(filteredProducts.length / 24) || 1;
+    if (state.page > totalPages) state.page = 1;
+    renderPage(state.page);
+    updateStats();
+  }
+
+  function updateStats() {
+    document.getElementById("statProducts").textContent = allProducts.length;
+    const uniqueCategories = new Set();
+    allProducts.forEach(p => {
+      const cat = p.category?._id || p.category?.id || p.category;
+      if (cat) uniqueCategories.add(String(cat));
+    });
+    document.getElementById("statCategories").textContent = uniqueCategories.size;
+    const uniqueSellers = new Set();
+    allProducts.forEach(p => {
+      if (p.seller?._id || p.seller?.id) {
+        uniqueSellers.add(String(p.seller._id || p.seller.id));
+      }
+    });
+    document.getElementById("statSellers").textContent = uniqueSellers.size || 'Multiple';
+  }
+
+  function clearFilters() {
+    state = { category: "", search: "", sort: "newest", page: 1 };
+    pushURL();
+    syncFormToState();
+    applyFilters();
+  }
+
+  async function loadProducts() {
+    grid.innerHTML = ssSkeletonCards(8);
+    resultCount.textContent = "Loading wholesale products...";
+
+    try {
+      // Try to get wholesale products first
+      let products = [];
+      
+      try {
+        const res = await SS_API.getProducts({ 
+          sellerRole: 'wholesaler', 
+          status: 'active', 
+          limit: 100 
+        });
+        products = res.products || res.data || (Array.isArray(res) ? res : []);
+      } catch (e) {
+        // If wholesale filter fails, fallback to all products and filter manually
+        console.warn('Wholesale filter failed, falling back to all products', e);
+        const allRes = await SS_API.getProducts({ status: 'active', limit: 100 });
+        const allData = allRes.products || allRes.data || (Array.isArray(allRes) ? allRes : []);
+        products = allData.filter(p => 
+          p.sellerRole === 'wholesaler' || 
+          p.sellerRole === 'wholesale' ||
+          p.seller?.role === 'wholesaler'
+        );
+      }
+
+      allProducts = products;
+      applyFilters();
+
+      if (!allProducts.length) {
+        grid.innerHTML = `
+          <div class="empty-state" style="grid-column:1/-1;">
+            <i class="fa-solid fa-store"></i>
+            <h3>No wholesale products available</h3>
+            <p>We're currently curating our wholesale collection. Check back soon for bulk deals.</p>
+            <div class="empty-actions" style="margin-top:16px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+              <a href="product.html" class="btn btn-primary btn-sm">
+                <i class="fa-solid fa-box"></i> Browse All Products
+              </a>
+              <a href="contact.html" class="btn btn-outline btn-sm">
+                <i class="fa-solid fa-envelope"></i> Contact Us
+              </a>
+            </div>
+          </div>
+        `;
+        resultCount.textContent = "0 wholesale products found";
+        document.getElementById("statProducts").textContent = "0";
+        document.getElementById("statCategories").textContent = "0";
+        document.getElementById("statSellers").textContent = "0";
+        pagination.innerHTML = "";
+      }
+    } catch (err) {
+      console.error('Wholesale load error:', err);
+      grid.innerHTML = `
+        <div class="empty-state" style="grid-column:1/-1;">
+          <i class="fa-solid fa-triangle-exclamation" style="color:var(--danger);"></i>
+          <h3>Couldn't load wholesale products</h3>
+          <p style="color:var(--danger);">${err.message || 'Unknown error'}</p>
+          <div class="empty-actions" style="margin-top:16px;">
+            <button onclick="window.loadProducts()" class="btn btn-primary btn-sm">
+              <i class="fa-solid fa-rotate"></i> Retry
+            </button>
+          </div>
+        </div>
+      `;
+      resultCount.textContent = "Error loading products";
+      pagination.innerHTML = "";
+    }
+  }
+
+  // ============================================================
+  // EVENT LISTENERS
+  // ============================================================
+  document.getElementById("w-apply").addEventListener("click", () => {
+    state.category = catSelect.value;
+    state.search = searchInput.value.trim();
+    state.sort = sortSelect.value;
+    state.page = 1;
+    pushURL();
+    applyFilters();
+  });
+
+  document.getElementById("w-clear").addEventListener("click", clearFilters);
+
+  searchInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      document.getElementById("w-apply").click();
+    }
+  });
+
+  window.addEventListener("popstate", () => {
+    state = readParams();
+    syncFormToState();
+    applyFilters();
+  });
+
+  // Expose functions globally
+  window.loadProducts = loadProducts;
+  window.clearFilters = clearFilters;
+
+  // ============================================================
+  // INIT
+  // ============================================================
+  document.addEventListener("DOMContentLoaded", async () => {
+    // Header/footer are already rendered by ui.js
+    await populateCategories();
+    syncFormToState();
+    await loadProducts();
+    SS_CART.updateBadge();
+    ssHideLoader();
+  });
+})();
+</script>
+</body>
+</html>

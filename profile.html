@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My Account | Six Star Suppliers</title>
+<meta name="description" content="Manage your profile, track your orders in real time, and revisit recently viewed products.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://kit.fontawesome.com/e1426ab85b.js" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="css/style.css">
+<style>
+  .acct-wrap{ display:grid; gap:24px; grid-template-columns:1fr; padding:30px 0 70px; }
+  @media(min-width:900px){ .acct-wrap{ grid-template-columns:240px 1fr; } }
+
+  .acct-side{ background:var(--white); border:1px solid var(--line); border-radius:var(--radius-m); padding:18px; align-self:start; position:sticky; top:96px; }
+  .acct-user{ display:flex; align-items:center; gap:12px; padding-bottom:16px; margin-bottom:14px; border-bottom:1px solid var(--line); }
+  .acct-avatar{ width:48px; height:48px; border-radius:50%; background:var(--navy-deep); color:var(--marigold); display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; font-size:1.2rem; overflow:hidden; flex-shrink:0; }
+  .acct-avatar img{ width:100%; height:100%; object-fit:cover; }
+  .acct-user-name{ font-weight:700; font-size:.92rem; color:var(--navy-deep); }
+  .acct-user-email{ font-size:.76rem; color:var(--ink-soft); }
+  .acct-tabs{ display:flex; flex-direction:column; gap:4px; }
+  .acct-tab{ display:flex; align-items:center; gap:10px; padding:11px 12px; border-radius:var(--radius-s); font-size:.87rem; font-weight:600; color:var(--ink-soft); border:none; background:none; text-align:left; width:100%; }
+  .acct-tab i{ width:18px; color:var(--teal); }
+  .acct-tab:hover{ background:var(--paper-dim); }
+  .acct-tab.active{ background:var(--navy-deep); color:var(--paper); }
+  .acct-tab.active i{ color:var(--marigold); }
+  .acct-tab.danger{ color:var(--brick); margin-top:8px; border-top:1px solid var(--line); padding-top:14px; }
+  .acct-tab.danger i{ color:var(--brick); }
+
+  .acct-panel{ display:none; }
+  .acct-panel.active{ display:block; }
+  .panel-card{ background:var(--white); border:1px solid var(--line); border-radius:var(--radius-m); padding:24px; }
+  .panel-card h2{ font-size:1.2rem; margin-bottom:4px; }
+  .panel-sub{ color:var(--ink-soft); font-size:.85rem; margin-bottom:20px; }
+
+  .avatar-row{ display:flex; align-items:center; gap:16px; margin-bottom:20px; }
+  .avatar-row .acct-avatar{ width:64px; height:64px; font-size:1.5rem; }
+
+  /* orders */
+  .order-card{ background:var(--white); border:1px solid var(--line); border-radius:var(--radius-m); padding:18px; margin-bottom:14px; }
+  .order-card__head{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+  .order-id{ font-family:var(--font-mono); font-weight:700; font-size:.85rem; color:var(--navy-deep); }
+  .order-date{ font-size:.76rem; color:var(--ink-soft); margin-top:2px; }
+  .order-status-pill{ font-size:.72rem; font-weight:700; padding:5px 12px; border-radius:999px; text-transform:capitalize; white-space:nowrap; }
+  .order-status-pill.pending{ background:#FCEBD0; color:var(--marigold-deep); }
+  .order-status-pill.processing{ background:#DCE7F0; color:var(--navy); }
+  .order-status-pill.shipped{ background:#D9EEE0; color:var(--teal-deep); }
+  .order-status-pill.delivered{ background:#DEEFE9; color:var(--teal-deep); }
+  .order-status-pill.cancelled{ background:#FBE4DD; color:var(--brick); }
+
+  .order-items{ display:flex; gap:10px; overflow-x:auto; padding:4px 0 12px; }
+  .order-items img{ width:52px; height:52px; object-fit:cover; border-radius:8px; border:1px solid var(--line); flex-shrink:0; }
+
+  .order-progress{ display:flex; align-items:center; gap:0; margin:14px 0; }
+  .op-step{ flex:1; display:flex; flex-direction:column; align-items:center; position:relative; }
+  .op-dot{ width:22px; height:22px; border-radius:50%; background:var(--line); color:#fff; display:flex; align-items:center; justify-content:center; font-size:.65rem; z-index:1; }
+  .op-step.done .op-dot{ background:var(--teal); }
+  .op-step.current .op-dot{ background:var(--marigold); color:var(--navy-deep); }
+  .op-line{ position:absolute; top:11px; left:-50%; width:100%; height:2px; background:var(--line); z-index:0; }
+  .op-step:first-child .op-line{ display:none; }
+  .op-step.done .op-line, .op-step.current .op-line{ background:var(--teal); }
+  .op-label{ font-size:.65rem; color:var(--ink-soft); margin-top:6px; text-align:center; }
+  .order-progress.cancelled-flag{ opacity:.5; }
+
+  .order-foot{ display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; padding-top:12px; border-top:1px solid var(--line); }
+  .order-total{ font-family:var(--font-mono); font-weight:700; color:var(--navy-deep); }
+  .order-actions{ display:flex; gap:8px; }
+  .btn-cancel-order{ background:transparent; border:1.5px solid var(--brick); color:var(--brick); padding:8px 14px; border-radius:999px; font-size:.78rem; font-weight:700; }
+  .btn-cancel-order:hover{ background:var(--brick); color:#fff; }
+  .btn-cancel-order:disabled{ opacity:.4; cursor:not-allowed; }
+
+  .live-dot{ display:inline-flex; align-items:center; gap:6px; font-size:.72rem; color:var(--teal-deep); font-weight:700; }
+  .live-dot::before{ content:""; width:7px; height:7px; border-radius:50%; background:var(--teal); animation:pulseLive 1.4s infinite; }
+  @keyframes pulseLive{ 0%,100%{ opacity:1; } 50%{ opacity:.3; } }
+
+  /* recently viewed */
+  .rv-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:16px; }
+  @media(min-width:560px){ .rv-grid{ grid-template-columns:repeat(3,1fr); } }
+  @media(min-width:860px){ .rv-grid{ grid-template-columns:repeat(4,1fr); } }
+  .rv-viewed-at{ font-size:.68rem; color:var(--ink-soft); padding:0 12px 10px; }
+
+  .confirm-overlay{ position:fixed; inset:0; background:rgba(14,35,56,.5); z-index:250; display:none; align-items:center; justify-content:center; padding:20px; }
+  .confirm-overlay.open{ display:flex; }
+  .confirm-box{ background:var(--white); border-radius:var(--radius-l); padding:26px; max-width:380px; width:100%; text-align:center; }
+  .confirm-box i{ font-size:2rem; color:var(--brick); margin-bottom:10px; }
+  .confirm-box h3{ font-size:1.1rem; margin-bottom:8px; }
+  .confirm-box p{ color:var(--ink-soft); font-size:.88rem; margin-bottom:20px; }
+  .confirm-box .row{ display:flex; gap:10px; }
+
+  .empty-mini{ text-align:center; padding:40px 20px; color:var(--ink-soft); }
+  .empty-mini i{ font-size:1.8rem; color:var(--marigold-deep); margin-bottom:10px; display:block; }
+</style>
+</head>
+<body data-page="profile.html">
+<div id="pageLoader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+
+<header class="site-header" id="site-header"></header>
+
+<main class="wrap">
+  <div class="page-hero" style="margin:0 -20px 0; border-radius:0;">
+    <div class="wrap">
+      <h1>My Account</h1>
+      <p>Manage your details, track orders as they move, and revisit what you've browsed.</p>
+    </div>
+  </div>
+
+  <div class="acct-wrap">
+    <!-- SIDEBAR -->
+    <aside class="acct-side">
+      <div class="acct-user">
+        <div class="acct-avatar" id="sideAvatar">?</div>
+        <div>
+          <div class="acct-user-name" id="sideName">Loading…</div>
+          <div class="acct-user-email" id="sideEmail"></div>
+        </div>
+      </div>
+      <nav class="acct-tabs">
+        <button class="acct-tab active" data-tab="details"><i class="fa-solid fa-user"></i> Profile Details</button>
+        <button class="acct-tab" data-tab="orders"><i class="fa-solid fa-box"></i> My Orders</button>
+        <button class="acct-tab" data-tab="viewed"><i class="fa-solid fa-clock-rotate-left"></i> Recently Viewed</button>
+        <button class="acct-tab" data-tab="security"><i class="fa-solid fa-lock"></i> Security</button>
+        <button class="acct-tab danger" id="logoutBtn"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+      </nav>
+    </aside>
+
+    <!-- PANELS -->
+    <div>
+      <!-- PROFILE DETAILS -->
+      <section class="acct-panel active" id="panel-details">
+        <div class="panel-card">
+          <h2>Profile Details</h2>
+          <p class="panel-sub">Keep your contact info up to date so we can reach you about your orders.</p>
+          <div class="avatar-row">
+            <div class="acct-avatar" id="formAvatarPreview">?</div>
+            <div class="form-field" style="flex:1;">
+              <label for="fAvatar">Avatar image URL</label>
+              <input type="url" id="fAvatar" placeholder="https://…" />
+            </div>
+          </div>
+          <form id="profileForm" class="form-grid">
+            <div class="form-field">
+              <label for="fName">Full name</label>
+              <input type="text" id="fName" required />
+            </div>
+            <div class="form-field">
+              <label for="fEmail">Email</label>
+              <input type="email" id="fEmail" disabled />
+              <span class="form-hint">Email can't be changed here — contact support if needed.</span>
+            </div>
+            <div class="form-field">
+              <label for="fPhone">Phone number</label>
+              <input type="tel" id="fPhone" required />
+            </div>
+            <div class="form-field" id="addressField">
+              <label for="fAddress">Delivery address</label>
+              <input type="text" id="fAddress" placeholder="Street, estate, town" />
+            </div>
+            <div class="alert alert-error" id="profileError"></div>
+            <div class="alert alert-success" id="profileSuccess"></div>
+            <button type="submit" class="btn btn-dark" id="profileSaveBtn" style="background:#ec581d;">Save changes</button>
+          </form>
+        </div>
+      </section>
+
+      <!-- ORDERS -->
+      <section class="acct-panel" id="panel-orders">
+        <div class="sec-head" style="margin-bottom:12px;">
+          <h2 style="font-size:1.2rem;">My Orders</h2>
+          <span class="live-dot" id="liveIndicator">Live updates</span>
+        </div>
+        <div id="ordersList"></div>
+      </section>
+
+      <!-- RECENTLY VIEWED -->
+      <section class="acct-panel" id="panel-viewed">
+        <div class="panel-card">
+          <h2>Recently Viewed</h2>
+          <p class="panel-sub">Products you've checked out recently.</p>
+          <div class="rv-grid" id="viewedGrid"></div>
+        </div>
+      </section>
+
+      <!-- SECURITY -->
+      <section class="acct-panel" id="panel-security">
+        <div class="panel-card">
+          <h2>Security</h2>
+          <p class="panel-sub">Change your password. You'll stay signed in on this device.</p>
+          <form id="passwordForm" class="form-grid" style="max-width:380px;">
+            <div class="form-field">
+              <label for="pCurrent">Current password</label>
+              <input type="password" id="pCurrent" required minlength="6" />
+            </div>
+            <div class="form-field">
+              <label for="pNew">New password</label>
+              <input type="password" id="pNew" required minlength="6" />
+            </div>
+            <div class="alert alert-error" id="pwError"></div>
+            <div class="alert alert-success" id="pwSuccess"></div>
+            <button type="submit" class="btn btn-dark" id="pwSaveBtn">Update password</button>
+          </form>
+        </div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<!-- CANCEL CONFIRM -->
+<div class="confirm-overlay" id="cancelOverlay">
+  <div class="confirm-box">
+    <i class="fa-solid fa-triangle-exclamation"></i>
+    <h3>Cancel this order?</h3>
+    <p>This can't be undone. Your order will be marked as cancelled.</p>
+    <div class="row">
+      <button class="btn btn-outline btn-block" id="cancelDismiss">Keep order</button>
+      <button class="btn btn-block" style="background:var(--brick);color:#fff;" id="cancelConfirm">Yes, cancel</button>
+    </div>
+  </div>
+</div>
+
+<footer class="site-footer" id="site-footer"></footer>
+<a href="#" class="wa-float" id="wa-float"></a>
+<div id="toast"></div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/cart.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/profile.js"></script>
+</body>
+</html>

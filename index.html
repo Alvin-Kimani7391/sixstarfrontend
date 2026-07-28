@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Six Star Suppliers — Quality Products, Honest Prices | Kenya</title>
+<meta name="description" content="Shop household goods, electronics, shoes, bags and more from Six Star Suppliers. Fast delivery countrywide, pay via M-Pesa or on delivery.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://kit.fontawesome.com/e1426ab85b.js" crossorigin="anonymous"></script>
+
+<link rel="stylesheet" href="css/theme.css">
+</head>
+<body data-page="index.html">
+<div id="pageLoader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+
+<header class="site-header" id="site-header"></header>
+
+<main>
+
+  <!-- ===== Jumia-style top zone: category sidebar | hero banner | promo tiles ===== -->
+  <section class="home-top">
+    <div class="mega-menu" id="megaMenu"></div>
+
+    <div class="hero-banner-wrap" id="heroAd"></div>
+
+    <div class="promo-stack">
+      <a class="promo-card promo-card--wa" href="https://wa.me/254794327798?text=Hello%20I%20want%20to%20inquire%20about" target="_blank">
+        <div class="promo-card__ico"><i class="fa-brands fa-whatsapp"></i></div>
+        <div>
+          <div class="promo-card__title">WhatsApp to Order</div>
+          <div class="promo-card__sub">Reply in minutes</div>
+        </div>
+      </a>
+      <a class="promo-card promo-card--sell" href="register.html">
+        <div class="promo-card__ico"><i class="fa-solid fa-store"></i></div>
+        <div>
+          <div class="promo-card__title">Sell With Us</div>
+          <div class="promo-card__sub">Reach more buyers</div>
+        </div>
+      </a>
+      <a class="promo-card promo-card--track" href="track-order.html">
+        <div class="promo-card__ico"><i class="fa-solid fa-truck-fast"></i></div>
+        <div>
+          <div class="promo-card__title">Track My Order</div>
+          <div class="promo-card__sub">Real-time status</div>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap">
+      <div id="bannerAd" style="display:none;"></div>
+    </div>
+  </section>
+
+  <!-- ===== Shop by category — flat Jumia-style square tile grid ===== -->
+  <section class="block">
+    <div class="wrap">
+      <div class="cat-section-head">
+        <h2>Shop by category</h2>
+        <a href="product.html" class="see-all">View all <i class="fa-solid fa-chevron-right"></i></a>
+      </div>
+      <div class="cat-scroll" id="categoryGrid"></div>
+    </div>
+  </section>
+
+  <!-- ===== Hot deals — red flash-sale bar with live countdown ===== -->
+  <section class="block">
+    <div class="wrap">
+      <div class="rail">
+        <div class="sec-head sec-head--hot">
+          <h2><i class="fa-solid fa-bolt"></i> Hot Deals — Live Now</h2>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span class="deal-timer" id="hotDealsTimer"><i class="fa-regular fa-clock"></i> --h : --m : --s</span>
+            <a href="product.html?hotDeals=true" class="see-all">See all</a>
+          </div>
+        </div>
+        <div class="p-scroll" id="hotDeals"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== New arrivals — green bar ===== -->
+  <section class="block">
+    <div class="wrap">
+      <div class="rail">
+        <div class="sec-head sec-head--new">
+          <h2><i class="fa-solid fa-gift"></i> New Arrivals</h2>
+          <a href="product.html?sort=newest" class="see-all">See all</a>
+        </div>
+        <div class="p-scroll" id="newArrivals"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== WHOLESALE SECTION (like Hot Deals) ===== -->
+<section class="block">
+  <div class="wrap">
+    <div class="rail">
+      <div class="sec-head sec-head--topselling">
+        <h2><i class="fa-solid fa-wholesale"></i> Wholesale Deals</h2>
+        <a href="wholesale.html" class="see-all">See All <i class="fa-solid fa-arrow-right"></i></a>
+      </div>
+      <div class="p-scroll" id="wholesalePreview"></div>
+    </div>
+  </div>
+</section>
+
+  <!-- ===== Top Selling — high-stock movers, shuffled on every load ===== -->
+  <section class="block">
+    <div class="wrap">
+      <div class="rail">
+        <div class="sec-head sec-head--topselling">
+          <h2><i class="fa-solid fa-crown"></i> Top Selling</h2>
+          <a href="product.html?sort=popular" class="see-all">See all</a>
+        </div>
+        <div class="p-scroll" id="topSelling"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Catalog — gray bar ===== -->
+  <section class="block">
+    <div class="wrap">
+      <div class="rail">
+        <div class="sec-head sec-head--catalog">
+          <h2><i class="fa-solid fa-bag-shopping"></i> Our Catalog</h2>
+          <a href="product.html" class="see-all">Browse all</a>
+        </div>
+        <div class="p-grid" id="catalogPreview"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap">
+      <div class="trust-row" style="justify-content:center;">
+        <div><i class="fa-solid fa-truck-fast"></i> Countrywide delivery</div>
+        <div><i class="fa-solid fa-shield-halved"></i> 1-year warranty</div>
+        <div><i class="fa-solid fa-money-bill-wave"></i> Pay via Paybill or on delivery</div>
+        <div><i class="fa-brands fa-whatsapp"></i> Order in seconds on WhatsApp</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer" id="site-footer"></footer>
+<a href="#" class="wa-float" id="wa-float"></a>
+<div id="toast"></div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/cart.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/home.js"></script>
+</body>
+</html>

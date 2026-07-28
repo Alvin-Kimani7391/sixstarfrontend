@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Seller Dashboard — Six Star Suppliers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/dashboard.css">
+<link rel="stylesheet" href="css/wizard.css">
+</head>
+<body>
+
+<div id="pageLoader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+
+<!-- ============ HEADER ============ -->
+<header class="site-header">
+  <div class="header-row">
+    <a href="index.html" class="brand">
+      <div class="brand-mark">6★</div>
+      <div>
+        <div class="brand-name">Six Star Suppliers</div>
+        <div class="brand-tag">Seller Dashboard</div>
+      </div>
+    </a>
+    <button class="iconbtn orders-bell" id="ordersToggleBtn" title="Orders" aria-expanded="false">
+      <i class="fa-solid fa-bell"></i>
+      <span class="orders-badge" id="ordersBadge">0</span>
+    </button>
+    <a href="index.html" class="iconbtn" title="Visit storefront"><i class="fa-solid fa-store"></i></a>
+    <button class="iconbtn" id="logoutBtn" title="Log out"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
+  </div>
+</header>
+
+<!-- ============ HERO + STATS ============ -->
+<section class="dash-hero">
+  <div class="wrap dash-hero__row">
+    <div>
+      <div class="dash-hero__eyebrow">Seller tools</div>
+      <h1 id="greeting">Welcome back</h1>
+      <p id="businessLine">Manage your catalogue, track review status, and get your stock live.</p>
+      <span class="role-pill" id="rolePill"><i class="fa-solid fa-warehouse"></i> Wholesaler</span>
+    </div>
+    <button class="btn btn-primary" id="openAddProduct"><i class="fa-solid fa-plus"></i> Add new product</button>
+  </div>
+
+  <div class="wrap stat-row">
+    <div class="stat-card tone-draft">
+      <div class="stat-card__top"><div class="stat-card__ico"><i class="fa-solid fa-file-pen"></i></div></div>
+      <div class="stat-card__num" id="countDraft">0</div>
+      <div class="stat-card__label">Drafts</div>
+    </div>
+    <div class="stat-card tone-pending">
+      <div class="stat-card__top"><div class="stat-card__ico"><i class="fa-solid fa-hourglass-half"></i></div></div>
+      <div class="stat-card__num" id="countPending">0</div>
+      <div class="stat-card__label">Pending review</div>
+    </div>
+    <div class="stat-card tone-live">
+      <div class="stat-card__top"><div class="stat-card__ico"><i class="fa-solid fa-circle-check"></i></div></div>
+      <div class="stat-card__num" id="countActive">0</div>
+      <div class="stat-card__label">Live products</div>
+    </div>
+    <div class="stat-card tone-rejected">
+      <div class="stat-card__top"><div class="stat-card__ico"><i class="fa-solid fa-circle-xmark"></i></div></div>
+      <div class="stat-card__num" id="countRejected">0</div>
+      <div class="stat-card__label">Rejected</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MAIN ============ -->
+<main class="wrap">
+
+  <div class="dash-toolbar">
+    <h2>My products</h2>
+    <div class="search-bar" style="padding:0;max-width:280px;">
+      <form onsubmit="return false;">
+        <input type="text" id="searchInput" placeholder="Search your products…" />
+        <button type="button" id="searchClear" title="Clear"><i class="fa-solid fa-xmark"></i></button>
+      </form>
+    </div>
+  </div>
+
+  <div class="status-tabs" id="statusTabs">
+    <button class="status-tab active" data-status="all">All <span class="count" id="tabCountAll">0</span></button>
+    <button class="status-tab" data-status="draft">Draft <span class="count" id="tabCountDraft">0</span></button>
+    <button class="status-tab" data-status="pending_review">Pending <span class="count" id="tabCountPending">0</span></button>
+    <button class="status-tab" data-status="active">Live <span class="count" id="tabCountActive">0</span></button>
+    <button class="status-tab" data-status="rejected">Rejected <span class="count" id="tabCountRejected">0</span></button>
+  </div>
+
+  <div id="loadingGrid" class="sp-grid" style="margin-top:22px;">
+    <div class="skel sp-skel"></div>
+    <div class="skel sp-skel"></div>
+    <div class="skel sp-skel"></div>
+  </div>
+
+  <div id="productGrid" class="sp-grid" style="margin-top:22px; display:none;"></div>
+
+  <div id="emptyState" class="empty-state" style="display:none;">
+    <i class="fa-solid fa-box-open"></i>
+    <h3>No products here yet</h3>
+    <p id="emptyMsg">Products you add will show up in this view.</p>
+    <button class="btn btn-primary" id="emptyAddBtn"><i class="fa-solid fa-plus"></i> Add your first product</button>
+  </div>
+
+</main>
+
+<footer class="footer-bottom" style="margin-top:60px;">© 2026 Six Star Suppliers. All rights reserved.</footer>
+
+<!-- ============ ADD PRODUCT MODAL (WIZARD) ============ -->
+<div class="modal-overlay" id="productModal">
+  <div class="modal-sheet modal-sheet--wizard">
+    <div class="modal-head">
+      <div>
+        <h2 id="productModalTitle">Add a product</h2>
+        <p>Saved as a draft first — submit it for review when you're ready.</p>
+      </div>
+      <button class="modal-close" id="closeProductModal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+
+    <div class="wizard-steps" id="wizardSteps"></div>
+
+    <div id="productFormError" class="alert alert-error"></div>
+
+    <form id="productForm" class="form-grid" novalidate>
+
+      <!-- STEP: basic -->
+      <div class="wizard-panel" data-step-panel="basic">
+        <div class="form-field">
+          <label for="pName">Product name</label>
+          <input type="text" id="pName" required placeholder="e.g. 50kg Bag of Rice — Pishori" />
+        </div>
+
+        <div class="form-field">
+          <label>Category <span class="label-soft">(pick down to the most specific level)</span></label>
+          <div class="cat-cascade">
+            <select id="pParentCategory" required>
+              <option value="">Loading categories…</option>
+            </select>
+            <select id="pCategoryLevel1" disabled>
+              <option value="">Select a category above first</option>
+            </select>
+            <select id="pCategoryLevel2" disabled>
+              <option value="">—</option>
+            </select>
+          </div>
+          <p class="form-hint" id="categoryPathHint">Selecting a category loads its required product details automatically.</p>
+        </div>
+
+        <div class="form-field">
+          <label for="pDesc">Description</label>
+          <textarea id="pDesc" required placeholder="Describe quality, packaging, minimum order quantity, origin…"></textarea>
+        </div>
+      </div>
+
+      <!-- STEP: pricing -->
+      <div class="wizard-panel" data-step-panel="pricing">
+        <div class="form-row-2">
+          <div class="form-field" id="pStockField">
+            <label for="pStock">Stock quantity</label>
+            <input type="number" id="pStock" min="1" step="1" required placeholder="e.g. 120" />
+            <p class="form-hint" id="stockVariantNote" style="display:none;">This category needs variants (next step) — total stock is calculated from them automatically.</p>
+          </div>
+          <div class="form-field">
+            <label for="pPrice">Your asking price (KES)</label>
+            <input type="number" id="pPrice" min="1" step="0.01" required placeholder="e.g. 4500" />
+            <p class="form-hint">Admin reviews this and sets the final listed price before it goes live.</p>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="pDiscount">Discount % (optional)</label>
+          <input type="number" id="pDiscount" min="0" max="90" step="1" placeholder="e.g. 10" style="max-width:220px;" />
+        </div>
+
+        <div class="form-field" id="attributesSection" style="display:none;">
+          <label>Product attributes</label>
+          <div id="dynamicAttributesGrid" class="dyn-attr-grid"></div>
+          <p class="empty-attr-note" id="noAttributesNote" style="display:none;">This category has no extra attributes to fill in.</p>
+        </div>
+      </div>
+
+      <!-- STEP: variants (only shown when the category needs them) -->
+      <div class="wizard-panel" data-step-panel="variants">
+        <div class="section-intro">
+          <h3><i class="fa-solid fa-layer-group"></i> Variants</h3>
+          <p>Each combination (e.g. Size + Color) needs its own stock count.</p>
+        </div>
+        <div class="form-field" id="variantsSection">
+          <div id="variantRows"></div>
+          <button type="button" class="btn btn-outline btn-sm btn-add-row" id="addVariantRow"><i class="fa-solid fa-plus"></i> Add variant</button>
+        </div>
+      </div>
+
+      <!-- STEP: wholesale (wholesalers only) -->
+      <div class="wizard-panel" data-step-panel="wholesale">
+        <div class="section-intro">
+          <h3><i class="fa-solid fa-warehouse"></i> Wholesale details <span class="wholesale-badge">Wholesaler only</span></h3>
+          <p>Buyers need this before placing a bulk order.</p>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-field">
+            <label for="pMOQ">Minimum order quantity (MOQ)</label>
+            <input type="number" id="pMOQ" min="1" step="1" placeholder="e.g. 50" />
+          </div>
+          <div class="form-field">
+            <label>&nbsp;</label>
+            <p class="form-hint">The smallest quantity a buyer may order of this product.</p>
+          </div>
+        </div>
+
+        <label>Quantity-based pricing tiers <span class="label-soft">(optional)</span></label>
+        <p class="form-hint">e.g. 50 units at KES 500 each, 100 units at KES 470 each, 500 units at KES 430 each.</p>
+        <div id="pricingTierRows"></div>
+        <button type="button" class="btn btn-outline btn-sm btn-add-row" id="addTierRow"><i class="fa-solid fa-plus"></i> Add price tier</button>
+
+        <div class="toggle-row" style="margin-top:20px;">
+          <input type="checkbox" id="pFreeDelivery" />
+          <label for="pFreeDelivery">This product ships with free delivery</label>
+        </div>
+
+        <div id="deliveryChargeFields">
+          <label>Delivery charge type</label>
+          <div class="charge-type-group">
+            <label><input type="radio" name="deliveryChargeType" value="fixed" checked /> Fixed amount</label>
+            <label><input type="radio" name="deliveryChargeType" value="quantity_based" /> Per unit ordered</label>
+            <label><input type="radio" name="deliveryChargeType" value="negotiated" /> Negotiated with buyer</label>
+          </div>
+
+          <div class="form-row-2" id="deliveryFixedFields">
+            <div class="form-field">
+              <label for="pDeliveryFixedAmount">Flat delivery charge (KES)</label>
+              <input type="number" id="pDeliveryFixedAmount" min="0" step="1" placeholder="e.g. 500" />
+            </div>
+            <div></div>
+          </div>
+
+          <div class="form-row-2" id="deliveryQtyFields" style="display:none;">
+            <div class="form-field">
+              <label for="pDeliveryPerUnit">Delivery charge per unit (KES)</label>
+              <input type="number" id="pDeliveryPerUnit" min="0" step="1" placeholder="e.g. 15" />
+            </div>
+            <div></div>
+          </div>
+
+          <div class="form-field" id="deliveryNegotiatedFields" style="display:none;">
+            <label for="pDeliveryNotes">Delivery notes for buyers</label>
+            <textarea id="pDeliveryNotes" placeholder="e.g. Delivery quoted based on destination and order volume — contact us after ordering."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP: photos -->
+      <div class="wizard-panel" data-step-panel="photos">
+        <div class="section-intro">
+          <h3><i class="fa-solid fa-images"></i> Product photos</h3>
+          <p>The first photo becomes the storefront cover image.</p>
+        </div>
+        <div class="form-field">
+          <label>Photos <span class="label-soft">(up to 8, JPG or PNG)</span></label>
+          <div class="dropzone" id="dropzone">
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+            <p><strong>Click to upload</strong> or drag photos here</p>
+            <p style="font-size:.72rem;">JPG or PNG, first photo becomes the cover image</p>
+            <input type="file" id="pImages" accept="image/png,image/jpeg" multiple />
+          </div>
+          <div class="thumb-row" id="thumbRow"></div>
+          <div class="thumb-row" id="currentImagesRow"></div>
+          <p class="form-hint" id="currentImagesHint" style="display:none;">Current photos — upload new ones only if you want to replace them.</p>
+        </div>
+      </div>
+
+      <div class="wizard-footer">
+        <button type="button" class="btn btn-outline" id="wizardBackBtn" style="display:none;">
+          <i class="fa-solid fa-arrow-left"></i> Back
+        </button>
+        <div class="wizard-footer__spacer"></div>
+        <button type="button" class="btn btn-outline" id="cancelProductForm">Cancel</button>
+        <button type="button" class="btn btn-primary" id="wizardNextBtn">Next <i class="fa-solid fa-arrow-right"></i></button>
+        <button type="submit" class="btn btn-primary" id="saveProductBtn" style="display:none;">Save as draft</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ SUBMIT FOR REVIEW CONFIRM ============ -->
+<div class="confirm-overlay" id="submitConfirm">
+  <div class="confirm-box">
+    <i class="fa-solid fa-paper-plane"></i>
+    <h3>Submit for review?</h3>
+    <p id="submitConfirmText">This sends your product to the admin team. You won't be able to edit it while it's under review.</p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" id="submitConfirmCancel">Cancel</button>
+      <button class="btn btn-primary" id="submitConfirmOk">Submit</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ORDERS LIST "PAGE" ============ -->
+<div class="orders-page-overlay" id="ordersListOverlay">
+  <div class="orders-page">
+    <div class="orders-page__head">
+      <button type="button" class="order-detail-back" id="ordersListBack">
+        <i class="fa-solid fa-arrow-left"></i>
+      </button>
+      <div class="orders-page__title">
+        <h2>Orders</h2>
+        <p id="ordersSubtitle">All orders containing your products</p>
+      </div>
+    </div>
+
+    <div class="orders-page__stats" id="ordersStats">
+      <div class="orders-stat">
+        <span class="orders-stat__num" id="statAll">0</span>
+        <span class="orders-stat__label">Total</span>
+      </div>
+      <div class="orders-stat tone-processing">
+        <span class="orders-stat__num" id="statProcessing">0</span>
+        <span class="orders-stat__label">Processing</span>
+      </div>
+      <div class="orders-stat tone-shipped">
+        <span class="orders-stat__num" id="statShipped">0</span>
+        <span class="orders-stat__label">Shipped</span>
+      </div>
+      <div class="orders-stat tone-delivered">
+        <span class="orders-stat__num" id="statDelivered">0</span>
+        <span class="orders-stat__label">Delivered</span>
+      </div>
+    </div>
+
+    <div class="orders-page__toolbar">
+      <div class="orders-filter-tabs" id="ordersFilterTabs">
+        <button class="orders-filter-tab active" data-filter="all">All</button>
+        <button class="orders-filter-tab" data-filter="processing">Processing</button>
+        <button class="orders-filter-tab" data-filter="shipped">Shipped</button>
+        <button class="orders-filter-tab" data-filter="delivered">Delivered</button>
+        <button class="orders-filter-tab" data-filter="cancelled">Cancelled</button>
+      </div>
+      <div class="orders-search">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="ordersSearchInput" placeholder="Search by order number…">
+      </div>
+    </div>
+
+    <div class="orders-page__body" id="ordersListBody">
+      <div id="ordersLoading" class="orders-skel-wrap">
+        <div class="skel orders-skel"></div>
+        <div class="skel orders-skel"></div>
+        <div class="skel orders-skel"></div>
+      </div>
+      <div id="ordersEmpty" class="orders-empty-msg" style="display:none;"></div>
+      <div id="ordersList" class="orders-list-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SINGLE ORDER DETAIL "PAGE" ============ -->
+<div class="orders-page-overlay orders-page-overlay--stacked" id="orderDetailOverlay">
+  <div class="orders-page">
+    <div class="orders-page__head">
+      <button type="button" class="order-detail-back" id="orderDetailBack">
+        <i class="fa-solid fa-arrow-left"></i>
+      </button>
+      <div class="orders-page__title">
+        <h2>Order details</h2>
+        <p>Full breakdown for this order</p>
+      </div>
+    </div>
+    <div class="orders-page__body">
+      <div class="order-detail-single" id="orderDetailBody"></div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"><i class="fa-solid fa-circle-check"></i><span></span></div>
+
+<script src="js/config.js"></script>
+<script src="js/toast.js"></script>
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/seller-dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Contact Us — Six Star Suppliers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://kit.fontawesome.com/e1426ab85b.js" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="contact.html">
+<div id="pageLoader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+
+<header class="site-header" id="site-header"></header>
+
+<main>
+  <section class="page-hero">
+    <div class="wrap">
+      <h1>Talk to us</h1>
+      <p>Questions about an order, a product, or becoming a supplier? We usually reply within the hour on WhatsApp.</p>
+    </div>
+  </section>
+
+  <div class="wrap">
+    <div class="contact-grid">
+      <div class="contact-info">
+        <div class="contact-info__item">
+          <i class="fa-solid fa-phone"></i>
+          <div><strong>Call or SMS</strong><br><span id="cPhone1"></span> &nbsp;·&nbsp; <span id="cPhone2"></span></div>
+        </div>
+        <div class="contact-info__item">
+          <i class="fa-brands fa-whatsapp"></i>
+          <div><strong>WhatsApp</strong><br><a href="#" id="cWhatsapp" target="_blank">Chat with us</a></div>
+        </div>
+        <div class="contact-info__item">
+          <i class="fa-regular fa-envelope"></i>
+          <div><strong>Email</strong><br><a href="#" id="cEmail"></a></div>
+        </div>
+        <div class="contact-info__item">
+          <i class="fa-solid fa-clock"></i>
+          <div><strong>Support hours</strong><br>Mon–Sat, 8am–7pm EAT</div>
+        </div>
+      </div>
+
+      <form id="contactForm" class="form-grid summary-card" style="position:static;">
+        <div class="alert alert-success" id="contactSuccess">Thanks — your message is ready to send. We opened WhatsApp for you.</div>
+        <div class="form-field">
+          <label for="cName">Your name</label>
+          <input type="text" id="cName" required>
+        </div>
+        <div class="form-field">
+          <label for="cSubject">Subject</label>
+          <input type="text" id="cSubject" placeholder="e.g. Order SS-10234">
+        </div>
+        <div class="form-field">
+          <label for="cMessage">Message</label>
+          <textarea id="cMessage" required placeholder="How can we help?"></textarea>
+        </div>
+        <button class="btn btn-primary btn-block" type="submit"><i class="fa-brands fa-whatsapp"></i> Send via WhatsApp</button>
+      </form>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer" id="site-footer"></footer>
+<a href="#" class="wa-float" id="wa-float"></a>
+<div id="toast"></div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/cart.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/ui.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const c = window.SS_CONFIG;
+  document.getElementById("cPhone1").textContent = c.PHONE_1;
+  document.getElementById("cPhone2").textContent = c.PHONE_2;
+  document.getElementById("cEmail").textContent = c.EMAIL;
+  document.getElementById("cEmail").href = "mailto:" + c.EMAIL;
+  document.getElementById("cWhatsapp").href = `https://wa.me/${c.WHATSAPP_NUMBER}`;
+
+  document.getElementById("contactForm").addEventListener("submit", e => {
+    e.preventDefault();
+    const name = document.getElementById("cName").value.trim();
+    const subject = document.getElementById("cSubject").value.trim();
+    const message = document.getElementById("cMessage").value.trim();
+    const text = `Hello, my name is ${name}.${subject ? " Subject: " + subject + "." : ""} ${message}`;
+    window.open(`https://wa.me/${c.WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`, "_blank");
+    document.getElementById("contactSuccess").classList.add("show");
+    e.target.reset();
+  });
+});
+</script>
+</body>
+</html>

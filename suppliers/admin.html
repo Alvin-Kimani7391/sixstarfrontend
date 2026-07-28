@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admin Dashboard | Six Star Suppliers</title>
+<meta name="robots" content="noindex, nofollow">
+
+<script src="https://kit.fontawesome.com/e1426ab85b.js" crossorigin="anonymous"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="admin-body">
+
+<!-- ===================== LOGIN GATE ===================== -->
+<div id="loginGate" style="display:flex; min-height:100vh; align-items:center; justify-content:center; padding:20px;">
+  <div class="auth-shell" style="margin:0;">
+    <h1>Admin Login</h1>
+    <p class="sub">Six Star Suppliers control panel — admin accounts only.</p>
+    <div id="loginError" class="alert alert-error"></div>
+    <form id="loginForm" class="form-grid" style="margin-top:20px;">
+      <div class="form-field">
+        <label for="loginEmail">Email</label>
+        <input type="email" id="loginEmail" required autocomplete="username">
+      </div>
+      <div class="form-field">
+        <label for="loginPassword">Password</label>
+        <input type="password" id="loginPassword" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Log In</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===================== DASHBOARD ===================== -->
+<div id="dashboardRoot" class="admin-shell" style="display:none;">
+
+  <div class="admin-overlay" id="adminOverlay"></div>
+
+  <aside class="admin-sidebar" id="adminSidebar">
+    <div class="admin-sidebar__brand">
+      <div class="brand-mark">S</div>
+      <div>Six Star<span>Admin Panel</span></div>
+    </div>
+    <nav class="admin-nav">
+      <button data-tab="overview" class="active"><i class="fa-solid fa-gauge"></i> Overview</button>
+      <button data-tab="pending"><i class="fa-solid fa-clipboard-check"></i> Pending Products</button>
+      <button data-tab="products"><i class="fa-solid fa-boxes-stacked"></i> All Products</button>
+      <button data-tab="categories"><i class="fa-solid fa-tags"></i> Categories</button>
+      <button data-tab="ads"><i class="fa-solid fa-rectangle-ad"></i> Ads</button>
+      <button data-tab="orders"><i class="fa-solid fa-receipt"></i> Orders &amp; Payments</button>
+      <button data-tab="users"><i class="fa-solid fa-users"></i> Users</button>
+    </nav>
+    <div class="admin-sidebar__foot">
+      Logged in as <strong id="adminNameLabel" style="color:#fff;">-</strong>
+      <button id="logoutBtn">Log Out</button>
+    </div>
+  </aside>
+
+  <main class="admin-main">
+    <div class="admin-topbar">
+      <button class="iconbtn admin-menu-toggle" id="sidebarToggle"><i class="fa-solid fa-bars"></i></button>
+      <h1 id="topbarTitle">Overview</h1>
+    </div>
+
+    <div class="admin-body-inner">
+
+      <!-- ===== OVERVIEW ===== -->
+      <div class="tab-panel active" id="panel-overview">
+        <div class="stat-grid" id="statGrid"></div>
+        <div class="dash-card">
+          <div class="dash-card__head"><h3>Welcome</h3></div>
+          <div style="padding:18px;">
+            <p class="text-muted">Use the sidebar to review pending products and set final prices, manage categories and ad banners, verify M-Pesa payments, and suspend or reactivate any wholesaler, retailer, or buyer account.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== PENDING PRODUCTS ===== -->
+      <div class="tab-panel" id="panel-pending">
+        <div class="dash-card">
+          <div class="dash-card__head"><h3>Pending Review — set the final price to approve</h3></div>
+          <div class="table-scroll">
+            <table class="dtable">
+              <thead>
+                <tr><th>Image</th><th>Product</th><th>Seller</th><th>Category</th><th>Seller Price</th><th>Stock</th><th>Actions</th></tr>
+              </thead>
+              <tbody id="pendingProductsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== ALL PRODUCTS ===== -->
+      <div class="tab-panel" id="panel-products">
+        <div class="dash-card">
+          <div class="dash-card__head">
+            <h3>All Products</h3>
+            <div class="dash-toolbar">
+              <input type="text" id="productSearchInput" placeholder="Search by name...">
+              <select id="productStatusSelect">
+                <option value="">All statuses</option>
+                <option value="draft">Draft</option>
+                <option value="pending_review">Pending review</option>
+                <option value="active">Active</option>
+                <option value="rejected">Rejected</option>
+                <option value="suspended">Suspended</option>
+              </select>
+              <select id="productCategorySelect"><option value="">All categories</option></select>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table class="dtable">
+              <thead>
+                <tr><th>Image</th><th>Product</th><th>Seller</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th>Actions</th></tr>
+              </thead>
+              <tbody id="allProductsBody"></tbody>
+            </table>
+          </div>
+          <div class="pagination" id="productsPagination"></div>
+        </div>
+      </div>
+
+      <!-- ===== CATEGORIES ===== -->
+      <div class="tab-panel" id="panel-categories">
+        <div class="dash-card">
+          <div class="dash-card__head">
+            <h3>Categories</h3>
+            <button class="btn btn-dark btn-sm" id="addCategoryBtn"><i class="fa-solid fa-plus"></i> Add Category</button>
+          </div>
+          <div class="table-scroll">
+            <table class="dtable">
+              <thead><tr><th>Image</th><th>Name</th><th>Active</th><th>Actions</th></tr></thead>
+              <tbody id="categoriesBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== ADS ===== -->
+      <div class="tab-panel" id="panel-ads">
+        <div class="dash-card">
+          <div class="dash-card__head">
+            <h3>Ads &amp; Banners</h3>
+            <button class="btn btn-dark btn-sm" id="addAdBtn"><i class="fa-solid fa-plus"></i> Add Ad</button>
+          </div>
+          <div class="table-scroll">
+            <table class="dtable">
+              <thead><tr><th>Image</th><th>Title</th><th>Placement</th><th>Clicks</th><th>Active</th><th>Actions</th></tr></thead>
+              <tbody id="adsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== ORDERS & PAYMENTS ===== -->
+      <div class="tab-panel" id="panel-orders">
+        <div class="tabbar order-subtab">
+          <button class="active" data-subtab="pending-payment">Pending Payment Verification</button>
+          <button data-subtab="all-orders">All Orders</button>
+        </div>
+
+        <div id="panel-pending-payment" class="dash-card">
+          <div class="dash-card__head"><h3>Pending M-Pesa Verification</h3></div>
+          <div class="table-scroll">
+            <table class="dtable">
+              <thead><tr><th>Buyer</th><th>Total</th><th>M-Pesa Code</th><th>Message Pasted</th><th>Placed</th><th>Actions</th></tr></thead>
+              <tbody id="pendingPaymentsBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="panel-all-orders" class="dash-card" style="display:none;">
+          <div class="dash-card__head"><h3>All Orders</h3></div>
+          <div class="table-scroll">
+            <table class="dtable">
+              <thead><tr><th>Buyer</th><th>Total</th><th>Payment</th><th>Fulfillment</th><th>Items</th><th>Date</th></tr></thead>
+              <tbody id="allOrdersBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== USERS ===== -->
+      <div class="tab-panel" id="panel-users">
+        <div class="dash-card">
+          <div class="dash-card__head">
+            <h3>Users</h3>
+            <div class="dash-toolbar">
+              <select id="userRoleSelect">
+                <option value="">All roles</option>
+                <option value="wholesaler">Wholesalers</option>
+                <option value="retailer">Retailers</option>
+                <option value="buyer">Buyers</option>
+                <option value="admin">Admins</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table class="dtable">
+              <thead><tr><th>Name</th><th>Business</th><th>Contact</th><th>Role</th><th>Joined</th><th>Status</th></tr></thead>
+              <tbody id="usersBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- ===================== MODALS ===================== -->
+
+<!-- Approve product modal -->
+<div class="modal-overlay" id="approveModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Approve &amp; Set Price</h3>
+      <button class="modal-close" data-close-modal="approveModal">&times;</button>
+    </div>
+    <p class="text-muted mb-16"><strong data-field="name"></strong> — seller proposed KSh <span data-field="sellerPrice"></span></p>
+    <form id="approveForm" class="form-grid">
+      <div class="form-field">
+        <label for="approveFinalPrice">Final Price (KSh) — shown to buyers</label>
+        <input type="number" id="approveFinalPrice" min="1" step="1" required>
+      </div>
+      <div class="form-field">
+        <label for="approveDiscount">Discount % (optional)</label>
+        <input type="number" id="approveDiscount" min="0" max="90" value="0">
+      </div>
+      <div class="form-field" style="flex-direction:row; align-items:center; gap:10px;">
+        <label class="switch"><input type="checkbox" id="approveHotDeal"><span class="track"></span></label>
+        <label for="approveHotDeal" style="margin:0;">Mark as Hot Deal</label>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Approve &amp; Publish</button>
+    </form>
+  </div>
+</div>
+
+<!-- Reject product modal -->
+<div class="modal-overlay" id="rejectModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Reject Product</h3>
+      <button class="modal-close" data-close-modal="rejectModal">&times;</button>
+    </div>
+    <form id="rejectForm" class="form-grid">
+      <div class="form-field">
+        <label for="rejectReason">Reason (shown to the seller)</label>
+        <textarea id="rejectReason" required placeholder="e.g. Images too blurry, please reupload clearer photos"></textarea>
+      </div>
+      <button type="submit" class="btn btn-dark btn-block">Reject</button>
+    </form>
+  </div>
+</div>
+
+<!-- Full product edit modal -->
+<div class="modal-overlay" id="productEditModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Edit Product</h3>
+      <button class="modal-close" data-close-modal="productEditModal">&times;</button>
+    </div>
+    <form id="productEditForm" class="form-grid">
+      <div class="form-field">
+        <label for="editName">Name</label>
+        <input type="text" id="editName" required>
+      </div>
+      <div class="form-field">
+        <label for="editDescription">Description</label>
+        <textarea id="editDescription" required></textarea>
+      </div>
+      <div class="form-field">
+        <label for="editCategory">Category</label>
+        <select id="editCategory" required></select>
+      </div>
+      <div class="form-field">
+        <label for="editStock">Stock</label>
+        <input type="number" id="editStock" min="0" required>
+      </div>
+      <div class="form-field">
+        <label for="editSellerPrice">Seller Price (KSh)</label>
+        <input type="number" id="editSellerPrice" min="0" required>
+      </div>
+      <div class="form-field">
+        <label for="editFinalPrice">Final Price (KSh) — shown to buyers</label>
+        <input type="number" id="editFinalPrice" min="0">
+      </div>
+      <div class="form-field">
+        <label for="editDiscount">Discount %</label>
+        <input type="number" id="editDiscount" min="0" max="90">
+      </div>
+      <div class="form-field" style="flex-direction:row; align-items:center; gap:10px;">
+        <label class="switch"><input type="checkbox" id="editHotDeal"><span class="track"></span></label>
+        <label for="editHotDeal" style="margin:0;">Hot Deal</label>
+      </div>
+      <div class="form-field">
+        <label for="editImagesInput">Replace Images (optional, up to 8)</label>
+        <input type="file" id="editImagesInput" accept="image/*" multiple>
+        <div class="form-hint">Leave empty to keep current images.</div>
+        <div class="image-preview-row" id="editImagePreview"></div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Save Changes</button>
+    </form>
+  </div>
+</div>
+
+<!-- Category modal (add/edit) -->
+<div class="modal-overlay" id="categoryModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="categoryModalTitle">Add Category</h3>
+      <button class="modal-close" data-close-modal="categoryModal">&times;</button>
+    </div>
+    <form id="categoryForm" class="form-grid">
+      <div class="form-field">
+        <label for="categoryName">Name</label>
+        <input type="text" id="categoryName" required>
+      </div>
+      <div class="form-field">
+        <label for="categoryImageInput">Image</label>
+        <input type="file" id="categoryImageInput" accept="image/*">
+      </div>
+      <div class="form-field" style="flex-direction:row; align-items:center; gap:10px;">
+        <label class="switch"><input type="checkbox" id="categoryActive" checked><span class="track"></span></label>
+        <label for="categoryActive" style="margin:0;">Active</label>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Save Category</button>
+    </form>
+  </div>
+</div>
+
+<!-- Ad modal (add/edit) -->
+<div class="modal-overlay" id="adModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="adModalTitle">Add Ad</h3>
+      <button class="modal-close" data-close-modal="adModal">&times;</button>
+    </div>
+    <form id="adForm" class="form-grid">
+      <div class="form-field">
+        <label for="adTitle">Title</label>
+        <input type="text" id="adTitle" required>
+      </div>
+      <div class="form-field">
+        <label for="adBrand">Brand Name (optional, for paid third-party ads)</label>
+        <input type="text" id="adBrand">
+      </div>
+      <div class="form-field">
+        <label for="adLink">Link URL (where clicking the ad goes)</label>
+        <input type="url" id="adLink" placeholder="https://...">
+      </div>
+      <div class="form-field">
+        <label for="adPlacement">Placement</label>
+        <select id="adPlacement">
+          <option value="homepage_hero">Homepage Hero</option>
+          <option value="homepage_banner">Homepage Banner</option>
+          <option value="sidebar">Sidebar</option>
+          <option value="category_top">Category Page Top</option>
+          <option value="checkout_page">Checkout Page</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label for="adStartDate">Start Date</label>
+        <input type="date" id="adStartDate">
+      </div>
+      <div class="form-field">
+        <label for="adEndDate">End Date (optional — leave blank to run indefinitely)</label>
+        <input type="date" id="adEndDate">
+      </div>
+      <div class="form-field">
+        <label for="adImageInput">Image <span id="adImageRequired" style="color:var(--brick);">(required)</span></label>
+        <input type="file" id="adImageInput" accept="image/*">
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Save Ad</button>
+    </form>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="js/config.js"></script>
+<script type="module" src="js/admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Track My Order — Six Star Suppliers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://kit.fontawesome.com/e1426ab85b.js" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="track-order.html">
+<div id="pageLoader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+
+<header class="site-header" id="site-header"></header>
+
+<main>
+  <div class="wrap">
+    <div class="track-shell">
+      <h1>Track my order</h1>
+      <p class="sub" style="color:var(--ink-soft);margin-top:6px;">Enter the order reference you received after checkout.</p>
+
+      <form id="trackForm" class="form-grid" style="margin-top:20px;">
+        <div class="alert alert-error" id="trackError"></div>
+        <div class="form-field">
+          <label for="orderId">Order reference</label>
+          <input type="text" id="orderId" required placeholder="e.g. SS-10234">
+        </div>
+        <button class="btn btn-primary btn-block" type="submit" id="trackBtn">Track order</button>
+      </form>
+
+      <div id="trackResult" style="display:none;">
+        <div class="sec-head" style="margin-top:34px;"><h2 style="font-size:1.1rem;">Order status</h2></div>
+        <div class="timeline" id="timeline"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer" id="site-footer"></footer>
+<a href="#" class="wa-float" id="wa-float"></a>
+<div id="toast"></div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/cart.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/track-order.js"></script>
+</body>
+</html>

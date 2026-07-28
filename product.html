@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>All Products — Six Star Suppliers</title>
+<meta name="description" content="Browse the full Six Star Suppliers catalog. Filter by category and price, sort by relevance, and find today's hot deals.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://kit.fontawesome.com/e1426ab85b.js" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="product.html">
+<div id="pageLoader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+
+<header class="site-header" id="site-header"></header>
+
+<main>
+  <div class="wrap listing">
+    <aside class="filters">
+      <h3>Filters</h3>
+
+      <div class="filter-group">
+        <label for="f-category">Category</label>
+        <select id="f-category">
+          <option value="">All categories</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>Price range (KSh)</label>
+        <div class="price-range">
+          <input type="number" id="f-min" placeholder="Min" min="0">
+          <span>–</span>
+          <input type="number" id="f-max" placeholder="Max" min="0">
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <label>Deals</label>
+        <div class="chip-row">
+          <button type="button" class="chip" id="f-hotdeals" data-active="false">🔥 Hot deals only</button>
+        </div>
+      </div>
+
+      <button class="btn btn-dark btn-block" id="f-apply">Apply filters</button>
+      <button class="btn btn-outline btn-block" id="f-clear">Clear all</button>
+    </aside>
+
+    <section>
+      <div class="listing-toolbar">
+        <span class="count" id="resultCount">Loading products…</span>
+        <select class="sort-select" id="f-sort">
+          <option value="">Sort: Relevance</option>
+          <option value="newest">Newest first</option>
+          <option value="price_asc">Price: Low to High</option>
+          <option value="price_desc">Price: High to Low</option>
+        </select>
+      </div>
+
+      <div class="p-grid" id="productGrid">
+      </div>
+
+      <div class="pagination" id="pagination"></div>
+    </section>
+  </div>
+</main>
+
+<footer class="site-footer" id="site-footer"></footer>
+<a href="#" class="wa-float" id="wa-float"></a>
+<div id="toast"></div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/cart.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/products.js"></script>
+<!-- Add this AFTER all your script includes -->
+<script>
+  (function() {
+    // Track product view when user views a specific product detail
+    // Note: This ONLY runs on product-detail.html, not product.html (listing page)
+    const urlParams = new URLSearchParams(window.location.search);
+    const productId = urlParams.get('id');
+    
+    // Only track if we're on a product detail page (has ID in URL)
+    // and user is logged in
+    if (productId && typeof SS_AUTH !== 'undefined' && typeof SS_API !== 'undefined') {
+      try {
+        const user = SS_AUTH.get ? SS_AUTH.get() : null;
+        if (user && user.id) {
+          SS_API.trackProductView(productId)
+            .then(() => {
+              console.debug('Product view tracked:', productId);
+            })
+            .catch(() => {
+              // Silently fail - don't break the page
+              console.debug('View tracking skipped (non-blocking)');
+            });
+        }
+      } catch (err) {
+        // Ignore any errors - tracking is non-critical
+        console.debug('View tracking error:', err.message);
+      }
+    }
+  })();
+</script>
+</body>
+</html>

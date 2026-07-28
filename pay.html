@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Checkout — Six Star Suppliers</title>
+<meta name="description" content="Complete your order securely. Pay via M-Pesa and track your delivery with Six Star Suppliers.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://kit.fontawesome.com/e1426ab85b.js" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="css/style.css">
+<style>
+/* ============================================================
+   PAY/CHECKOUT PAGE - SIX STAR SUPPLIERS
+   ============================================================ */
+
+/* ---- Progress Stepper ---- */
+.checkout-stepper {
+  max-width: 560px; margin: 20px auto 0; padding: 0 16px;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.step-node {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  flex: 1; max-width: 110px;
+}
+.step-circle {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--surface); border: 2px solid var(--line);
+  color: var(--ink-soft); font-weight: 800; font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+  transition: .3s ease;
+}
+.step-node.done .step-circle {
+  background: linear-gradient(135deg,var(--price),#0d8c43);
+  border-color: transparent; color: #fff;
+}
+.step-node.current .step-circle {
+  background: linear-gradient(135deg,var(--marigold),var(--marigold-deep));
+  border-color: transparent; color: var(--navy-deep);
+  box-shadow: 0 0 0 4px rgba(242,169,59,.15);
+}
+.step-label {
+  font-size: 10.5px; font-weight: 700; color: var(--ink-faint); text-align: center;
+}
+.step-node.current .step-label, .step-node.done .step-label { color: var(--ink); }
+.step-line {
+  flex: 1; height: 2px; background: var(--line); margin-top: -20px;
+  max-width: 60px; transition: .3s ease;
+}
+.step-line.done { background: var(--price); }
+
+/* ---- Layout ---- */
+.checkout-wrap {
+  max-width: 980px; margin: 0 auto; padding: 8px 16px 0;
+  display: grid; grid-template-columns: 1fr 340px; gap: 22px;
+  align-items: start;
+}
+@media(max-width: 860px) {
+  .checkout-wrap { grid-template-columns: 1fr; }
+}
+
+.checkout-main { min-width: 0; }
+
+.back-shopping {
+  display: inline-flex; align-items: center; gap: 8px; margin: 16px 0 14px;
+  padding: 9px 14px; border-radius: var(--radius-sm);
+  background: rgba(242,169,59,0.08); border: 1px solid rgba(242,169,59,0.2);
+  color: var(--marigold-deep); font-weight: 700; font-size: 13.5px; transition: 0.2s ease;
+}
+.back-shopping:hover { transform: translateX(-3px); background: rgba(242,169,59,0.15); }
+
+.section-card {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-soft);
+  padding: 20px; margin-bottom: 16px;
+  animation: cardIn .4s ease both;
+}
+@keyframes cardIn { from{ opacity:0; transform:translateY(10px);} to{ opacity:1; transform:none;} }
+
+.section-card h3 {
+  font-size: 15px; color: var(--ink); margin-bottom: 14px;
+  display: flex; align-items: center; gap: 9px;
+}
+.section-card h3 i { color: var(--marigold); font-size: 14px; }
+
+/* ---- Cart Items ---- */
+.cart-item-wrapper { margin-bottom: 12px; }
+.cart-item-wrapper:last-child { margin-bottom: 0; }
+.premium-cart {
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 14px;
+  padding: 15px; background: var(--white); border-radius: var(--radius-md);
+  border: 1px solid var(--line); transition: background 0.25s ease, border 0.2s ease;
+}
+.cart-left { display: flex; gap: 13px; flex: 1; min-width: 0; }
+.cart-left img {
+  width: 72px; height: 72px; object-fit: cover; border-radius: var(--radius-sm);
+  border: 1px solid var(--line); flex-shrink: 0;
+}
+.cart-details { flex: 1; min-width: 0; }
+.cart-details h4 {
+  font-size: 13.5px; font-weight: 700; color: var(--ink);
+  margin: 0 0 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.price-line {
+  margin: 2px 0 10px; color: var(--price); font-family: var(--font-mono);
+  font-weight: 800; font-size: 14px;
+}
+.mini-config { margin-top: 8px; }
+.mini-label {
+  font-size: 10px; color: var(--ink-faint); margin-bottom: 7px;
+  text-transform: uppercase; letter-spacing: .5px; font-weight: 800;
+}
+
+/* Wholesale-specific styles */
+.wholesale-badge {
+  display: inline-block;
+  background: var(--pop);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2px 10px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: 6px;
+}
+.wholesale-info {
+  background: #F5F0FF;
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin-top: 8px;
+  border-left: 3px solid var(--pop);
+}
+.wholesale-info .info-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--ink-soft);
+  padding: 2px 0;
+}
+.wholesale-info .info-row strong {
+  color: var(--ink);
+}
+.wholesale-info .info-row .highlight {
+  color: var(--pop);
+  font-weight: 700;
+}
+.wholesale-tiers {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+.wholesale-tiers span {
+  display: inline-block;
+  background: rgba(124, 58, 237, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin: 2px 4px 2px 0;
+  color: var(--pop);
+  font-weight: 600;
+}
+.moq-warning {
+  font-size: 11px;
+  color: var(--brick);
+  margin-top: 4px;
+  font-weight: 600;
+}
+
+.color-options, .size-options, .premium-color-options { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.color-swatch {
+  width: 27px; height: 27px; border-radius: 50%; cursor: pointer;
+  border: 2px solid var(--line); transition: .2s ease; position: relative;
+}
+.color-swatch:hover { transform: scale(1.1); }
+.color-swatch.active { border-color: var(--marigold); box-shadow: 0 0 0 3px rgba(242,169,59,.18); }
+.size-btn {
+  min-width: 40px; padding: 7px 10px; border-radius: 10px;
+  border: 1.5px solid var(--line); background: var(--bg-page); color: var(--ink);
+  cursor: pointer; font-weight: 700; font-size: 11.5px; transition: .2s ease;
+}
+.size-btn:hover { border-color: var(--marigold); transform: translateY(-1px); }
+.size-btn.active {
+  background: linear-gradient(135deg, var(--marigold), var(--marigold-deep)); color: var(--navy-deep);
+  border-color: transparent; box-shadow: 0 6px 16px rgba(242,169,59,.25);
+}
+.size-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.premium-color-card {
+  display: flex; align-items: center; gap: 8px; padding: 7px 11px;
+  border-radius: 12px; border: 1.5px solid var(--line); background: var(--bg-page);
+  color: var(--ink); cursor: pointer; transition: .2s ease; font-size: 12px; min-width: 96px;
+}
+.premium-color-card:hover { border-color: var(--marigold); transform: translateY(-1px); }
+.premium-color-card.active { background: rgba(242,169,59,.1); border-color: var(--marigold); }
+.premium-color-circle {
+  width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,.18);
+  flex-shrink: 0; background-size: cover; background-position: center; display: inline-block;
+}
+.premium-check { margin-left: auto; color: var(--marigold); font-size: 11px; }
+
+.cart-actions { display: flex; flex-direction: column; gap: 10px; align-items: flex-end; flex-shrink: 0; }
+.qty-controls {
+  display: flex; align-items: center; gap: 8px; background: var(--bg-page);
+  border: 1.5px solid var(--line); border-radius: 20px; padding: 4px 7px;
+}
+.qty-controls button {
+  width: 24px; height: 24px; border: none; border-radius: 50%;
+  background: linear-gradient(135deg, var(--marigold), var(--marigold-deep)); color: var(--navy-deep);
+  font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.qty-controls button:disabled { opacity: 0.35; cursor: not-allowed; }
+.qty-controls span { font-weight: 700; font-size: 13px; min-width: 14px; text-align: center; }
+.removebtn {
+  background: rgba(184,68,46,.1); color: var(--brick); border: 1px solid rgba(184,68,46,.25);
+  padding: 6px 9px; border-radius: 8px; cursor: pointer; transition: .2s ease;
+}
+.removebtn:hover { background: var(--brick); color: #fff; }
+
+/* ---- Form ---- */
+.input-group { margin-top: 13px; }
+.input-group:first-child { margin-top: 0; }
+.input-group label { display: block; font-weight: 700; font-size: 12.5px; color: var(--ink-soft); margin-bottom: 6px; }
+input, select, textarea {
+  width: 100%; padding: 12px 14px; border-radius: var(--radius-sm);
+  border: 1.5px solid var(--line); background: var(--bg-page); color: var(--ink);
+  outline: none; font-family: var(--font-body); font-size: 14px; transition: .2s ease;
+  resize: vertical;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--marigold); box-shadow: 0 0 0 3px rgba(242,169,59,.13); }
+
+#delivery-preview {
+  margin-top: 14px; padding: 15px; border-radius: 14px;
+  background: linear-gradient(135deg,rgba(242,169,59,.07),rgba(242,169,59,.07));
+  border: 1px solid rgba(242,169,59,.18); display: none; animation: fadeIn .35s ease;
+}
+.delivery-row { display: flex; justify-content: space-between; align-items: center; margin: 6px 0; font-size: 13px; }
+.delivery-row strong { color: var(--ink-soft); font-weight: 600; }
+@keyframes fadeIn { from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;} }
+
+.custom-location-btn {
+  width: 100%; padding: 13px; border: 1.5px dashed var(--line); border-radius: 14px;
+  cursor: pointer; background: var(--bg-page); color: var(--ink-soft); font-weight: 700;
+  font-size: 13.5px; transition: .2s ease; margin-top: 14px;
+}
+.custom-location-btn:hover { border-color: var(--marigold); color: var(--marigold); }
+
+/* ---- Summary ---- */
+.summary-sidebar { position: sticky; top: 78px; }
+.summary {
+  padding: 18px; border-radius: var(--radius-lg);
+  background: linear-gradient(135deg,rgba(242,169,59,.05),rgba(242,169,59,.05));
+  border: 1px solid rgba(242,169,59,.15);
+}
+.summary p { font-size: 13.5px; color: var(--ink-soft); margin: 6px 0; display: flex; justify-content: space-between; }
+.summary h3 { font-size: 18px; color: var(--ink); margin-top: 10px; display: flex; justify-content: space-between; }
+.summary h3 span { font-family: var(--font-mono); color: var(--marigold); }
+
+button.main {
+  width: 100%; padding: 15px; margin-top: 14px; border: none; border-radius: 14px;
+  background: linear-gradient(135deg, var(--marigold), var(--marigold-deep)); color: var(--navy-deep);
+  font-weight: 800; font-size: 14.5px; cursor: pointer;
+  box-shadow: 0 10px 24px rgba(242,169,59,.28); transition: .2s ease;
+}
+button.main:hover { transform: translateY(-2px); }
+button.main i { margin-right: 8px; }
+button.main:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.payment-modal {
+  display: none; margin-top: 16px; padding: 18px; border-radius: var(--radius-lg);
+  background: var(--white); border: 1px solid var(--line); animation: fadeIn .3s ease;
+}
+.payment-modal h4 { font-size: 14px; color: var(--ink); margin-bottom: 8px; }
+.payment-modal p { font-size: 13.5px; color: var(--ink-soft); margin: 4px 0; }
+.payment-modal > button:first-of-type {
+  background: var(--bg-page); color: var(--ink-soft); border: 1.5px solid var(--line);
+  padding: 8px 14px; border-radius: 10px; cursor: pointer; font-size: 12.5px;
+  margin-bottom: 10px; font-weight: 700;
+}
+.payment-modal > button:last-of-type {
+  width: 100%; padding: 14px; margin-top: 10px; border: none; border-radius: 12px;
+  background: linear-gradient(135deg, var(--price), #0d8c43); color: #fff;
+  font-weight: 800; cursor: pointer; box-shadow: 0 8px 20px rgba(18,161,80,.25);
+}
+.success { text-align: center; color: var(--price); font-weight: 700; line-height: 1.6; }
+.order-number-highlight {
+  display: inline-block; margin: 6px 0; padding: 8px 18px;
+  background: rgba(18,161,80,.1); border: 1.5px dashed var(--price);
+  border-radius: 12px; font-family: var(--font-mono); font-size: 20px;
+  font-weight: 800; letter-spacing: 1px; color: var(--price);
+}
+#msg { margin-top: 14px; text-align: center; font-size: 13.5px; }
+.empty-cart-msg { text-align: center; padding: 30px 10px; color: var(--ink-soft); font-size: 14px; }
+
+/* ---- Modal ---- */
+.premium-modal {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.65); backdrop-filter: blur(6px);
+  z-index: 5000; justify-content: center; align-items: center; padding: 20px;
+}
+.premium-modal-content {
+  width: 100%; max-width: 420px; background: var(--surface); border-radius: 22px;
+  padding: 24px; border: 1px solid var(--line); box-shadow: var(--shadow-card);
+  animation: premiumFade .35s ease;
+}
+@keyframes premiumFade { from{opacity:0; transform:translateY(30px) scale(.95);} to{opacity:1; transform:none;} }
+.premium-top { display: flex; justify-content: space-between; align-items: center; }
+.premium-top h3 i { margin-right: 8px; color: var(--marigold); }
+.close-premium { background: none; border: none; color: var(--ink); font-size: 20px; cursor: pointer; }
+.close-premium:hover { color: var(--brick); }
+.premium-text { color: var(--ink-soft); line-height: 1.7; font-size: 13.5px; margin: 16px 0; }
+
+/* ---- Auth Gate ---- */
+.auth-gate {
+  max-width: 480px; margin: 60px auto; padding: 30px; text-align: center;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+}
+.auth-gate i { font-size: 34px; color: var(--marigold); margin-bottom: 14px; display: block; }
+.auth-gate p { color: var(--ink-soft); margin-bottom: 18px; font-size: 14px; }
+
+/* ---- Wholesale Delivery Detail ---- */
+.delivery-charge-detail {
+  background: #F5F0FF;
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  margin-top: 10px;
+  border: 1px solid rgba(124, 58, 237, 0.15);
+}
+.delivery-charge-detail .charge-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--pop);
+}
+.delivery-charge-detail .charge-value {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ink);
+}
+.delivery-charge-detail .charge-note {
+  font-size: 11px;
+  color: var(--ink-soft);
+  margin-top: 4px;
+  font-style: italic;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 600px) {
+  .checkout-wrap { padding: 8px 12px 0; }
+  .section-card { padding: 16px; }
+  .premium-cart { flex-direction: column; }
+  .cart-actions { width: 100%; flex-direction: row; justify-content: space-between; align-items: center; }
+  .cart-left { width: 100%; }
+  .step-label { font-size: 9.5px; }
+}
+</style>
+</head>
+<body data-page="pay.html">
+
+<div id="pageLoader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+
+<header class="site-header" id="site-header"></header>
+
+<main>
+  <!-- ===== STEPPER ===== -->
+  <div class="checkout-stepper" id="stepper">
+    <div class="step-node done" data-step="1">
+      <div class="step-circle"><i class="fa-solid fa-check"></i></div>
+      <div class="step-label">Cart</div>
+    </div>
+    <div class="step-line done"></div>
+    <div class="step-node current" data-step="2">
+      <div class="step-circle">2</div>
+      <div class="step-label">Details</div>
+    </div>
+    <div class="step-line" id="line2"></div>
+    <div class="step-node" data-step="3">
+      <div class="step-circle">3</div>
+      <div class="step-label">Payment</div>
+    </div>
+  </div>
+
+  <!-- ===== AUTH GATE ===== -->
+  <div class="auth-gate" id="authGate" style="display:none;">
+    <i class="fa-solid fa-lock"></i>
+    <h3>Please log in to checkout</h3>
+    <p>You need an account to place an order so you can track it and earn order history.</p>
+    <button class="main" onclick="window.location.href='login.html?redirect=' + encodeURIComponent('pay.html')">
+      <i class="fa-solid fa-right-to-bracket"></i> Log In
+    </button>
+  </div>
+
+  <div class="checkout-wrap" id="checkoutWrap">
+
+    <div class="checkout-main">
+      <a href="product.html" class="back-shopping">
+        <i class="fa-solid fa-arrow-left"></i> Back to Shopping
+      </a>
+
+      <div class="section-card">
+        <h3><i class="fa-solid fa-bag-shopping"></i> Your Items</h3>
+        <div id="checkout-items"></div>
+      </div>
+
+      <div class="section-card">
+        <h3><i class="fa-solid fa-user"></i> Contact & Delivery</h3>
+
+        <div class="input-group">
+          <label>Full Name</label>
+          <input type="text" id="name" placeholder="John Doe">
+        </div>
+
+        <div class="input-group">
+          <label>M-Pesa Number</label>
+          <input type="text" id="phone" placeholder="0712345678">
+        </div>
+
+        <div class="input-group">
+          <label>County/Region</label>
+          <select id="regionSelect"><option value="">Select Region</option></select>
+        </div>
+
+        <div class="input-group">
+          <label>Town / Area</label>
+          <select id="townSelect" onchange="updateTotal()"><option value="">Select Town</option></select>
+        </div>
+
+        <div id="delivery-preview"></div>
+
+        <button type="button" class="custom-location-btn" onclick="openCustomLocationModal()">
+          <i class="fa-solid fa-location-dot"></i> My Location Is Not Listed
+        </button>
+
+        <div class="input-group">
+          <label>Select Agent (Optional) — earns them commission on your order</label>
+          <select id="agentSelect"><option value="">No Agent</option></select>
+        </div>
+      </div>
+    </div>
+
+    <div class="summary-sidebar">
+      <div class="section-card">
+        <h3><i class="fa-solid fa-receipt"></i> Order Summary</h3>
+        <div class="summary">
+          <p>Items Total <span>Ksh <span id="item-price">0</span></span></p>
+          <p>Transport <span>Ksh <span id="transport-fee">0</span></span></p>
+          <div id="wholesale-delivery-detail" style="display:none; margin: 6px 0; font-size: 12px; color: var(--ink-soft);">
+            <p style="display:flex;justify-content:space-between;">
+              <span>Delivery Terms</span>
+              <span id="delivery-terms-display">—</span>
+            </p>
+          </div>
+          <h3>Total <span>Ksh <span id="total-price">0</span></span></h3>
+        </div>
+
+        <button class="main" onclick="showPayment()"><i class="fa-solid fa-credit-card"></i>Proceed to Pay</button>
+
+        <div id="payment-step" class="payment-modal">
+          <button onclick="document.getElementById('payment-step').style.display='none'">Close</button>
+          <h4>Payment Details</h4>
+          <p>Send Money to: <strong>0794327798</strong></p>
+          <p>Name: <strong>Waithera Samuel Kimani</strong></p>
+          <div class="input-group">
+            <label>Paste your full M-Pesa confirmation SMS</label>
+            <textarea id="mpesa-message" rows="3" placeholder="e.g. QWE1XYZ23 Confirmed. Ksh1,500 sent to Waithera Samuel Kimani on 24/7/26..."></textarea>
+          </div>
+          <button onclick="submitOrder(event)"><i class="fa-solid fa-check"></i> Submit Order</button>
+        </div>
+
+        <p id="msg"></p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- custom location modal -->
+  <div id="customLocationModal" class="premium-modal">
+    <div class="premium-modal-content">
+      <div class="premium-top">
+        <h3><i class="fa-solid fa-map-location-dot"></i> Custom Delivery Request</h3>
+        <button class="close-premium" onclick="closeCustomLocationModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <p class="premium-text">
+        We currently dispatch to selected regions only.<br><br>
+        If your area is unavailable, we can still process your order manually through WhatsApp support.
+      </p>
+      <input type="text" id="customLocationInput" placeholder="Enter your location">
+      <button class="main" onclick="sendCustomLocationOrder()">
+        <i class="fa-brands fa-whatsapp"></i> Continue to WhatsApp
+      </button>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer" id="site-footer"></footer>
+<a href="#" class="wa-float" id="wa-float"></a>
+<div id="toast"></div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/cart.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/ui.js"></script>
+<script>
+// ============================================================
+// CHECKOUT LOGIC
+// ============================================================
+let cart = [];
+let productDetailsCache = {};
+
+// ===== DELIVERY DATA (for regular products) =====
+const DELIVERY_DATA = {
+  Nairobi: [{ town: "CBD", fee: 0, deliveryDays: 1 }, { town: "Westlands", fee: 50, deliveryDays: 1 }, { town: "Karen", fee: 50, deliveryDays: 1 }, { town: "Kasarani", fee: 80, deliveryDays: 1 }, { town: "Embakasi", fee: 80, deliveryDays: 1 }, { town: "Rongai", fee: 100, deliveryDays: 1 }],
+  Kiambu: [{ town: "Thika Road", fee: 100, deliveryDays: 1 }, { town: "Kiambu Town", fee: 50, deliveryDays: 1 }],
+  Kajiado: [{ town: "Kitengela", fee: 100, deliveryDays: 1 }, { town: "Isinya", fee: 150, deliveryDays: 2 }, { town: "Kajiado Town", fee: 200, deliveryDays: 2 }, { town: "Namanga", fee: 300, deliveryDays: 3 }, { town: "Loitoktok", fee: 300, deliveryDays: 3 }],
+  Bungoma: [{ town: "Bungoma Town", fee: 300, deliveryDays: 3 }, { town: "Kimilili", fee: 300, deliveryDays: 3 }, { town: "Webuye", fee: 300, deliveryDays: 3 }, { town: "Chwele", fee: 300, deliveryDays: 4 }],
+  Kisii: [{ town: "Kisii Town", fee: 300, deliveryDays: 3 }, { town: "Keroka", fee: 300, deliveryDays: 3 }, { town: "Ogembo", fee: 350, deliveryDays: 4 }],
+  Siaya: [{ town: "Siaya Town", fee: 300, deliveryDays: 3 }, { town: "Bondo", fee: 300, deliveryDays: 3 }, { town: "Ugunja", fee: 350, deliveryDays: 4 }],
+  Muranga: [{ town: "Muranga Town", fee: 200, deliveryDays: 2 }],
+  RiftValley: [{ town: "Naivasha", fee: 250, deliveryDays: 2 }, { town: "Nakuru", fee: 300, deliveryDays: 2 }],
+  Coast: [{ town: "Mombasa", fee: 300, deliveryDays: 4 }, { town: "Kilifi", fee: 350, deliveryDays: 4 }, { town: "Malindi", fee: 350, deliveryDays: 5 }]
+};
+
+function cleanProduct(item) {
+  return {
+    ...item,
+    price: Number(String(item.price).replace(/[^0-9]/g, "")) || 0,
+    qty: Math.max(1, Number(item.qty) || 1),
+    color: Array.isArray(item.color) ? item.color : Array.isArray(item.colors) ? item.colors : typeof item.color === "string" ? [item.color.trim()] : typeof item.colors === "string" ? [item.colors.trim()] : [],
+    selectedColor: item.selectedColor || "",
+    selectedSize: item.selectedSize || "",
+    selectedShoeSize: item.selectedShoeSize || "",
+    selectedFit: item.selectedFit || "",
+    minOrderQuantity: item.minOrderQuantity || 1,
+    pricingTiers: item.pricingTiers || [],
+    sellerRole: item.sellerRole || 'retailer',
+    freeDelivery: item.freeDelivery || false,
+    deliveryCharge: item.deliveryCharge || { chargeType: 'fixed', amount: 0, perUnitAmount: 0, notes: '' }
+  };
+}
+
+function loadCartFromStorage() {
+  try {
+    cart = SS_CART.getAll().map(cleanProduct);
+    fetchProductDetails();
+  } catch (e) {
+    cart = [];
+  }
+}
+
+async function fetchProductDetails() {
+  for (let i = 0; i < cart.length; i++) {
+    const item = cart[i];
+    if (item.id && !productDetailsCache[item.id]) {
+      try {
+        const res = await SS_API.getProduct(item.id);
+        const product = res.product || res;
+        productDetailsCache[item.id] = product;
+        cart[i].minOrderQuantity = product.minOrderQuantity || 1;
+        cart[i].pricingTiers = product.pricingTiers || [];
+        cart[i].sellerRole = product.sellerRole || 'retailer';
+        cart[i].freeDelivery = product.freeDelivery || false;
+        cart[i].deliveryCharge = product.deliveryCharge || { chargeType: 'fixed', amount: 0, perUnitAmount: 0, notes: '' };
+        cart[i].displayPrice = product.displayPrice;
+        cart[i].finalPrice = product.finalPrice;
+      } catch (e) {
+        console.warn('Failed to fetch product details for', item.id);
+      }
+    }
+  }
+  loadCheckout();
+}
+
+function saveCart() {
+  const plain = cart.map(({ id, name, price, image, qty, selectedColor, selectedSize, selectedShoeSize, selectedFit }) => 
+    ({ id, name, price, image, qty, selectedColor, selectedSize, selectedShoeSize, selectedFit })
+  );
+  localStorage.setItem("ss_cart", JSON.stringify(plain));
+  SS_CART.updateBadge();
+}
+
+function increaseQty(i) { 
+  const item = cart[i];
+  const maxStock = item.stock || 999;
+  if (item.qty < maxStock) {
+    item.qty++; 
+    saveCart(); 
+    loadCheckout(); 
+  }
+}
+function decreaseQty(i) { 
+  const item = cart[i];
+  const minQty = item.sellerRole === 'wholesaler' ? (item.minOrderQuantity || 1) : 1;
+  if (item.qty > minQty) { 
+    cart[i].qty--; 
+    saveCart(); 
+    loadCheckout(); 
+  }
+}
+function removeFromCart(i) { cart.splice(i, 1); saveCart(); loadCheckout(); }
+
+function getEffectivePrice(item) {
+  if (item.sellerRole === 'wholesaler' && item.pricingTiers && item.pricingTiers.length > 0) {
+    const sorted = [...item.pricingTiers].sort((a, b) => a.minQty - b.minQty);
+    let effectivePrice = item.displayPrice || item.price;
+    for (const tier of sorted) {
+      if (item.qty >= tier.minQty) {
+        effectivePrice = tier.price;
+      }
+    }
+    return effectivePrice;
+  }
+  return item.displayPrice || item.price;
+}
+
+function selectColor(index, color) { cart[index].selectedColor = color; loadCheckout(); }
+function selectSize(index, size) { cart[index].selectedSize = size; loadCheckout(); }
+function selectShoeSize(index, size) { cart[index].selectedShoeSize = size; loadCheckout(); }
+function selectFit(index, fit) { cart[index].selectedFit = fit; loadCheckout(); }
+
+function getColorStyle(color) {
+  const c = color.toLowerCase().trim();
+  const gradients = {
+    "black/white": "background: linear-gradient(135deg,#111 50%,#fff 50%);",
+    "red/black": "background: linear-gradient(135deg,#d62828 50%,#111 50%);",
+    "blue/white": "background: linear-gradient(135deg,#2563eb 50%,#fff 50%);",
+    "green/black": "background: linear-gradient(135deg,#2e7d32 50%,#111 50%);",
+    "multi": "background: linear-gradient(135deg,#ff0000,#ffcc00,#00c853,#2962ff);"
+  };
+  return gradients[c] || `background-color:${c};`;
+}
+
+function loadCheckout() {
+  const container = document.getElementById("checkout-items");
+  container.innerHTML = "";
+  if (cart.length === 0) {
+    container.innerHTML = "<p class='empty-cart-msg'><i class='fa-solid fa-cart-shopping' style='font-size:28px; display:block; margin-bottom:10px; color:var(--line);'></i>Your cart is empty</p>";
+    updateTotal();
+    return;
+  }
+  cart.forEach((item, i) => {
+    const img = Array.isArray(item.image) ? item.image[0] : item.image;
+    const displayName = item.make ? `${item.make} ${item.model || ""}` : item.name;
+    const category = item.category ? item.category.toLowerCase() : "";
+    const isClothing = category === "clothing";
+    const isShoes = category === "shoes" || category === "shoe" || category === "sneakers";
+    const isWholesale = item.sellerRole === 'wholesaler';
+    const effectivePrice = getEffectivePrice(item);
+    const itemTotal = effectivePrice * item.qty;
+    const minQty = isWholesale ? (item.minOrderQuantity || 1) : 1;
+    const canDecrease = item.qty > minQty;
+
+    let wholesaleInfo = "";
+    if (isWholesale) {
+      let tiersHtml = "";
+      if (item.pricingTiers && item.pricingTiers.length > 0) {
+        const sorted = [...item.pricingTiers].sort((a, b) => a.minQty - b.minQty);
+        tiersHtml = sorted.map(t => 
+          `<span>${t.minQty}+ = Ksh ${t.price.toLocaleString()}</span>`
+        ).join('');
+      }
+      wholesaleInfo = `
+        <div class="wholesale-info">
+          <div class="info-row">
+            <span>Minimum Order</span>
+            <span><strong>${minQty} units</strong></span>
+          </div>
+          ${item.pricingTiers && item.pricingTiers.length > 0 ? `
+            <div class="wholesale-tiers">
+              <span style="font-weight:600;">Bulk Pricing:</span> ${tiersHtml}
+            </div>
+          ` : ''}
+          ${item.freeDelivery ? `
+            <div class="info-row">
+              <span>Delivery</span>
+              <span class="highlight"><i class="fa-solid fa-check-circle"></i> Free Delivery</span>
+            </div>
+          ` : item.deliveryCharge && item.deliveryCharge.amount > 0 ? `
+            <div class="info-row">
+              <span>Delivery Charge</span>
+              <span class="highlight">Ksh ${item.deliveryCharge.amount.toLocaleString()}</span>
+            </div>
+          ` : ''}
+          ${item.deliveryCharge && item.deliveryCharge.chargeType === 'negotiated' && item.deliveryCharge.notes ? `
+            <div class="info-row" style="font-size:11px;color:var(--ink-soft);">
+              <span>Delivery Terms</span>
+              <span>${item.deliveryCharge.notes}</span>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    let extraConfig = "";
+    if (isClothing) {
+      extraConfig = `
+        <div class="mini-config">
+          <div class="mini-label">Color</div>
+          <div class="color-options">
+            ${["Black","White","Red","Blue","Green"].map(col => `
+              <div class="color-swatch ${item.selectedColor === col ? 'active' : ''}" style="background:${col === 'Black' ? '#111' : col === 'White' ? '#f5f5f5' : col === 'Red' ? '#d62828' : col === 'Blue' ? '#2563eb' : '#2e7d32'}" onclick="selectColor(${i},'${col}')"></div>
+            `).join('')}
+          </div>
+          <div class="mini-label">Size</div>
+          <div class="size-options">
+            ${["S","M","L","XL","XXL"].map(sz => `
+              <button type="button" class="size-btn ${item.selectedSize === sz ? 'active' : ''}" onclick="selectSize(${i},'${sz}')">${sz}</button>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+    if (isShoes) {
+      extraConfig = `
+        <div class="mini-config">
+          <div class="mini-label">Color</div>
+          <div class="premium-color-options">
+            ${(Array.isArray(item.color) ? item.color : []).map(col => `
+              <button type="button" class="premium-color-card ${item.selectedColor === col ? 'active' : ''}" onclick="selectColor(${i},'${col}')">
+                <span class="premium-color-circle" style="${getColorStyle(col)}"></span>
+                <span class="premium-color-name">${col}</span>
+                ${item.selectedColor === col ? '<span class="premium-check"><i class="fa-solid fa-check"></i></span>' : ''}
+              </button>
+            `).join('')}
+          </div>
+          <div class="mini-label">Shoe Size</div>
+          <div class="size-options">
+            ${["38","39","40","41","42","43","44","45","46"].map(sz => `
+              <button type="button" class="size-btn ${item.selectedShoeSize === sz ? 'active' : ''}" onclick="selectShoeSize(${i},'${sz}')">${sz}</button>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    container.innerHTML += `
+      <div class="cart-item-wrapper">
+        <div class="premium-cart">
+          <div class="cart-left">
+            <img src="${img}">
+            <div class="cart-details">
+              <h4>${displayName} ${isWholesale ? '<span class="wholesale-badge">Wholesale</span>' : ''}</h4>
+              <div class="price-line">Ksh ${itemTotal.toLocaleString()}</div>
+              ${wholesaleInfo}
+              ${extraConfig}
+              ${isWholesale && item.qty === minQty ? `<div class="moq-warning"><i class="fa-solid fa-info-circle"></i> Minimum order quantity: ${minQty} units</div>` : ''}
+            </div>
+          </div>
+          <div class="cart-actions">
+            <div class="qty-controls">
+              <button onclick="decreaseQty(${i})" ${!canDecrease ? 'disabled' : ''}>-</button>
+              <span>${item.qty}</span>
+              <button onclick="increaseQty(${i})" ${item.qty >= (item.stock || 999) ? 'disabled' : ''}>+</button>
+            </div>
+            <button class="removebtn" onclick="removeFromCart(${i})"><i class="fa-solid fa-trash"></i></button>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+  updateTotal();
+}
+
+const regionSelect = document.getElementById("regionSelect");
+const townSelect = document.getElementById("townSelect");
+
+Object.keys(DELIVERY_DATA).forEach(region => {
+  const opt = document.createElement("option");
+  opt.value = region;
+  opt.textContent = region;
+  regionSelect.appendChild(opt);
+});
+
+regionSelect.addEventListener("change", () => {
+  townSelect.innerHTML = `<option value="">Select Town</option>`;
+  const towns = DELIVERY_DATA[regionSelect.value] || [];
+  towns.forEach(place => {
+    const opt = document.createElement("option");
+    opt.value = place.fee;
+    opt.dataset.town = place.town;
+    opt.dataset.days = place.deliveryDays;
+    opt.textContent = `${place.town} - Ksh ${place.fee}`;
+    townSelect.appendChild(opt);
+  });
+});
+
+function getNextSaturday() {
+  const now = new Date();
+  const nextSaturday = new Date(now);
+  const daysUntilSaturday = (6 - now.getDay() + 7) % 7 || 7;
+  nextSaturday.setDate(now.getDate() + daysUntilSaturday);
+  nextSaturday.setHours(8, 0, 0, 0);
+  return nextSaturday;
+}
+
+function formatDate(date) {
+  return date.toLocaleDateString("en-KE", { day: "numeric", month: "long" });
+}
+
+function getCountdown() {
+  const now = new Date();
+  const saturday = getNextSaturday();
+  const diff = saturday - now;
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  return { days, hours, mins };
+}
+
+function calculateWholesaleDelivery(item) {
+  if (item.freeDelivery) return 0;
+  if (!item.deliveryCharge) return 0;
+  
+  const charge = item.deliveryCharge;
+  if (charge.chargeType === 'fixed') {
+    return charge.amount || 0;
+  } else if (charge.chargeType === 'quantity_based') {
+    return (charge.perUnitAmount || 0) * item.qty;
+  } else if (charge.chargeType === 'negotiated') {
+    return 0;
+  }
+  return 0;
+}
+
+function updateTotal() {
+  const transport = Number(townSelect.value) || 0;
+  let itemsTotal = 0;
+  let wholesaleDeliveryTotal = 0;
+  let hasWholesale = false;
+  let deliveryTerms = [];
+
+  cart.forEach(item => {
+    const effectivePrice = getEffectivePrice(item);
+    itemsTotal += effectivePrice * item.qty;
+    if (item.sellerRole === 'wholesaler') {
+      hasWholesale = true;
+      const wDelivery = calculateWholesaleDelivery(item);
+      wholesaleDeliveryTotal += wDelivery;
+      if (item.freeDelivery) {
+        deliveryTerms.push('Free Delivery');
+      } else if (item.deliveryCharge && item.deliveryCharge.chargeType === 'negotiated') {
+        deliveryTerms.push(item.deliveryCharge.notes || 'Negotiated');
+      }
+    }
+  });
+
+  let totalTransport = transport;
+  if (hasWholesale && wholesaleDeliveryTotal > 0) {
+    if (cart.some(item => item.sellerRole !== 'wholesaler')) {
+      totalTransport = transport + wholesaleDeliveryTotal;
+    } else {
+      totalTransport = wholesaleDeliveryTotal;
+    }
+  } else if (hasWholesale && wholesaleDeliveryTotal === 0) {
+    totalTransport = transport;
+  }
+
+  const total = itemsTotal + totalTransport;
+  document.getElementById("item-price").innerText = itemsTotal.toLocaleString();
+  document.getElementById("transport-fee").innerText = totalTransport.toLocaleString();
+  document.getElementById("total-price").innerText = total.toLocaleString();
+
+  const detailEl = document.getElementById("wholesale-delivery-detail");
+  const termsDisplay = document.getElementById("delivery-terms-display");
+  if (hasWholesale && deliveryTerms.length > 0) {
+    detailEl.style.display = 'block';
+    termsDisplay.textContent = deliveryTerms.join(', ');
+  } else if (hasWholesale) {
+    detailEl.style.display = 'block';
+    termsDisplay.textContent = 'Standard delivery applies';
+  } else {
+    detailEl.style.display = 'none';
+  }
+
+  const selected = townSelect.options[townSelect.selectedIndex];
+  const preview = document.getElementById("delivery-preview");
+  if (selected && selected.dataset.town) {
+    preview.style.display = "block";
+    const dispatchDate = getNextSaturday();
+    const deliveryDays = Number(selected.dataset.days || 2);
+    const startDelivery = new Date(dispatchDate);
+    const endDelivery = new Date(dispatchDate);
+    startDelivery.setDate(startDelivery.getDate() + deliveryDays);
+    endDelivery.setDate(endDelivery.getDate() + deliveryDays + 1);
+    const countdown = getCountdown();
+    preview.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div style="font-size:13px;color:var(--marigold);font-weight:800;"><i class="fa-solid fa-truck-fast"></i> SIX STAR EXPRESS</div>
+      </div>
+      <div class="delivery-row"><strong>Destination</strong><span>${selected.dataset.town}</span></div>
+      <div class="delivery-row"><strong>Transport Fee</strong><span>Ksh ${totalTransport}</span></div>
+      <div class="delivery-row"><strong>Dispatch Date</strong><span>Saturday, ${formatDate(dispatchDate)}</span></div>
+      <div class="delivery-row"><strong>Expected Delivery</strong><span style="color:var(--marigold);font-weight:700;">${formatDate(startDelivery)} - ${formatDate(endDelivery)}</span></div>
+      ${hasWholesale && deliveryTerms.length > 0 ? `
+        <div class="delivery-row" style="border-top:1px solid var(--line);padding-top:8px;margin-top:8px;">
+          <strong>Wholesale Delivery Terms</strong>
+          <span style="color:var(--pop);font-weight:700;">${deliveryTerms.join(', ')}</span>
+        </div>
+      ` : ''}
+      <div style="margin-top:14px;padding:12px;border-radius:var(--radius-sm);background:rgba(18,161,80,.08);border:1px solid rgba(18,161,80,.2);">
+        <div style="font-size:13px;font-weight:800;color:var(--price);margin-bottom:6px;">Order within the next ${countdown.days}d ${countdown.hours}hrs ${countdown.mins}mins</div>
+        <div style="font-size:12px;color:var(--ink-soft);line-height:1.5;">to be included in this Saturday's dispatch.</div>
+      </div>
+    `;
+    setStep(3);
+  } else {
+    preview.style.display = "none";
+    setStep(2);
+  }
+}
+
+function setStep(stepNum) {
+  document.querySelectorAll('.step-node').forEach(node => {
+    const n = Number(node.dataset.step);
+    node.classList.remove('done', 'current');
+    if (n < stepNum) node.classList.add('done');
+    if (n === stepNum) node.classList.add('current');
+  });
+  document.getElementById('line2').classList.toggle('done', stepNum >= 3);
+}
+
+function openCustomLocationModal() { document.getElementById("customLocationModal").style.display = "flex"; }
+function closeCustomLocationModal() {
+  document.body.style.overflow = "auto";
+  document.getElementById("customLocationModal").style.display = "none";
+}
+
+function sendCustomLocationOrder() {
+  const customLocation = document.getElementById("customLocationInput").value.trim();
+  if (!customLocation) { alert("Please enter your location"); return; }
+  if (cart.length === 0) { alert("Your cart is empty"); return; }
+  const name = document.getElementById("name").value.trim();
+  const phone = document.getElementById("phone").value.trim();
+  if (!name || !phone) { alert("Please fill in Name and Phone first."); return; }
+  let message = `🛍️ *CUSTOM DELIVERY REQUEST*\n\n👤 Name: ${name}\n📞 Phone: ${phone}\n\n📍 Requested Location: ${customLocation}\n\n━━━━━━━━━━━━━━━\n🧾 *ORDER DETAILS*\n━━━━━━━━━━━━━━━\n`;
+  let total = 0;
+  cart.forEach((item, i) => {
+    const effectivePrice = getEffectivePrice(item);
+    const itemTotal = effectivePrice * item.qty;
+    total += itemTotal;
+    const displayName = item.make ? `${item.make} ${item.model || ""}` : item.name;
+    message += `${i+1}. ${displayName}${item.sellerRole === 'wholesaler' ? ' [WHOLESALE]' : ''}\n${item.selectedColor ? `Color: ${item.selectedColor}` : ""}\n${item.selectedSize ? `Size: ${item.selectedSize}` : ""}\n${item.selectedShoeSize ? `Shoe Size: ${item.selectedShoeSize}` : ""}\nQty: ${item.qty}\nKsh ${itemTotal.toLocaleString()}\n\n`;
+  });
+  message += `━━━━━━━━━━━━━━━\n💰 TOTAL: Ksh ${total.toLocaleString()}\n━━━━━━━━━━━━━━━\n\nPlease confirm if delivery to this location is possible. ✅`;
+  const sellerPhone = "254794327798";
+  window.open(`https://wa.me/${sellerPhone}?text=${encodeURIComponent(message)}`, "_blank");
+}
+
+function showPayment() {
+  const configMissing = cart.find(item => {
+    const cat = item.category ? item.category.toLowerCase() : "";
+    if (cat === "clothing") return !item.selectedColor || !item.selectedSize;
+    if (cat === "shoes" || cat === "shoe" || cat === "sneakers") return !item.selectedColor || !item.selectedShoeSize;
+    return false;
+  });
+  if (configMissing) { alert("Please complete product customization before checkout."); return; }
+  const moqViolation = cart.find(item => {
+    if (item.sellerRole === 'wholesaler') {
+      const minQty = item.minOrderQuantity || 1;
+      return item.qty < minQty;
+    }
+    return false;
+  });
+  if (moqViolation) { 
+    alert(`"${moqViolation.name}" requires a minimum order of ${moqViolation.minOrderQuantity} units.`); 
+    return; 
+  }
+  if (!townSelect.value) { alert("Please select a delivery town/area first."); return; }
+  document.getElementById("payment-step").style.display = "block";
+  document.getElementById("payment-step").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+async function loadAgentsDropdown() {
+  const select = document.getElementById("agentSelect");
+  try {
+    const { agents } = await SS_API.getAgents();
+    agents.forEach(a => {
+      const opt = document.createElement("option");
+      opt.value = a.code;
+      opt.textContent = `${a.name} — ${a.code}`;
+      select.appendChild(opt);
+    });
+  } catch (e) {
+    console.error("Agents load error", e);
+  }
+}
+
+async function submitOrder(event) {
+  const msg = document.getElementById("msg");
+  const btn = event?.target || document.querySelector("#payment-step button:last-of-type");
+  if (btn) btn.disabled = true;
+  msg.innerHTML = "Processing your order... ⏳";
+
+  const name = document.getElementById("name").value.trim();
+  const phone = document.getElementById("phone").value.trim();
+  const mpesaMessage = document.getElementById("mpesa-message").value.trim();
+  const locationEl = document.getElementById("townSelect");
+  const locationText = locationEl.selectedIndex > 0 ? locationEl.options[locationEl.selectedIndex].text : "";
+  const agentCode = document.getElementById("agentSelect").value;
+
+  if (!name || !phone || !mpesaMessage || !locationEl.value) {
+    msg.innerHTML = "<span style='color:#E23744'>Please fill all fields including location and M-Pesa message</span>";
+    if (btn) btn.disabled = false;
+    return;
+  }
+  if (!/^0\d{9}$/.test(phone)) {
+    msg.innerHTML = "<span style='color:#E23744'>Enter valid phone (e.g. 0712345678)</span>";
+    if (btn) btn.disabled = false;
+    return;
+  }
+  if (mpesaMessage.length < 10) {
+    msg.innerHTML = "<span style='color:#E23744'>Please paste the full M-Pesa confirmation message</span>";
+    if (btn) btn.disabled = false;
+    return;
+  }
+  if (cart.length === 0) {
+    msg.innerHTML = "<span style='color:#E23744'>Your cart is empty</span>";
+    if (btn) btn.disabled = false;
+    return;
+  }
+
+  const payload = {
+    items: cart.map(i => ({ productId: i.id, quantity: i.qty })),
+    shippingAddress: {
+      fullName: name,
+      phone: phone,
+      address: locationText,
+      city: locationText,
+      notes: ""
+    },
+    mpesaMessage,
+    agentCode: agentCode || undefined
+  };
+
+  try {
+    const { order } = await SS_API.placeOrder(payload);
+    SS_CART.clear();
+
+    const orderRef = order.orderNumber || order._id;
+
+    sessionStorage.setItem("ss_last_order", orderRef);
+    sessionStorage.setItem("ss_last_order_phone", phone);
+
+    msg.innerHTML = `<div class="success">✅ Order placed successfully<br>
+      Your order number:<br>
+      <span class="order-number-highlight">${orderRef}</span><br>
+      <span style="font-size:12.5px;color:var(--ink-soft);font-weight:600;">Save this — you'll need it to track your order.</span><br><br>
+      Redirecting to tracking...</div>`;
+
+    setTimeout(() => window.location.href = `trackorder.html?orderId=${order._id}`, 2800);
+  } catch (err) {
+    msg.innerHTML = `<span style="color:#E23744">❌ ${err.message}</span>`;
+    if (btn) btn.disabled = false;
+  }
+}
+
+// ============================================================
+// INIT
+// ============================================================
+document.addEventListener("DOMContentLoaded", async () => {
+  document.getElementById("checkoutWrap").style.display = "none";
+  document.getElementById("stepper").style.display = "none";
+
+  try {
+    await SS_API.getMe();
+  } catch (e) {
+    document.getElementById("authGate").style.display = "block";
+    return;
+  }
+
+  document.getElementById("checkoutWrap").style.display = "grid";
+  document.getElementById("stepper").style.display = "flex";
+
+  loadCartFromStorage();
+  loadAgentsDropdown();
+  SS_CART.updateBadge();
+  setInterval(() => { if (townSelect.value) updateTotal(); }, 60000);
+  ssHideLoader();
+});
+</script>
+</body>
+</html>

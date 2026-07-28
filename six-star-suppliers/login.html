@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Log in — Six Star Suppliers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="pageLoader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+
+<header class="site-header">
+  <div class="header-row">
+    <a href="index.html" class="brand">
+      <div class="brand-mark">6★</div>
+      <div>
+        <div class="brand-name">Six Star Suppliers</div>
+        <div class="brand-tag">Wholesale · Retail · Bulk</div>
+      </div>
+    </a>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="auth-shell">
+    <h1>Welcome back</h1>
+    <p class="sub">Log in to manage orders, track deliveries, or list your stock.</p>
+
+    <div id="loginError" class="alert alert-error"></div>
+
+    <form id="loginForm" class="form-grid" novalidate>
+      <div class="form-field">
+        <label for="email">Email address</label>
+        <input type="email" id="email" name="email" placeholder="you@business.com" required />
+      </div>
+      <div class="form-field">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" placeholder="••••••••" required />
+      </div>
+      <button type="submit" id="loginBtn" class="btn btn-primary btn-block">Log in</button>
+    </form>
+
+    <p class="auth-switch">New to Six Star Suppliers? <a href="register.html">Create an account</a></p>
+  </div>
+</main>
+
+<footer class="footer-bottom">© 2026 Six Star Suppliers. All rights reserved.</footer>
+
+<div id="toast"><i class="fa-solid fa-circle-check"></i><span></span></div>
+
+<script src="js/config.js"></script>
+<script src="js/toast.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/api.js"></script>
+<script>
+  window.addEventListener("load", () => document.getElementById("pageLoader").classList.add("hide"));
+</script>
+<script src="js/login.js"></script>
+</body>
+</html>

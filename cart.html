@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Checkout — Six Star Suppliers</title>
+<meta name="description" content="Complete your order securely. Pay via M-Pesa and track your delivery with Six Star Suppliers.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://kit.fontawesome.com/e1426ab85b.js" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="css/style.css">
+<style>
+/* ============================================================
+   CHECKOUT PAGE - SIX STAR SUPPLIERS (unified cart + pay)
+   ============================================================ */
+
+.checkout-stepper {
+  max-width: 560px; margin: 20px auto 0; padding: 0 16px;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.step-node { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; max-width: 110px; }
+.step-circle {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--surface); border: 2px solid var(--line);
+  color: var(--ink-soft); font-weight: 800; font-size: 13px;
+  display: flex; align-items: center; justify-content: center; transition: .3s ease;
+}
+.step-node.done .step-circle { background: linear-gradient(135deg,var(--price),#0d8c43); border-color: transparent; color: #fff; }
+.step-node.current .step-circle { background: linear-gradient(135deg,var(--marigold),var(--marigold-deep)); border-color: transparent; color: var(--navy-deep); box-shadow: 0 0 0 4px rgba(242,169,59,.15); }
+.step-label { font-size: 10.5px; font-weight: 700; color: var(--ink-faint); text-align: center; }
+.step-node.current .step-label, .step-node.done .step-label { color: var(--ink); }
+.step-line { flex: 1; height: 2px; background: var(--line); margin-top: -20px; max-width: 60px; transition: .3s ease; }
+.step-line.done { background: var(--price); }
+
+.checkout-wrap {
+  max-width: 980px; margin: 0 auto; padding: 8px 16px 0;
+  display: grid; grid-template-columns: 1fr 340px; gap: 22px; align-items: start;
+}
+@media(max-width: 860px) { .checkout-wrap { grid-template-columns: 1fr; } }
+.checkout-main { min-width: 0; }
+
+.back-shopping {
+  display: inline-flex; align-items: center; gap: 8px; margin: 16px 0 14px;
+  padding: 9px 14px; border-radius: var(--radius-sm);
+  background: rgba(242,169,59,0.08); border: 1px solid rgba(242,169,59,0.2);
+  color: var(--marigold-deep); font-weight: 700; font-size: 13.5px; transition: 0.2s ease;
+}
+.back-shopping:hover { transform: translateX(-3px); background: rgba(242,169,59,0.15); }
+
+.section-card {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-soft);
+  padding: 20px; margin-bottom: 16px; animation: cardIn .4s ease both;
+}
+@keyframes cardIn { from{ opacity:0; transform:translateY(10px);} to{ opacity:1; transform:none;} }
+.section-card h3 { font-size: 15px; color: var(--ink); margin-bottom: 14px; display: flex; align-items: center; gap: 9px; }
+.section-card h3 i { color: var(--marigold); font-size: 14px; }
+
+.cart-item-wrapper { margin-bottom: 12px; }
+.cart-item-wrapper:last-child { margin-bottom: 0; }
+.premium-cart {
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 14px;
+  padding: 15px; background: var(--white); border-radius: var(--radius-md);
+  border: 1px solid var(--line); transition: background 0.25s ease, border 0.2s ease;
+}
+.premium-cart.line-stale { border-color: rgba(184,68,46,.4); }
+.cart-left { display: flex; gap: 13px; flex: 1; min-width: 0; }
+.cart-left img { width: 72px; height: 72px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--line); flex-shrink: 0; }
+.cart-details { flex: 1; min-width: 0; }
+.cart-details h4 { font-size: 13.5px; font-weight: 700; color: var(--ink); margin: 0 0 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.price-line { margin: 2px 0 10px; color: var(--price); font-family: var(--font-mono); font-weight: 800; font-size: 14px; }
+.price-line small { color: var(--ink-faint); font-weight: 600; font-size: 11px; margin-left: 6px; }
+.mini-config { margin-top: 8px; }
+.mini-label { font-size: 10px; color: var(--ink-faint); margin-bottom: 7px; text-transform: uppercase; letter-spacing: .5px; font-weight: 800; }
+
+.wholesale-badge {
+  display: inline-block; background: var(--pop); color: #fff; font-size: 9px; font-weight: 800;
+  padding: 2px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px; margin-left: 6px;
+}
+.wholesale-info { background: #F5F0FF; border-radius: var(--radius-sm); padding: 10px 12px; margin-top: 8px; border-left: 3px solid var(--pop); }
+.wholesale-info .info-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-soft); padding: 2px 0; }
+.wholesale-info .info-row strong { color: var(--ink); }
+.wholesale-info .info-row .highlight { color: var(--pop); font-weight: 700; }
+.wholesale-tiers { margin-top: 6px; font-size: 11px; color: var(--ink-soft); }
+.wholesale-tiers span { display: inline-block; background: rgba(124, 58, 237, 0.1); padding: 2px 8px; border-radius: 4px; margin: 2px 4px 2px 0; color: var(--pop); font-weight: 600; }
+.wholesale-tiers span.tier-active { background: var(--pop); color: #fff; }
+.moq-warning { font-size: 11px; color: var(--brick); margin-top: 4px; font-weight: 600; }
+.stock-warning { font-size: 11px; color: var(--brick); margin-top: 4px; font-weight: 700; }
+
+/* ---- Dynamic attribute/variant picker (replaces hardcoded color/size lists) ---- */
+.attr-group { margin-bottom: 10px; }
+.attr-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.attr-btn {
+  min-width: 40px; padding: 7px 12px; border-radius: 10px;
+  border: 1.5px solid var(--line); background: var(--bg-page); color: var(--ink);
+  cursor: pointer; font-weight: 700; font-size: 11.5px; transition: .2s ease;
+}
+.attr-btn:hover:not(:disabled) { border-color: var(--marigold); transform: translateY(-1px); }
+.attr-btn.active { background: linear-gradient(135deg, var(--marigold), var(--marigold-deep)); color: var(--navy-deep); border-color: transparent; box-shadow: 0 6px 16px rgba(242,169,59,.25); }
+.attr-btn:disabled { opacity: 0.35; cursor: not-allowed; text-decoration: line-through; }
+.variant-needed-note { font-size: 11.5px; color: var(--brick); font-weight: 700; margin-top: 6px; }
+
+.cart-actions { display: flex; flex-direction: column; gap: 10px; align-items: flex-end; flex-shrink: 0; }
+.qty-controls { display: flex; align-items: center; gap: 8px; background: var(--bg-page); border: 1.5px solid var(--line); border-radius: 20px; padding: 4px 7px; }
+.qty-controls button { width: 24px; height: 24px; border: none; border-radius: 50%; background: linear-gradient(135deg, var(--marigold), var(--marigold-deep)); color: var(--navy-deep); font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.qty-controls button:disabled { opacity: 0.35; cursor: not-allowed; }
+.qty-controls span { font-weight: 700; font-size: 13px; min-width: 14px; text-align: center; }
+.removebtn { background: rgba(184,68,46,.1); color: var(--brick); border: 1px solid rgba(184,68,46,.25); padding: 6px 9px; border-radius: 8px; cursor: pointer; transition: .2s ease; }
+.removebtn:hover { background: var(--brick); color: #fff; }
+
+.input-group { margin-top: 13px; }
+.input-group:first-child { margin-top: 0; }
+.input-group label { display: block; font-weight: 700; font-size: 12.5px; color: var(--ink-soft); margin-bottom: 6px; }
+input, select, textarea {
+  width: 100%; padding: 12px 14px; border-radius: var(--radius-sm);
+  border: 1.5px solid var(--line); background: var(--bg-page); color: var(--ink);
+  outline: none; font-family: var(--font-body); font-size: 14px; transition: .2s ease; resize: vertical;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--marigold); box-shadow: 0 0 0 3px rgba(242,169,59,.13); }
+
+#delivery-preview { margin-top: 14px; padding: 15px; border-radius: 14px; background: linear-gradient(135deg,rgba(242,169,59,.07),rgba(242,169,59,.07)); border: 1px solid rgba(242,169,59,.18); display: none; animation: fadeIn .35s ease; }
+.delivery-row { display: flex; justify-content: space-between; align-items: center; margin: 6px 0; font-size: 13px; }
+.delivery-row strong { color: var(--ink-soft); font-weight: 600; }
+@keyframes fadeIn { from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;} }
+
+.custom-location-btn { width: 100%; padding: 13px; border: 1.5px dashed var(--line); border-radius: 14px; cursor: pointer; background: var(--bg-page); color: var(--ink-soft); font-weight: 700; font-size: 13.5px; transition: .2s ease; margin-top: 14px; }
+.custom-location-btn:hover { border-color: var(--marigold); color: var(--marigold); }
+
+.wholesale-delivery-card { background: #F5F0FF; border: 1px solid rgba(124,58,237,.18); border-radius: var(--radius-md); padding: 14px; margin-top: 6px; }
+.wholesale-delivery-card h4 { font-size: 12.5px; color: var(--pop); font-weight: 800; margin-bottom: 8px; display:flex; align-items:center; gap:6px; }
+.wd-row { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--ink-soft); padding: 3px 0; }
+.wd-row .amt { font-weight: 700; color: var(--ink); }
+.wd-row .amt.negotiated { color: var(--pop); }
+
+.summary-sidebar { position: sticky; top: 78px; }
+.summary { padding: 18px; border-radius: var(--radius-lg); background: linear-gradient(135deg,rgba(242,169,59,.05),rgba(242,169,59,.05)); border: 1px solid rgba(242,169,59,.15); }
+.summary p { font-size: 13.5px; color: var(--ink-soft); margin: 6px 0; display: flex; justify-content: space-between; }
+.summary h3 { font-size: 18px; color: var(--ink); margin-top: 10px; display: flex; justify-content: space-between; }
+.summary h3 span { font-family: var(--font-mono); color: var(--marigold); }
+
+button.main { width: 100%; padding: 15px; margin-top: 14px; border: none; border-radius: 14px; background: linear-gradient(135deg, var(--marigold), var(--marigold-deep)); color: var(--navy-deep); font-weight: 800; font-size: 14.5px; cursor: pointer; box-shadow: 0 10px 24px rgba(242,169,59,.28); transition: .2s ease; }
+button.main:hover { transform: translateY(-2px); }
+button.main i { margin-right: 8px; }
+button.main:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.payment-modal { display: none; margin-top: 16px; padding: 18px; border-radius: var(--radius-lg); background: var(--white); border: 1px solid var(--line); animation: fadeIn .3s ease; }
+.payment-modal h4 { font-size: 14px; color: var(--ink); margin-bottom: 8px; }
+.payment-modal p { font-size: 13.5px; color: var(--ink-soft); margin: 4px 0; }
+.payment-modal > button:first-of-type { background: var(--bg-page); color: var(--ink-soft); border: 1.5px solid var(--line); padding: 8px 14px; border-radius: 10px; cursor: pointer; font-size: 12.5px; margin-bottom: 10px; font-weight: 700; }
+.payment-modal > button:last-of-type { width: 100%; padding: 14px; margin-top: 10px; border: none; border-radius: 12px; background: linear-gradient(135deg, var(--price), #0d8c43); color: #fff; font-weight: 800; cursor: pointer; box-shadow: 0 8px 20px rgba(18,161,80,.25); }
+.success { text-align: center; color: var(--price); font-weight: 700; line-height: 1.6; }
+.order-number-highlight { display: inline-block; margin: 6px 0; padding: 8px 18px; background: rgba(18,161,80,.1); border: 1.5px dashed var(--price); border-radius: 12px; font-family: var(--font-mono); font-size: 20px; font-weight: 800; letter-spacing: 1px; color: var(--price); }
+#msg { margin-top: 14px; text-align: center; font-size: 13.5px; }
+.empty-cart-msg { text-align: center; padding: 30px 10px; color: var(--ink-soft); font-size: 14px; }
+
+.premium-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.65); backdrop-filter: blur(6px); z-index: 5000; justify-content: center; align-items: center; padding: 20px; }
+.premium-modal-content { width: 100%; max-width: 420px; background: var(--surface); border-radius: 22px; padding: 24px; border: 1px solid var(--line); box-shadow: var(--shadow-card); animation: premiumFade .35s ease; }
+@keyframes premiumFade { from{opacity:0; transform:translateY(30px) scale(.95);} to{opacity:1; transform:none;} }
+.premium-top { display: flex; justify-content: space-between; align-items: center; }
+.premium-top h3 i { margin-right: 8px; color: var(--marigold); }
+.close-premium { background: none; border: none; color: var(--ink); font-size: 20px; cursor: pointer; }
+.close-premium:hover { color: var(--brick); }
+.premium-text { color: var(--ink-soft); line-height: 1.7; font-size: 13.5px; margin: 16px 0; }
+
+.auth-gate { max-width: 480px; margin: 60px auto; padding: 30px; text-align: center; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); }
+.auth-gate i { font-size: 34px; color: var(--marigold); margin-bottom: 14px; display: block; }
+.auth-gate p { color: var(--ink-soft); margin-bottom: 18px; font-size: 14px; }
+
+.section-loading { text-align: center; padding: 30px; color: var(--ink-soft); font-size: 13.5px; }
+.section-loading i { display: block; font-size: 20px; margin-bottom: 8px; color: var(--marigold); }
+
+@media (max-width: 600px) {
+  .checkout-wrap { padding: 8px 12px 0; }
+  .section-card { padding: 16px; }
+  .premium-cart { flex-direction: column; }
+  .cart-actions { width: 100%; flex-direction: row; justify-content: space-between; align-items: center; }
+  .cart-left { width: 100%; }
+  .step-label { font-size: 9.5px; }
+}
+</style>
+</head>
+<body data-page="checkout.html">
+
+<div id="pageLoader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+
+<header class="site-header" id="site-header"></header>
+
+<main>
+  <div class="checkout-stepper" id="stepper">
+    <div class="step-node done" data-step="1"><div class="step-circle"><i class="fa-solid fa-check"></i></div><div class="step-label">Cart</div></div>
+    <div class="step-line done"></div>
+    <div class="step-node current" data-step="2"><div class="step-circle">2</div><div class="step-label">Details</div></div>
+    <div class="step-line" id="line2"></div>
+    <div class="step-node" data-step="3"><div class="step-circle">3</div><div class="step-label">Payment</div></div>
+  </div>
+
+  <div class="auth-gate" id="authGate" style="display:none;">
+    <i class="fa-solid fa-lock"></i>
+    <h3>Please log in to checkout</h3>
+    <p>You need an account to place an order so you can track it and earn order history.</p>
+    <button class="main" onclick="window.location.href='login.html?redirect=' + encodeURIComponent('checkout.html')">
+      <i class="fa-solid fa-right-to-bracket"></i> Log In
+    </button>
+  </div>
+
+  <div class="checkout-wrap" id="checkoutWrap">
+    <div class="checkout-main">
+      <a href="product.html" class="back-shopping"><i class="fa-solid fa-arrow-left"></i> Back to Shopping</a>
+
+      <div class="section-card">
+        <h3><i class="fa-solid fa-bag-shopping"></i> Your Items</h3>
+        <div id="checkout-items"><div class="section-loading"><i class="fa-solid fa-spinner fa-spin"></i>Loading your cart…</div></div>
+      </div>
+
+      <div class="section-card" id="wholesaleDeliveryCard" style="display:none;">
+        <h3><i class="fa-solid fa-truck-ramp-box"></i> Wholesale Delivery</h3>
+        <div id="wholesale-delivery-list"></div>
+      </div>
+
+      <div class="section-card" id="retailDetailsCard" style="display:none;">
+        <h3><i class="fa-solid fa-user"></i> Contact & Delivery</h3>
+        <div class="input-group"><label>Full Name</label><input type="text" id="name" placeholder="John Doe"></div>
+        <div class="input-group"><label>M-Pesa Number</label><input type="text" id="phone" placeholder="0712345678"></div>
+        <div class="input-group"><label>County/Region</label><select id="regionSelect"><option value="">Select Region</option></select></div>
+        <div class="input-group"><label>Town / Area</label><select id="townSelect" onchange="updateTotal()"><option value="">Select Town</option></select></div>
+        <div id="delivery-preview"></div>
+        <button type="button" class="custom-location-btn" onclick="openCustomLocationModal()"><i class="fa-solid fa-location-dot"></i> My Location Is Not Listed</button>
+        <div class="input-group"><label>Select Agent (Optional) — earns them commission on your order</label><select id="agentSelect"><option value="">No Agent</option></select></div>
+      </div>
+
+      <div class="section-card" id="contactOnlyCard" style="display:none;">
+        <h3><i class="fa-solid fa-user"></i> Contact</h3>
+        <div class="input-group"><label>Full Name</label><input type="text" id="name2" placeholder="John Doe"></div>
+        <div class="input-group"><label>M-Pesa Number</label><input type="text" id="phone2" placeholder="0712345678"></div>
+        <div class="input-group"><label>Delivery Address / Landmark</label><input type="text" id="wholesaleAddress" placeholder="e.g. Nairobi CBD, near..."></div>
+        <div class="input-group"><label>Select Agent (Optional) — earns them commission on your order</label><select id="agentSelect2"><option value="">No Agent</option></select></div>
+      </div>
+    </div>
+
+    <div class="summary-sidebar">
+      <div class="section-card">
+        <h3><i class="fa-solid fa-receipt"></i> Order Summary</h3>
+        <div class="summary">
+          <p>Items Total <span>Ksh <span id="item-price">0</span></span></p>
+          <p id="transport-row">Transport <span>Ksh <span id="transport-fee">0</span></span></p>
+          <p id="wholesale-fee-row" style="display:none;">Wholesale Delivery <span>Ksh <span id="wholesale-fee">0</span></span></p>
+          <h3>Total <span>Ksh <span id="total-price">0</span></span></h3>
+        </div>
+        <button class="main" id="proceedBtn" onclick="showPayment()"><i class="fa-solid fa-credit-card"></i>Proceed to Pay</button>
+        <div id="payment-step" class="payment-modal">
+          <button onclick="document.getElementById('payment-step').style.display='none'">Close</button>
+          <h4>Payment Details</h4>
+          <p>Send Money to: <strong>0794327798</strong></p>
+          <p>Name: <strong>Waithera Samuel Kimani</strong></p>
+          <div class="input-group">
+            <label>Paste your full M-Pesa confirmation SMS</label>
+            <textarea id="mpesa-message" rows="3" placeholder="e.g. QWE1XYZ23 Confirmed. Ksh1,500 sent to Waithera Samuel Kimani on 24/7/26..."></textarea>
+          </div>
+          <button onclick="submitOrder(event)"><i class="fa-solid fa-check"></i> Submit Order</button>
+        </div>
+        <p id="msg"></p>
+      </div>
+    </div>
+  </div>
+
+  <div id="customLocationModal" class="premium-modal">
+    <div class="premium-modal-content">
+      <div class="premium-top">
+        <h3><i class="fa-solid fa-map-location-dot"></i> Custom Delivery Request</h3>
+        <button class="close-premium" onclick="closeCustomLocationModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <p class="premium-text">We currently dispatch to selected regions only.<br><br>If your area is unavailable, we can still process your order manually through WhatsApp support.</p>
+      <input type="text" id="customLocationInput" placeholder="Enter your location">
+      <button class="main" onclick="sendCustomLocationOrder()"><i class="fa-brands fa-whatsapp"></i> Continue to WhatsApp</button>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer" id="site-footer"></footer>
+<a href="#" class="wa-float" id="wa-float"></a>
+<div id="toast"></div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/ui.js"></script>
+<script>
+/* ============================================================
+   CART MODULE (inline — same localStorage contract as js/cart.js,
+   so product pages that still include js/cart.js and call
+   SS_CART.add(...) keep working; this page just doesn't need a
+   second <script> tag for it).
+   ============================================================ */
+const SS_CART = (() => {
+  const STORAGE_KEY = "ss_cart";
+  function read() {
+    try { const raw = localStorage.getItem(STORAGE_KEY); const arr = raw ? JSON.parse(raw) : []; return Array.isArray(arr) ? arr : []; }
+    catch (e) { return []; }
+  }
+  function write(lines) { localStorage.setItem(STORAGE_KEY, JSON.stringify(lines)); updateBadge(); }
+  function setQty(lineId, qty) {
+    const lines = read();
+    const line = lines.find((l) => l.lineId === lineId);
+    if (!line) return;
+    const min = line.sellerRole === "wholesaler" ? line.minOrderQuantity : 1;
+    let next = Math.max(min, Number(qty) || min);
+    if (line.stockAvailable != null) next = Math.min(next, line.stockAvailable);
+    line.qty = next;
+    write(lines);
+  }
+  function setVariant(lineId, variantId) {
+    const lines = read();
+    const line = lines.find((l) => l.lineId === lineId);
+    if (!line) return;
+    line.variantId = variantId;
+    write(lines);
+  }
+  function remove(lineId) { write(read().filter((l) => l.lineId !== lineId)); }
+  function clear() { write([]); }
+  function getAll() { return read(); }
+  function count() { return read().reduce((sum, l) => sum + (Number(l.qty) || 0), 0); }
+  function updateBadge() {
+    const n = count();
+    document.querySelectorAll(".js-cart-count").forEach((el) => (el.textContent = n));
+    const legacyBadge = document.getElementById("cart-badge");
+    if (legacyBadge) legacyBadge.textContent = n;
+  }
+  function resolveUnitPrice(baseUnitPrice, pricingTiers, qty) {
+    if (!Array.isArray(pricingTiers) || pricingTiers.length === 0) return baseUnitPrice;
+    const sorted = pricingTiers.slice().sort((a, b) => a.minQty - b.minQty);
+    let price = baseUnitPrice;
+    for (const tier of sorted) { if (qty >= tier.minQty) price = tier.price; }
+    return price;
+  }
+  return { getAll, setQty, setVariant, remove, clear, count, updateBadge, resolveUnitPrice };
+})();
+
+/* ============================================================
+   CHECKOUT LOGIC — every line is re-fetched fresh from the backend
+   on load, so price / stock / MOQ / pricing tiers / delivery terms
+   are always accurate, never trusted from localStorage.
+   ============================================================ */
+let enriched = []; // one entry per cart line, after enrichment against backend
+
+const DELIVERY_DATA = {
+  Nairobi: [{ town: "CBD", fee: 0, deliveryDays: 1 }, { town: "Westlands", fee: 50, deliveryDays: 1 }, { town: "Karen", fee: 50, deliveryDays: 1 }, { town: "Kasarani", fee: 80, deliveryDays: 1 }, { town: "Embakasi", fee: 80, deliveryDays: 1 }, { town: "Rongai", fee: 100, deliveryDays: 1 }],
+  Kiambu: [{ town: "Thika Road", fee: 100, deliveryDays: 1 }, { town: "Kiambu Town", fee: 50, deliveryDays: 1 }],
+  Kajiado: [{ town: "Kitengela", fee: 100, deliveryDays: 1 }, { town: "Isinya", fee: 150, deliveryDays: 2 }, { town: "Kajiado Town", fee: 200, deliveryDays: 2 }, { town: "Namanga", fee: 300, deliveryDays: 3 }, { town: "Loitoktok", fee: 300, deliveryDays: 3 }],
+  Bungoma: [{ town: "Bungoma Town", fee: 300, deliveryDays: 3 }, { town: "Kimilili", fee: 300, deliveryDays: 3 }, { town: "Webuye", fee: 300, deliveryDays: 3 }, { town: "Chwele", fee: 300, deliveryDays: 4 }],
+  Kisii: [{ town: "Kisii Town", fee: 300, deliveryDays: 3 }, { town: "Keroka", fee: 300, deliveryDays: 3 }, { town: "Ogembo", fee: 350, deliveryDays: 4 }],
+  Siaya: [{ town: "Siaya Town", fee: 300, deliveryDays: 3 }, { town: "Bondo", fee: 300, deliveryDays: 3 }, { town: "Ugunja", fee: 350, deliveryDays: 4 }],
+  Muranga: [{ town: "Muranga Town", fee: 200, deliveryDays: 2 }],
+  RiftValley: [{ town: "Naivasha", fee: 250, deliveryDays: 2 }, { town: "Nakuru", fee: 300, deliveryDays: 2 }],
+  Coast: [{ town: "Mombasa", fee: 300, deliveryDays: 4 }, { town: "Kilifi", fee: 350, deliveryDays: 4 }, { town: "Malindi", fee: 350, deliveryDays: 5 }]
+};
+
+// -------- enrichment: pull fresh product + variant + category-attribute data --------
+async function enrichLine(line) {
+  let product, variantDefs = [];
+  try {
+    const res = await SS_API.getProduct(line.productId);
+    product = res.product || res;
+  } catch (e) {
+    return { line, product: null, error: "This product is no longer available." };
+  }
+
+  try {
+    const catId = product.category?._id || product.category;
+    const attrRes = await SS_API.getCategoryAttributes(catId);
+    variantDefs = (attrRes.attributes || []).filter((a) => a.isVariantAttribute);
+  } catch (e) { variantDefs = []; }
+
+  const variants = Array.isArray(product.variants) ? product.variants : [];
+  const requiresVariant = variantDefs.length > 0;
+
+  // Resolve currently selected variant (if any) against fresh variant list
+  let selectedVariant = null;
+  if (line.variantId) selectedVariant = variants.find((v) => v._id === line.variantId) || null;
+
+  // Selected attribute values, derived from the currently selected variant
+  const selectedAttrs = {};
+  if (selectedVariant) {
+    selectedVariant.combination.forEach((c) => { selectedAttrs[c.attribute] = c.value; });
+  }
+
+  const isWholesale = product.sellerRole === "wholesaler";
+  const minQty = isWholesale ? Math.max(1, Number(product.minOrderQuantity) || 1) : 1;
+  const qty = Math.max(minQty, Number(line.qty) || minQty);
+
+  const basePrice = product.displayPrice ?? product.finalPrice ?? 0;
+  const tierPrice = SS_CART.resolveUnitPrice(basePrice, product.pricingTiers || [], qty);
+  const unitPrice = tierPrice + (selectedVariant?.priceAdjustment || 0);
+
+  const stockAvailable = requiresVariant ? (selectedVariant ? selectedVariant.stock : null) : product.stock;
+
+  return {
+    line, product, variantDefs, variants, requiresVariant,
+    selectedVariant, selectedAttrs, isWholesale, minQty, qty,
+    unitPrice, stockAvailable, error: null,
+  };
+}
+
+async function loadCheckout() {
+  const container = document.getElementById("checkout-items");
+  const rawLines = SS_CART.getAll();
+
+  if (rawLines.length === 0) {
+    container.innerHTML = "<p class='empty-cart-msg'><i class='fa-solid fa-cart-shopping' style='font-size:28px; display:block; margin-bottom:10px; color:var(--line);'></i>Your cart is empty</p>";
+    enriched = [];
+    updateTotal();
+    return;
+  }
+
+  container.innerHTML = "<div class='section-loading'><i class='fa-solid fa-spinner fa-spin'></i>Fetching live prices &amp; stock…</div>";
+  enriched = await Promise.all(rawLines.map(enrichLine));
+  renderCheckoutItems();
+  renderWholesaleDeliveryCard();
+  updateTotal();
+}
+
+function renderCheckoutItems() {
+  const container = document.getElementById("checkout-items");
+  container.innerHTML = "";
+
+  enriched.forEach((e, i) => {
+    if (e.error) {
+      container.innerHTML += `
+        <div class="cart-item-wrapper">
+          <div class="premium-cart line-stale">
+            <div class="cart-details"><h4>${e.line.name || "Unavailable item"}</h4>
+              <div class="stock-warning"><i class="fa-solid fa-triangle-exclamation"></i> ${e.error}</div>
+            </div>
+            <button class="removebtn" onclick="removeLine(${i})"><i class="fa-solid fa-trash"></i></button>
+          </div>
+        </div>`;
+      return;
+    }
+
+    const { product, requiresVariant, variantDefs, variants, selectedVariant, selectedAttrs, isWholesale, minQty, qty, unitPrice, stockAvailable } = e;
+    const img = Array.isArray(product.images) && product.images.length ? product.images[0] : "";
+    const itemTotal = unitPrice * qty;
+    const canDecrease = qty > minQty;
+    const outOfStock = stockAvailable != null && stockAvailable <= 0;
+    const overStock = stockAvailable != null && qty >= stockAvailable;
+
+    let wholesaleInfo = "";
+    if (isWholesale) {
+      let tiersHtml = "";
+      if (product.pricingTiers && product.pricingTiers.length > 0) {
+        const sorted = [...product.pricingTiers].sort((a, b) => a.minQty - b.minQty);
+        tiersHtml = sorted.map((t) => {
+          const active = qty >= t.minQty && (sorted.filter(x=>qty>=x.minQty).slice(-1)[0]?.minQty === t.minQty);
+          return `<span class="${active ? 'tier-active' : ''}">${t.minQty}+ = Ksh ${t.price.toLocaleString()}</span>`;
+        }).join("");
+      }
+      wholesaleInfo = `
+        <div class="wholesale-info">
+          <div class="info-row"><span>Minimum Order</span><span><strong>${minQty} units</strong></span></div>
+          ${product.pricingTiers && product.pricingTiers.length > 0 ? `<div class="wholesale-tiers"><span style="font-weight:600;">Bulk Pricing:</span> ${tiersHtml}</div>` : ""}
+          ${product.freeDelivery ? `<div class="info-row"><span>Delivery</span><span class="highlight"><i class="fa-solid fa-check-circle"></i> Free Delivery</span></div>`
+            : product.deliveryCharge && product.deliveryCharge.chargeType === "fixed" && product.deliveryCharge.amount > 0 ? `<div class="info-row"><span>Delivery Charge</span><span class="highlight">Ksh ${product.deliveryCharge.amount.toLocaleString()}</span></div>`
+            : product.deliveryCharge && product.deliveryCharge.chargeType === "quantity_based" ? `<div class="info-row"><span>Delivery</span><span class="highlight">Ksh ${product.deliveryCharge.perUnitAmount.toLocaleString()} / unit</span></div>`
+            : product.deliveryCharge && product.deliveryCharge.chargeType === "negotiated" ? `<div class="info-row" style="font-size:11px;"><span>Delivery Terms</span><span>${product.deliveryCharge.notes || "Negotiated with seller"}</span></div>` : ""}
+        </div>`;
+    }
+
+    // Dynamic variant/attribute picker, built from real ProductVariant combinations
+    let variantPicker = "";
+    if (requiresVariant) {
+      variantPicker = `<div class="mini-config">` + variantDefs.map((def) => {
+        const values = [...new Set(variants.flatMap((v) => v.combination.filter((c) => c.attribute === def._id).map((c) => c.value)))];
+        const currentVal = selectedAttrs[def._id];
+        return `
+          <div class="attr-group">
+            <div class="mini-label">${def.name}</div>
+            <div class="attr-options">
+              ${values.map((val) => {
+                // is this value still reachable given other already-selected attrs?
+                const wouldMatch = variants.some((v) => {
+                  const combo = { ...selectedAttrs, [def._id]: val };
+                  return v.combination.every((c) => combo[c.attribute] === undefined || combo[c.attribute] === c.value) && v.stock > 0;
+                });
+                return `<button type="button" class="attr-btn ${currentVal === val ? "active" : ""}" ${!wouldMatch ? "disabled" : ""} onclick="selectAttr(${i}, '${def._id}', '${val.replace(/'/g,"\\'")}')">${val}</button>`;
+              }).join("")}
+            </div>
+          </div>`;
+      }).join("") + (!selectedVariant ? `<div class="variant-needed-note"><i class="fa-solid fa-circle-exclamation"></i> Select ${variantDefs.map(d=>d.name).join(" & ")} to continue</div>` : "") + `</div>`;
+    }
+
+    container.innerHTML += `
+      <div class="cart-item-wrapper">
+        <div class="premium-cart ${(!requiresVariant || selectedVariant) && !outOfStock ? "" : "line-stale"}">
+          <div class="cart-left">
+            <img src="${img}">
+            <div class="cart-details">
+              <h4>${product.name} ${isWholesale ? '<span class="wholesale-badge">Wholesale</span>' : ""}</h4>
+              <div class="price-line">Ksh ${itemTotal.toLocaleString()} <small>(Ksh ${unitPrice.toLocaleString()} × ${qty})</small></div>
+              ${wholesaleInfo}
+              ${variantPicker}
+              ${isWholesale && qty === minQty ? `<div class="moq-warning"><i class="fa-solid fa-info-circle"></i> Minimum order quantity: ${minQty} units</div>` : ""}
+              ${outOfStock ? `<div class="stock-warning"><i class="fa-solid fa-triangle-exclamation"></i> Out of stock</div>` : ""}
+            </div>
+          </div>
+          <div class="cart-actions">
+            <div class="qty-controls">
+              <button onclick="decreaseQty(${i})" ${!canDecrease ? "disabled" : ""}>-</button>
+              <span>${qty}</span>
+              <button onclick="increaseQty(${i})" ${overStock ? "disabled" : ""}>+</button>
+            </div>
+            <button class="removebtn" onclick="removeLine(${i})"><i class="fa-solid fa-trash"></i></button>
+          </div>
+        </div>
+      </div>`;
+  });
+}
+
+function selectAttr(i, attrId, value) {
+  const e = enriched[i];
+  e.selectedAttrs = { ...e.selectedAttrs, [attrId]: value };
+  const match = e.variants.find((v) =>
+    v.combination.length === Object.keys(e.selectedAttrs).length &&
+    v.combination.every((c) => e.selectedAttrs[c.attribute] === c.value)
+  );
+  e.selectedVariant = match || null;
+  if (match) {
+    SS_CART.setVariant(e.line.lineId, match._id);
+    e.stockAvailable = match.stock;
+    e.qty = Math.min(e.qty, Math.max(e.minQty, match.stock));
+    SS_CART.setQty(e.line.lineId, e.qty);
+    e.unitPrice = SS_CART.resolveUnitPrice(e.product.displayPrice ?? e.product.finalPrice ?? 0, e.product.pricingTiers || [], e.qty) + (match.priceAdjustment || 0);
+  }
+  renderCheckoutItems();
+  renderWholesaleDeliveryCard();
+  updateTotal();
+}
+
+function increaseQty(i) {
+  const e = enriched[i];
+  if (e.stockAvailable != null && e.qty >= e.stockAvailable) return;
+  e.qty++;
+  applyQtyChange(e);
+}
+function decreaseQty(i) {
+  const e = enriched[i];
+  if (e.qty <= e.minQty) return;
+  e.qty--;
+  applyQtyChange(e);
+}
+function applyQtyChange(e) {
+  SS_CART.setQty(e.line.lineId, e.qty);
+  const base = e.product.displayPrice ?? e.product.finalPrice ?? 0;
+  e.unitPrice = SS_CART.resolveUnitPrice(base, e.product.pricingTiers || [], e.qty) + (e.selectedVariant?.priceAdjustment || 0);
+  renderCheckoutItems();
+  renderWholesaleDeliveryCard();
+  updateTotal();
+}
+
+function removeLine(i) {
+  SS_CART.remove(enriched[i].line.lineId);
+  loadCheckout();
+}
+
+// -------- wholesale delivery breakdown (independent of retail transport) --------
+function computeWholesaleDeliveryForLine(e) {
+  if (!e.isWholesale) return { fee: 0, label: "" };
+  const p = e.product;
+  if (p.freeDelivery) return { fee: 0, label: "Free delivery" };
+  const dc = p.deliveryCharge || {};
+  if (dc.chargeType === "fixed") return { fee: Number(dc.amount) || 0, label: "Fixed" };
+  if (dc.chargeType === "quantity_based") return { fee: (Number(dc.perUnitAmount) || 0) * e.qty, label: `Ksh ${dc.perUnitAmount}/unit × ${e.qty}` };
+  return { fee: 0, label: dc.notes || "Negotiated with seller — contact them directly" };
+}
+
+function renderWholesaleDeliveryCard() {
+  const card = document.getElementById("wholesaleDeliveryCard");
+  const list = document.getElementById("wholesale-delivery-list");
+  const wholesaleLines = enriched.filter((e) => !e.error && e.isWholesale);
+
+  if (wholesaleLines.length === 0) { card.style.display = "none"; return; }
+  card.style.display = "block";
+  list.innerHTML = wholesaleLines.map((e) => {
+    const { fee, label } = computeWholesaleDeliveryForLine(e);
+    const negotiated = e.product.deliveryCharge?.chargeType === "negotiated" && !e.product.freeDelivery;
+    return `
+      <div class="wholesale-delivery-card">
+        <h4><i class="fa-solid fa-store"></i> ${e.product.name}</h4>
+        <div class="wd-row"><span>Terms</span><span class="amt ${negotiated ? "negotiated" : ""}">${label}</span></div>
+        ${!negotiated ? `<div class="wd-row"><span>Delivery Fee</span><span class="amt">Ksh ${fee.toLocaleString()}</span></div>` : ""}
+      </div>`;
+  }).join("");
+}
+
+// -------- retail region/town transport (unchanged mechanic, retail lines only) --------
+const regionSelect = document.getElementById("regionSelect");
+const townSelect = document.getElementById("townSelect");
+Object.keys(DELIVERY_DATA).forEach((region) => {
+  const opt = document.createElement("option");
+  opt.value = region; opt.textContent = region;
+  regionSelect.appendChild(opt);
+});
+regionSelect.addEventListener("change", () => {
+  townSelect.innerHTML = `<option value="">Select Town</option>`;
+  const towns = DELIVERY_DATA[regionSelect.value] || [];
+  towns.forEach((place) => {
+    const opt = document.createElement("option");
+    opt.value = place.fee; opt.dataset.town = place.town; opt.dataset.days = place.deliveryDays;
+    opt.textContent = `${place.town} - Ksh ${place.fee}`;
+    townSelect.appendChild(opt);
+  });
+});
+
+function getNextSaturday() {
+  const now = new Date();
+  const nextSaturday = new Date(now);
+  const daysUntilSaturday = (6 - now.getDay() + 7) % 7 || 7;
+  nextSaturday.setDate(now.getDate() + daysUntilSaturday);
+  nextSaturday.setHours(8, 0, 0, 0);
+  return nextSaturday;
+}
+function formatDate(date) { return date.toLocaleDateString("en-KE", { day: "numeric", month: "long" }); }
+function getCountdown() {
+  const now = new Date();
+  const saturday = getNextSaturday();
+  const diff = saturday - now;
+  return {
+    days: Math.floor(diff / 86400000),
+    hours: Math.floor((diff % 86400000) / 3600000),
+    mins: Math.floor((diff % 3600000) / 60000),
+  };
+}
+
+function updateTotal() {
+  const hasRetail = enriched.some((e) => !e.error && !e.isWholesale);
+  const hasWholesale = enriched.some((e) => !e.error && e.isWholesale);
+
+  document.getElementById("retailDetailsCard").style.display = hasRetail ? "block" : "none";
+  document.getElementById("contactOnlyCard").style.display = !hasRetail && hasWholesale ? "block" : "none";
+  document.getElementById("transport-row").style.display = hasRetail ? "flex" : "none";
+
+  const itemsTotal = enriched.reduce((sum, e) => sum + (e.error ? 0 : e.unitPrice * e.qty), 0);
+  const transport = hasRetail ? (Number(townSelect.value) || 0) : 0;
+  const wholesaleFee = enriched.reduce((sum, e) => sum + (e.error || !e.isWholesale ? 0 : computeWholesaleDeliveryForLine(e).fee), 0);
+
+  document.getElementById("wholesale-fee-row").style.display = hasWholesale && wholesaleFee > 0 ? "flex" : "none";
+  document.getElementById("wholesale-fee").innerText = wholesaleFee.toLocaleString();
+
+  const total = itemsTotal + transport + wholesaleFee;
+  document.getElementById("item-price").innerText = itemsTotal.toLocaleString();
+  document.getElementById("transport-fee").innerText = transport.toLocaleString();
+  document.getElementById("total-price").innerText = total.toLocaleString();
+
+  // Proceed button disabled until every line has a variant selected (where required) and is in stock
+  const blocked = enriched.some((e) => e.error || (e.requiresVariant && !e.selectedVariant) || (e.stockAvailable != null && e.stockAvailable <= 0));
+  document.getElementById("proceedBtn").disabled = enriched.length === 0 || blocked;
+
+  const selected = townSelect.options[townSelect.selectedIndex];
+  const preview = document.getElementById("delivery-preview");
+  if (hasRetail && selected && selected.dataset.town) {
+    preview.style.display = "block";
+    const dispatchDate = getNextSaturday();
+    const deliveryDays = Number(selected.dataset.days || 2);
+    const startDelivery = new Date(dispatchDate); startDelivery.setDate(startDelivery.getDate() + deliveryDays);
+    const endDelivery = new Date(dispatchDate); endDelivery.setDate(endDelivery.getDate() + deliveryDays + 1);
+    const countdown = getCountdown();
+    preview.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div style="font-size:13px;color:var(--marigold);font-weight:800;"><i class="fa-solid fa-truck-fast"></i> SIX STAR EXPRESS</div>
+      </div>
+      <div class="delivery-row"><strong>Destination</strong><span>${selected.dataset.town}</span></div>
+      <div class="delivery-row"><strong>Transport Fee</strong><span>Ksh ${transport}</span></div>
+      <div class="delivery-row"><strong>Dispatch Date</strong><span>Saturday, ${formatDate(dispatchDate)}</span></div>
+      <div class="delivery-row"><strong>Expected Delivery</strong><span style="color:var(--marigold);font-weight:700;">${formatDate(startDelivery)} - ${formatDate(endDelivery)}</span></div>
+      <div style="margin-top:14px;padding:12px;border-radius:var(--radius-sm);background:rgba(18,161,80,.08);border:1px solid rgba(18,161,80,.2);">
+        <div style="font-size:13px;font-weight:800;color:var(--price);margin-bottom:6px;">Order within the next ${countdown.days}d ${countdown.hours}hrs ${countdown.mins}mins</div>
+        <div style="font-size:12px;color:var(--ink-soft);line-height:1.5;">to be included in this Saturday's dispatch.</div>
+      </div>`;
+    setStep(3);
+  } else {
+    preview.style.display = "none";
+    setStep(hasRetail ? 2 : (hasWholesale ? 3 : 2));
+  }
+}
+
+function setStep(stepNum) {
+  document.querySelectorAll(".step-node").forEach((node) => {
+    const n = Number(node.dataset.step);
+    node.classList.remove("done", "current");
+    if (n < stepNum) node.classList.add("done");
+    if (n === stepNum) node.classList.add("current");
+  });
+  document.getElementById("line2").classList.toggle("done", stepNum >= 3);
+}
+
+function openCustomLocationModal() { document.getElementById("customLocationModal").style.display = "flex"; }
+function closeCustomLocationModal() { document.getElementById("customLocationModal").style.display = "none"; }
+
+function sendCustomLocationOrder() {
+  const customLocation = document.getElementById("customLocationInput").value.trim();
+  if (!customLocation) { alert("Please enter your location"); return; }
+  if (enriched.length === 0) { alert("Your cart is empty"); return; }
+  const name = document.getElementById("name")?.value.trim() || document.getElementById("name2")?.value.trim();
+  const phone = document.getElementById("phone")?.value.trim() || document.getElementById("phone2")?.value.trim();
+  if (!name || !phone) { alert("Please fill in Name and Phone first."); return; }
+  let message = `🛍️ *CUSTOM DELIVERY REQUEST*\n\n👤 Name: ${name}\n📞 Phone: ${phone}\n\n📍 Requested Location: ${customLocation}\n\n━━━━━━━━━━━━━━━\n🧾 *ORDER DETAILS*\n━━━━━━━━━━━━━━━\n`;
+  let total = 0;
+  enriched.forEach((e, i) => {
+    if (e.error) return;
+    const itemTotal = e.unitPrice * e.qty;
+    total += itemTotal;
+    message += `${i + 1}. ${e.product.name}${e.isWholesale ? " [WHOLESALE]" : ""}\n${e.selectedVariant ? `Option: ${e.selectedVariant.combination.map(c=>c.value).join(" / ")}` : ""}\nQty: ${e.qty}\nKsh ${itemTotal.toLocaleString()}\n\n`;
+  });
+  message += `━━━━━━━━━━━━━━━\n💰 TOTAL: Ksh ${total.toLocaleString()}\n━━━━━━━━━━━━━━━\n\nPlease confirm if delivery to this location is possible. ✅`;
+  window.open(`https://wa.me/254794327798?text=${encodeURIComponent(message)}`, "_blank");
+}
+
+function showPayment() {
+  const missingVariant = enriched.find((e) => !e.error && e.requiresVariant && !e.selectedVariant);
+  if (missingVariant) { alert(`Please select ${missingVariant.variantDefs.map(d=>d.name).join(" & ")} for "${missingVariant.product.name}".`); return; }
+
+  const hasRetail = enriched.some((e) => !e.error && !e.isWholesale);
+  if (hasRetail && !townSelect.value) { alert("Please select a delivery town/area first."); return; }
+
+  document.getElementById("payment-step").style.display = "block";
+  document.getElementById("payment-step").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+async function loadAgentsDropdown() {
+  try {
+    const { agents } = await SS_API.getAgents();
+    ["agentSelect", "agentSelect2"].forEach((id) => {
+      const select = document.getElementById(id);
+      if (!select) return;
+      agents.forEach((a) => {
+        const opt = document.createElement("option");
+        opt.value = a.code; opt.textContent = `${a.name} — ${a.code}`;
+        select.appendChild(opt);
+      });
+    });
+  } catch (e) { console.error("Agents load error", e); }
+}
+
+async function submitOrder(event) {
+  const msg = document.getElementById("msg");
+  const btn = event?.target || document.querySelector("#payment-step button:last-of-type");
+  if (btn) btn.disabled = true;
+  msg.innerHTML = "Processing your order... ⏳";
+
+  const hasRetail = enriched.some((e) => !e.error && !e.isWholesale);
+  const name = (hasRetail ? document.getElementById("name").value : document.getElementById("name2").value).trim();
+  const phone = (hasRetail ? document.getElementById("phone").value : document.getElementById("phone2").value).trim();
+  const mpesaMessage = document.getElementById("mpesa-message").value.trim();
+  const locationEl = document.getElementById("townSelect");
+  const locationText = hasRetail && locationEl.selectedIndex > 0 ? locationEl.options[locationEl.selectedIndex].text : document.getElementById("wholesaleAddress")?.value.trim();
+  const agentCode = (document.getElementById("agentSelect")?.value) || (document.getElementById("agentSelect2")?.value) || "";
+  const transportFee = hasRetail ? (Number(locationEl.value) || 0) : 0;
+
+  if (!name || !phone || !mpesaMessage || (hasRetail && !locationEl.value) || (!hasRetail && !locationText)) {
+    msg.innerHTML = "<span style='color:#E23744'>Please fill all required fields, including your delivery details and M-Pesa message</span>";
+    if (btn) btn.disabled = false;
+    return;
+  }
+  if (!/^0\d{9}$/.test(phone)) {
+    msg.innerHTML = "<span style='color:#E23744'>Enter valid phone (e.g. 0712345678)</span>";
+    if (btn) btn.disabled = false;
+    return;
+  }
+  if (mpesaMessage.length < 10) {
+    msg.innerHTML = "<span style='color:#E23744'>Please paste the full M-Pesa confirmation message</span>";
+    if (btn) btn.disabled = false;
+    return;
+  }
+  if (enriched.length === 0) {
+    msg.innerHTML = "<span style='color:#E23744'>Your cart is empty</span>";
+    if (btn) btn.disabled = false;
+    return;
+  }
+  const missingVariant = enriched.find((e) => !e.error && e.requiresVariant && !e.selectedVariant);
+  if (missingVariant) {
+    msg.innerHTML = `<span style='color:#E23744'>Please select ${missingVariant.variantDefs.map(d=>d.name).join(" & ")} for "${missingVariant.product.name}"</span>`;
+    if (btn) btn.disabled = false;
+    return;
+  }
+
+  const payload = {
+    items: enriched.filter((e) => !e.error).map((e) => ({
+      productId: e.product._id,
+      variantId: e.selectedVariant ? e.selectedVariant._id : undefined,
+      quantity: e.qty,
+    })),
+    shippingAddress: { fullName: name, phone, address: locationText, city: locationText, notes: "" },
+    mpesaMessage,
+    agentCode: agentCode || undefined,
+    transportFee,
+  };
+
+  try {
+    const { order } = await SS_API.placeOrder(payload);
+    SS_CART.clear();
+    const orderRef = order.orderNumber || order._id;
+    sessionStorage.setItem("ss_last_order", orderRef);
+    sessionStorage.setItem("ss_last_order_phone", phone);
+    msg.innerHTML = `<div class="success">✅ Order placed successfully<br>
+      Your order number:<br>
+      <span class="order-number-highlight">${orderRef}</span><br>
+      <span style="font-size:12.5px;color:var(--ink-soft);font-weight:600;">Save this — you'll need it to track your order.</span><br><br>
+      Redirecting to tracking...</div>`;
+    setTimeout(() => (window.location.href = `trackorder.html?orderId=${order._id}`), 2800);
+  } catch (err) {
+    msg.innerHTML = `<span style="color:#E23744">❌ ${err.message}</span>`;
+    if (btn) btn.disabled = false;
+  }
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+  document.getElementById("checkoutWrap").style.display = "none";
+  document.getElementById("stepper").style.display = "none";
+
+  try {
+    await SS_API.getMe();
+  } catch (e) {
+    document.getElementById("authGate").style.display = "block";
+    return;
+  }
+
+  document.getElementById("checkoutWrap").style.display = "grid";
+  document.getElementById("stepper").style.display = "flex";
+
+  await loadCheckout();
+  loadAgentsDropdown();
+  SS_CART.updateBadge();
+  setInterval(() => { if (townSelect.value) updateTotal(); }, 60000);
+  ssHideLoader();
+});
+</script>
+</body>
+</html>

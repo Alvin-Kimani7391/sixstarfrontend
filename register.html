@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Create an account — Six Star Suppliers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="pageLoader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+
+<header class="site-header">
+  <div class="header-row">
+    <a href="index.html" class="brand">
+      <div class="brand-mark">6★</div>
+      <div>
+        <div class="brand-name">Six Star Suppliers</div>
+        <div class="brand-tag">Wholesale · Retail · Bulk</div>
+      </div>
+    </a>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="auth-shell" style="max-width:520px;">
+    <h1>Create your account</h1>
+    <p class="sub">Buy in bulk, or list your own stock to sell — pick what fits you.</p>
+
+    <div id="regError" class="alert alert-error"></div>
+
+    <!-- Google Identity Services renders its button into this div -->
+    <div id="googleBtn" style="display:flex;justify-content:center;margin-bottom:8px;"></div>
+    <p style="text-align:center;font-size:12.5px;color:#999;margin:0 0 18px;">
+      Signing up with Google creates a buyer account. Want to sell? Use the form below instead.
+    </p>
+
+    <div class="auth-divider" style="display:flex;align-items:center;gap:12px;margin:6px 0 18px;color:#999;font-size:13px;">
+      <span style="flex:1;height:1px;background:#e5e5e5;"></span>
+      or create an account with email
+      <span style="flex:1;height:1px;background:#e5e5e5;"></span>
+    </div>
+
+    <form id="registerForm" class="form-grid" novalidate>
+      <div class="form-field">
+  <label>I want to</label>
+  <div class="role-picker">
+    <label class="role-card active" data-role="buyer">
+      <input type="radio" name="role" value="buyer" checked hidden>
+      <i class="fa-solid fa-cart-shopping"></i>
+      <div>Buy</div>
+      <span class="role-badge">Popular</span>
+      <span class="role-check"><i class="fa-solid fa-check"></i></span>
+    </label>
+    <label class="role-card" data-role="retailer">
+      <input type="radio" name="role" value="retailer" hidden>
+      <i class="fa-solid fa-store"></i>
+      <div>Retail</div>
+      <span class="role-badge">Sell</span>
+      <span class="role-check"><i class="fa-solid fa-check"></i></span>
+    </label>
+    <label class="role-card" data-role="wholesaler">
+      <input type="radio" name="role" value="wholesaler" hidden>
+      <i class="fa-solid fa-warehouse"></i>
+      <div>Wholesale</div>
+      <span class="role-badge">Bulk</span>
+      <span class="role-check"><i class="fa-solid fa-check"></i></span>
+    </label>
+  </div>
+  <p class="form-hint">Retailers and wholesalers can list products for sale, subject to admin review.</p>
+</div>
+
+      <div class="form-row-2" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        <div class="form-field">
+          <label for="name">Full name</label>
+          <input type="text" id="name" required />
+        </div>
+        <div class="form-field">
+          <label for="phone">Phone number</label>
+          <input type="tel" id="phone" placeholder="07xx xxx xxx" required />
+        </div>
+      </div>
+
+      <!-- Seller-only fields: shown/required based on role -->
+      <div class="form-field" id="businessNameField" style="display:none;">
+        <label for="businessName" id="businessLabel">Business name</label>
+        <input type="text" id="businessName" placeholder="e.g. Mama Njeri Wholesale" />
+      </div>
+
+      <div class="form-field" id="locationField" style="display:none;">
+        <label for="location">Business location</label>
+        <input type="text" id="location" placeholder="e.g. Gikomba Market, Nairobi" />
+        <p class="form-hint">Where buyers can expect this stock to ship or be collected from.</p>
+      </div>
+
+      <div class="form-field">
+        <label for="email">Email address</label>
+        <input type="email" id="email" required />
+      </div>
+      <div class="form-field">
+        <label for="password">Password</label>
+        <input type="password" id="password" minlength="6" required />
+      </div>
+
+      <button type="submit" id="registerBtn" class="btn btn-primary btn-block">Create account</button>
+    </form>
+
+    <p class="auth-switch">Already have an account? <a href="login.html">Log in</a></p>
+  </div>
+</main>
+
+<footer class="footer-bottom">© 2026 Six Star Suppliers. All rights reserved.</footer>
+
+<div id="toast"><i class="fa-solid fa-circle-check"></i><span></span></div>
+
+<script src="js/config.js"></script>
+<script src="js/toast.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/api.js"></script>
+<script src="js/ui.js"></script>
+<script>
+  window.addEventListener("load", () => document.getElementById("pageLoader").classList.add("hide"));
+
+  const roleCards = document.querySelectorAll(".role-card");
+  const businessNameField = document.getElementById("businessNameField");
+  const businessNameInput = document.getElementById("businessName");
+  const businessLabel = document.getElementById("businessLabel");
+  const locationField = document.getElementById("locationField");
+  const locationInput = document.getElementById("location");
+
+  // Field labels/requirements per role, matching model/user.js discriminators:
+  //   wholesaler -> businessName + location
+  //   retailer   -> shopName (reuses the same input) + location
+  //   buyer      -> neither field required
+  function applyRoleFields(role) {
+    const isSeller = role === "wholesaler" || role === "retailer";
+    businessNameField.style.display = isSeller ? "block" : "none";
+    locationField.style.display = isSeller ? "block" : "none";
+    businessNameInput.required = isSeller;
+    locationInput.required = isSeller;
+
+    if (role === "retailer") {
+      businessLabel.textContent = "Shop name";
+      businessNameInput.placeholder = "e.g. Njeri's Shop";
+    } else {
+      businessLabel.textContent = "Business name";
+      businessNameInput.placeholder = "e.g. Mama Njeri Wholesale";
+    }
+  }
+
+  roleCards.forEach(card => {
+    card.addEventListener("click", () => {
+      roleCards.forEach(c => c.classList.remove("active"));
+      card.classList.add("active");
+      card.querySelector("input").checked = true;
+      applyRoleFields(card.dataset.role);
+    });
+  });
+
+  document.getElementById("registerForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const errBox = document.getElementById("regError");
+    const btn = document.getElementById("registerBtn");
+    errBox.classList.remove("show");
+    btn.disabled = true; btn.textContent = "Creating account…";
+
+    const role = document.querySelector('input[name="role"]:checked').value;
+
+    // Build payload matching the active discriminator's schema fields
+    const payload = {
+      name: document.getElementById("name").value.trim(),
+      phone: document.getElementById("phone").value.trim(),
+      email: document.getElementById("email").value.trim(),
+      password: document.getElementById("password").value,
+      role,
+    };
+    if (role === "wholesaler") {
+      payload.businessName = businessNameInput.value.trim();
+      payload.location = locationInput.value.trim();
+    } else if (role === "retailer") {
+      payload.shopName = businessNameInput.value.trim();
+      payload.location = locationInput.value.trim();
+    }
+
+    try {
+      const res = await SS_API.register(payload);
+      const user = res.user || res;
+      SS_AUTH.set(user); // keeps businessName/shopName/location etc. for the dashboard
+      ssToast("Account created", "fa-circle-check");
+      location.href = role === "buyer" ? "index.html" : "seller-dashboard.html";
+    } catch (err) {
+      errBox.textContent = err.message || "Couldn't create your account. Please try again.";
+      errBox.classList.add("show");
+      btn.disabled = false; btn.textContent = "Create account";
+    }
+  });
+</script>
+
+<!-- Google Identity Services -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="js/google-auth.js"></script>
+</body>
+</html>

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Checkout | Six Star Suppliers</title>
+<link rel="icon" href="images2/logo.jpg">
+
+<script src="https://kit.fontawesome.com/e1426ab85b.js" crossorigin="anonymous"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="pageLoader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+
+<div id="layout-header"></div>
+<div id="layout-drawer"></div>
+
+<main class="wrap">
+  <div class="page-header">
+    <h1>Checkout</h1>
+    <p>Fill in your delivery details, then pay via M-Pesa and paste your confirmation message below.</p>
+  </div>
+
+  <div class="cart-wrap">
+    <div>
+      <!-- ===== ITEMS ===== -->
+      <div class="card mb-16">
+        <h3 style="margin-bottom:14px;">Your Items</h3>
+        <div id="checkoutItemsList"></div>
+      </div>
+
+      <!-- ===== DELIVERY DETAILS ===== -->
+      <div class="card mb-16">
+        <h3 style="margin-bottom:14px;">Delivery Details</h3>
+        <div class="alert alert-error" id="checkoutError"></div>
+        <form id="checkoutForm" class="form-grid">
+          <div class="form-field">
+            <label for="fullName">Full Name</label>
+            <input type="text" id="fullName" required>
+          </div>
+          <div class="form-field">
+            <label for="deliveryPhone">Phone Number</label>
+            <input type="text" id="deliveryPhone" placeholder="07XXXXXXXX" required>
+          </div>
+          <div class="form-field">
+            <label for="deliveryAddress">Delivery Address</label>
+            <input type="text" id="deliveryAddress" placeholder="Street, building, house number" required>
+          </div>
+          <div class="form-field">
+            <label for="deliveryCity">Town / City</label>
+            <input type="text" id="deliveryCity" required>
+          </div>
+          <div class="form-field">
+            <label for="deliveryNotes">Delivery Notes (optional)</label>
+            <textarea id="deliveryNotes" placeholder="Landmark, preferred delivery time, etc."></textarea>
+          </div>
+
+          <div class="form-field">
+            <label for="agentCode">Agent Code (optional)</label>
+            <select id="agentCode">
+              <option value="">No agent</option>
+            </select>
+            <div class="form-hint">If someone referred you to Six Star Suppliers, select their agent code so they get credit for this order.</div>
+          </div>
+        </form>
+      </div>
+
+      <!-- ===== PAYMENT ===== -->
+      <div class="card">
+        <h3 style="margin-bottom:14px;"><i class="fa-solid fa-money-bill-wave"></i> Pay via M-Pesa</h3>
+        <p class="text-muted mb-16">Send payment to the till/paybill below, then paste the full M-Pesa confirmation SMS you received.</p>
+
+        <div class="alert alert-info" style="display:block;">
+          <strong>Paybill:</strong> 000000 &nbsp;|&nbsp; <strong>Account:</strong> Six Star Suppliers
+        </div>
+
+        <div class="form-field" style="margin-top:14px;">
+          <label for="mpesaMessage">Paste your M-Pesa confirmation message</label>
+          <textarea id="mpesaMessage" placeholder="e.g. QWE1XYZ23 Confirmed. Ksh1,500.00 sent to Six Star Suppliers on 24/7/26 at 2:30 PM..." rows="4"></textarea>
+        </div>
+
+        <button class="btn btn-primary btn-block" id="placeOrderBtn" style="margin-top:14px;">
+          <i class="fa-solid fa-check"></i> Place Order
+        </button>
+      </div>
+    </div>
+
+    <div class="summary-card">
+      <h3 style="margin-bottom:14px;">Order Summary</h3>
+      <div class="summary-row"><span>Subtotal</span><span id="checkoutSubtotal">KSh 0</span></div>
+      <div class="summary-row total"><span>Total</span><span id="checkoutTotal">KSh 0</span></div>
+    </div>
+  </div>
+</main>
+
+<div id="layout-footer"></div>
+<div id="toast"></div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/toast.js"></script>
+<script src="js/cart.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/layout.js"></script>
+<script>ssInitLayout("cart");</script>
+<script src="js/checkout.js"></script>
+</body>
+</html>

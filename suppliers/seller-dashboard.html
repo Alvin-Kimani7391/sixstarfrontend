@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Seller Dashboard | Six Star Suppliers</title>
+<meta name="robots" content="noindex, nofollow">
+
+<script src="https://kit.fontawesome.com/e1426ab85b.js" crossorigin="anonymous"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="pageLoader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+
+<!-- ===================== TOPBAR ===================== -->
+<div class="sp-topbar">
+  <div>
+    <h1 id="greeting">Welcome back</h1>
+    <div class="biz-line" id="businessLine"></div>
+  </div>
+  <div style="display:flex; align-items:center; gap:10px;">
+    <span class="role-pill" id="rolePill"></span>
+    <button class="btn btn-outline btn-sm" id="logoutBtn"><i class="fa-solid fa-right-from-bracket"></i> Log Out</button>
+  </div>
+</div>
+
+<div class="sp-body">
+
+  <!-- ===================== STATS ===================== -->
+  <div class="stat-grid mb-16">
+    <div class="stat-card">
+      <div class="stat-label">Drafts</div>
+      <div class="stat-value" id="countDraft">0</div>
+      <div class="stat-sub">Not yet submitted</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Pending Review</div>
+      <div class="stat-value" id="countPending">0</div>
+      <div class="stat-sub">Waiting on admin pricing</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Live</div>
+      <div class="stat-value" id="countActive">0</div>
+      <div class="stat-sub">On the storefront now</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Rejected</div>
+      <div class="stat-value" id="countRejected">0</div>
+      <div class="stat-sub">Need changes</div>
+    </div>
+  </div>
+
+  <!-- ===================== TOOLBAR ===================== -->
+  <div class="sp-toolbar">
+    <div class="sp-search">
+      <input type="text" id="searchInput" placeholder="Search your products...">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <button id="searchClear" aria-label="Clear search"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <button class="btn btn-primary" id="openAddProduct"><i class="fa-solid fa-plus"></i> Add Product</button>
+  </div>
+
+  <!-- ===================== STATUS TABS ===================== -->
+  <div class="status-tabs" id="statusTabs">
+    <button class="status-tab active" data-status="all">All <span class="tab-count" id="tabCountAll">0</span></button>
+    <button class="status-tab" data-status="draft">Draft <span class="tab-count" id="tabCountDraft">0</span></button>
+    <button class="status-tab" data-status="pending_review">Pending <span class="tab-count" id="tabCountPending">0</span></button>
+    <button class="status-tab" data-status="active">Live <span class="tab-count" id="tabCountActive">0</span></button>
+    <button class="status-tab" data-status="rejected">Rejected <span class="tab-count" id="tabCountRejected">0</span></button>
+    <button class="status-tab" data-status="suspended">Suspended <span class="tab-count" id="tabCountSuspended">0</span></button>
+  </div>
+
+  <!-- ===================== PRODUCT GRID ===================== -->
+  <div class="sp-grid" id="loadingGrid">
+    <div class="skel skeleton-card"></div>
+    <div class="skel skeleton-card"></div>
+    <div class="skel skeleton-card"></div>
+  </div>
+
+  <div class="sp-grid" id="productGrid" style="display:none;"></div>
+
+  <div class="sp-empty" id="emptyState" style="display:none;">
+    <i class="fa-solid fa-box-open"></i>
+    <p id="emptyMsg">Add your first product to start selling on Six Star Suppliers.</p>
+    <button class="btn btn-primary" id="emptyAddBtn" style="margin-top:16px;"><i class="fa-solid fa-plus"></i> Add Product</button>
+  </div>
+
+</div>
+
+<!-- ===================== ADD/EDIT PRODUCT MODAL ===================== -->
+<div class="sp-modal-overlay" id="productModal">
+  <div class="sp-modal">
+    <div class="sp-modal-head">
+      <h3 id="productModalTitle">Add New Product</h3>
+      <button class="sp-modal-close" id="closeProductModal">&times;</button>
+    </div>
+
+    <div class="alert alert-error" id="productFormError"></div>
+
+    <form id="productForm" class="form-grid">
+      <div class="form-field">
+        <label for="pName">Product Name</label>
+        <input type="text" id="pName" required placeholder="e.g. Non-stick Cooking Pot Set">
+      </div>
+
+      <div class="form-field">
+        <label for="pCategory">Category</label>
+        <select id="pCategory" required>
+          <option value="">Loading categories...</option>
+        </select>
+      </div>
+
+      <div class="form-field">
+        <label for="pDesc">Description</label>
+        <textarea id="pDesc" required placeholder="Describe the product, material, size, what's included..."></textarea>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+        <div class="form-field">
+          <label for="pStock">Stock Quantity</label>
+          <input type="number" id="pStock" min="0" required>
+        </div>
+        <div class="form-field">
+          <label for="pPrice">Your Price (KES)</label>
+          <input type="number" id="pPrice" min="0" required>
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label for="pDiscount">Discount % (optional)</label>
+        <input type="number" id="pDiscount" min="0" max="90" value="0">
+        <div class="form-hint">Leave at 0 if you're not offering a discount. The admin team may still adjust this before approval.</div>
+      </div>
+
+      <div class="form-field">
+        <label>Product Photos (up to 8)</label>
+        <div class="dropzone" id="dropzone">
+          <i class="fa-solid fa-cloud-arrow-up"></i>
+          <p>Click or drag photos here</p>
+        </div>
+        <input type="file" id="pImages" accept="image/*" multiple hidden>
+        <div class="thumb-row" id="thumbRow"></div>
+
+        <div id="currentImagesHint" style="display:none; margin-top:10px;">
+          <div class="form-hint">Current photos (uploading new ones above will replace all of these):</div>
+          <div id="currentImagesRow"></div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px;">
+        <button type="button" class="btn btn-outline btn-block" id="cancelProductForm">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-block" id="saveProductBtn">Save as draft</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===================== SUBMIT-FOR-REVIEW CONFIRM ===================== -->
+<div class="sp-modal-overlay" id="submitConfirm">
+  <div class="sp-modal confirm-modal">
+    <div class="confirm-icon"><i class="fa-solid fa-paper-plane"></i></div>
+    <h3>Submit for Review?</h3>
+    <p class="text-muted" id="submitConfirmText" style="margin-top:10px;"></p>
+    <div style="display:flex; gap:10px; margin-top:22px;">
+      <button class="btn btn-outline btn-block" id="submitConfirmCancel">Cancel</button>
+      <button class="btn btn-primary btn-block" id="submitConfirmOk">Submit</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!--
+  If you already have your own SS_AUTH loaded elsewhere on this page,
+  remove the ss-auth.js line below so you don't load two copies.
+-->
+<script src="js/ss-config.js"></script>
+<script src="js/ss-api.js"></script>
+<script src="js/ss-auth.js"></script>
+<script src="js/ss-toast.js"></script>
+<script src="js/seller-dashboard.js"></script>
+</body>
+</html>
