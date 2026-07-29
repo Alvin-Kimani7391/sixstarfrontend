@@ -38,6 +38,53 @@ function ssToast(message, icon = "fa-circle-check") {
   toast._t = setTimeout(() => toast.classList.remove("show"), 2600);
 }
 
+// Small reusable HTML-escape helper (kept top-level so both the search
+// suggestions box and the drawer user card can use it safely).
+function ssEscapeHtml(str = "") {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+/* ---------- auth state helpers ----------
+   auth.js is cookie-based: the backend sets an httpOnly cookie on
+   login/register, and SS_AUTH just keeps a non-authoritative copy of
+   the user object in localStorage under "ss_user" for UI purposes.
+   There is no token to check — SS_AUTH.get() returning a user IS the
+   "logged in" signal. We call straight into the real SS_AUTH module
+   (get/clear), with a same-key localStorage fallback only in case
+   ui.js ever loads on a page before auth.js has run.
+------------------------------------------------- */
+function ssAuthState() {
+  if (window.SS_AUTH && typeof window.SS_AUTH.get === "function") {
+    const user = window.SS_AUTH.get();
+    return { loggedIn: !!user, user };
+  }
+
+  let user = null;
+  const rawUser = localStorage.getItem("ss_user");
+  if (rawUser) {
+    try { user = JSON.parse(rawUser); } catch (_) { user = null; }
+  }
+
+  return { loggedIn: !!user, user };
+}
+
+function ssLogout() {
+  if (window.SS_AUTH && typeof window.SS_AUTH.clear === "function") {
+    window.SS_AUTH.clear();
+  } else {
+    localStorage.removeItem("ss_user");
+  }
+  // If you add a backend logout route later (to also clear the httpOnly
+  // cookie), call it here too, e.g.: SS_API.logout().catch(() => {});
+  ssToast("You've been logged out", "fa-circle-check");
+  setTimeout(() => { location.href = "index.html"; }, 500);
+}
+
 // Renders one product card, used everywhere (home rails, product.html
 // grid, category.html grid, recently-viewed, etc). Shows every field
 // the backend actually sends: price + discount, hot deal, rating,
@@ -134,6 +181,8 @@ function ssRenderHeader(active = "") {
   const link = (href, label, icon) =>
     `<a href="${href}" class="${active === href ? "active" : ""}"><i class="fa-solid ${icon}"></i> ${label}</a>`;
 
+  const auth = ssAuthState();
+
   el.innerHTML = `
     <div class="top-bar">
       <div class="top-bar__row">
@@ -157,7 +206,9 @@ function ssRenderHeader(active = "") {
     </div>
 
     <div class="header-row">
-      <button class="iconbtn nav-toggle" id="drawerOpenBtn" aria-label="Open menu"><i class="fa-solid fa-bars"></i></button>
+      <button class="iconbtn nav-toggle hamburger-btn" id="drawerOpenBtn" aria-label="Open menu" aria-expanded="false">
+        <span class="hamburger-icon"><span></span><span></span><span></span></span>
+      </button>
 
       <a href="index.html" class="brand">
         <div class="brand-mark"><img src="images/logo.jpg" alt="Six Star Suppliers logo"></div>
@@ -211,35 +262,77 @@ function ssRenderHeader(active = "") {
     document.getElementById("headerSuggestions")
   );
 
-  // mobile drawer
+  /* ---------- mobile drawer: full-page, auth-aware ---------- */
   const overlay = document.createElement("div");
   overlay.className = "drawer-overlay";
   overlay.id = "drawerOverlay";
+
   const drawer = document.createElement("div");
   drawer.className = "drawer";
   drawer.id = "drawer";
+
+  const initial = (auth.user && (auth.user.name || auth.user.username || auth.user.email) || "?")
+    .toString().trim().charAt(0).toUpperCase();
+
+  const userCardHtml = auth.loggedIn && auth.user ? `
+    <div class="drawer-user">
+      <div class="drawer-user__avatar">${initial}</div>
+      <div class="drawer-user__welcome">Welcome, ${ssEscapeHtml(auth.user.name || auth.user.username || "there")}</div>
+      ${auth.user.email ? `<div class="drawer-user__email"><i class="fa-regular fa-envelope"></i> ${ssEscapeHtml(auth.user.email)}</div>` : ""}
+    </div>
+  ` : "";
+
+  const authLinkHtml = auth.loggedIn
+    ? `<a href="#" id="drawerLogoutBtn" class="drawer-links__logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>`
+    : link("login.html", "Login", "fa-right-to-bracket");
+
   drawer.innerHTML = `
     <button class="drawer-close" id="drawerCloseBtn" aria-label="Close menu">&times;</button>
+    ${userCardHtml}
     <div class="drawer-links">
       ${link("index.html", "Home", "fa-house")}
       ${link("product.html", "All Products", "fa-bag-shopping")}
       ${link("wholesale.html", "Wholesale", "fa-boxes-stacked")}
-      
       ${link("about.html", "About", "fa-circle-info")}
-   
-      ${link("login.html", "Login", "fa-right-to-bracket")}
+      ${authLinkHtml}
       ${link("register.html", "Sell With Us", "fa-store")}
     </div>
   `;
   document.body.appendChild(overlay);
   document.body.appendChild(drawer);
 
-  const open = () => { overlay.classList.add("active"); drawer.classList.add("active"); };
-  const close = () => { overlay.classList.remove("active"); drawer.classList.remove("active"); };
-  document.getElementById("drawerOpenBtn").addEventListener("click", open);
-  
+  const openBtn = document.getElementById("drawerOpenBtn");
+
+  const open = () => {
+    overlay.classList.add("active");
+    drawer.classList.add("active");
+    openBtn.classList.add("active");
+    openBtn.setAttribute("aria-expanded", "true");
+    document.body.classList.add("drawer-lock");
+  };
+  const close = () => {
+    overlay.classList.remove("active");
+    drawer.classList.remove("active");
+    openBtn.classList.remove("active");
+    openBtn.setAttribute("aria-expanded", "false");
+    document.body.classList.remove("drawer-lock");
+  };
+
+  openBtn.addEventListener("click", () => {
+    drawer.classList.contains("active") ? close() : open();
+  });
   document.getElementById("drawerCloseBtn").addEventListener("click", close);
   overlay.addEventListener("click", close);
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
+
+  const logoutBtn = document.getElementById("drawerLogoutBtn");
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      close();
+      ssLogout();
+    });
+  }
 
   SS_CART.updateBadge();
 }
@@ -258,12 +351,7 @@ function ssBindSearchSuggestions(inputEl, boxEl) {
   let requestToken = 0; // guards against a slow older request overwriting a newer one
 
   function escapeHtml(str = "") {
-    return String(str)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
+    return ssEscapeHtml(str);
   }
 
   function highlight(text, query) {
@@ -447,17 +535,23 @@ async function ssLoadCategories() {
 
 // Renders the "Shop by category" tile grid in a fresh random order
 // every time the page loads. Pass `limit` to cap how many show.
+// Each tile now sends the shopper straight into product.html pre-filtered
+// to that category (same "category" query param the mega menu already
+// uses), instead of the old dedicated category.html page.
 function ssRenderCategoryGrid(targetId, limit = null) {
   const el = document.getElementById(targetId);
   if (!el) return;
   ssLoadCategories().then(cats => {
     let list = ssShuffle(cats);
     if (limit) list = list.slice(0, limit);
-    el.innerHTML = list.map(c => `
-      <a class="cat-item" href="category.html?slug=${encodeURIComponent(c.slug)}">
+    el.innerHTML = list.map(c => {
+      const catRef = c._id || c.id || c.slug;
+      return `
+      <a class="cat-item" href="product.html?category=${encodeURIComponent(catRef)}">
         <div class="cat-thumb"><img src="${c.image || 'https://placehold.co/300/F3F4F8/15161A?text=' + encodeURIComponent(c.name)}" alt="${c.name}"></div>
         <span>${c.name}</span>
-      </a>`).join("");
+      </a>`;
+    }).join("");
   });
 }
 
@@ -653,11 +747,6 @@ async function ssRenderAdSlot(targetId, placement, opts = {}) {
   startAutoRotate();
 }
 
-
-
-
-
-
 /* ---------- flash-sale style countdown timer ----------
    Counts down to the next midnight and loops daily. Purely a
    visual urgency cue for the Hot Deals rail — no backend timestamp
@@ -690,5 +779,3 @@ document.addEventListener("DOMContentLoaded", () => {
   ssRenderWhatsApp();
   ssHideLoader();
 });
-
-
