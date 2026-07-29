@@ -93,7 +93,8 @@ img{ max-width:100%; display:block; }
 .brand{ display:flex; align-items:center; gap:10px; flex-shrink:0; }
 .brand-mark{ width:44px; height:44px; border-radius:12px; overflow:hidden; flex-shrink:0; border:2px solid var(--brand); background:var(--surface); display:flex; align-items:center; justify-content:center; }
 .brand-mark img{ width:100%; height:100%; object-fit:cover; }
-.brand-name{ font-family:var(--font-display); font-size:18px; font-weight:600; color:var(--ink); line-height:1.15; }
+.brand-name{ font-family:var(--font-display); font-size:18px; font-weight:600; color:var(--ink); line-height:1.15; display:flex; flex-wrap:wrap; align-items:baseline; gap:0 5px; white-space:nowrap; }
+.brand-name__line1, .brand-name__line2{ display:inline; }
 .brand-tag{ font-size:9px; letter-spacing:1.8px; text-transform:uppercase; color:var(--ink-faint); font-weight:700; }
 
 .header-actions{ display:flex; align-items:center; gap:6px; margin-left:auto; flex-shrink:0; }
@@ -368,7 +369,22 @@ img{ max-width:100%; display:block; }
   /* ---- compact header ---- */
   .header-row{ padding:10px 14px; gap:10px; }
   .brand-mark{ width:36px; height:36px; border-radius:10px; border-width:1.5px; }
-  .brand-name{ font-size:15.5px; }
+  .brand-name{
+    flex-direction:column;
+    align-items:flex-start;
+    gap:0;
+    font-size:14.5px;
+    line-height:1.2;
+    white-space:normal;
+  }
+  .brand-name__line1{ font-weight:700; }
+  .brand-name__line2{
+    font-size:10.5px;
+    font-weight:700;
+    letter-spacing:.7px;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+  }
   .brand-tag{ display:none; }
   .iconbtn{ width:38px; height:38px; font-size:15px; }
   .header-actions{ gap:2px; }
@@ -386,28 +402,42 @@ img{ max-width:100%; display:block; }
   .ad-slot{ --ad-aspect:16/9; border-radius:var(--radius-md); }
   .ad-slot__dots{ bottom:9px; }
 
-  /* ---- category grid: crisp 4-up tiles ---- */
+  /* ---- category grid: crisp 4-up tiles, square-edged on phone ---- */
   .cat-section-head{ margin-bottom:12px; }
   .cat-section-head h2{ font-size:16.5px; }
   .cat-section-head .see-all{ padding:6px 11px; font-size:11.5px; }
-  .cat-scroll{ gap:12px 9px; }
-  .cat-thumb{ border-radius:12px; }
+  .cat-scroll{ gap:10px 8px; }
+  .cat-thumb{ border-radius:0; box-shadow:none; }
   .cat-item span{ font-size:11px; max-width:100%; }
 
-  /* ---- deal rail headers: tighter, still punchy ---- */
-  .sec-head{ padding:12px 14px; gap:8px; }
-  .sec-head h2{ font-size:13.5px; gap:7px; }
+  /* ---- deal rail / product section: edge-to-edge, no rounded card ---- */
+  .rail{ border-radius:0; border-left:none; border-right:none; box-shadow:none; }
+  .sec-head{ padding:13px 14px; gap:8px; }
+  .sec-head h2{ font-size:14px; gap:7px; }
   .sec-head h2 i{ font-size:13px; }
   .deal-timer{ font-size:10.5px; padding:4px 9px; }
   .sec-head .see-all{ font-size:11.5px; }
 
-  /* ---- product cards: show a peek of the next card, app-style ---- */
-  .p-scroll{ padding:2px; }
-  .p-card{ flex-basis:142px; }
-  .p-card__body{ padding:9px 10px 12px; }
-  .p-card__name{ font-size:12px; min-height:32px; }
-  .price-tag{ font-size:13.5px; }
-  .p-card__add{ width:27px; height:27px; }
+  /* ---- product cards: bigger, breathing room, app-style peek-scroll ---- */
+  .p-scroll{ padding:4px 4px 8px; gap:10px; background:transparent; }
+  .p-grid{ gap:10px; background:transparent; padding:2px; }
+  .p-card{
+    flex-basis:172px;
+    border:1px solid var(--line-soft);
+    box-shadow:0 3px 10px rgba(21,22,26,.05);
+    transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .p-card:active{ transform:scale(.97); }
+  .p-card__img{ aspect-ratio:1/1; background:linear-gradient(180deg,#FAFAFC,#F3F4F8); }
+  .p-card__img img{ padding:18px; }
+  .p-card__body{ padding:12px 13px 15px; gap:7px; }
+  .p-card__name{ font-size:13px; min-height:35px; line-height:1.4; }
+  .p-card__rating{ font-size:11.5px; }
+  .price-tag{ font-size:15.5px; font-weight:800; }
+  .p-card__old{ font-size:11px; }
+  .p-card__add{ width:32px; height:32px; box-shadow:0 2px 6px rgba(21,22,26,.08); }
+  .p-card__discount{ font-size:11px; padding:4px 9px; }
+  .p-card__hot{ font-size:10px; padding:4px 10px; }
 
   /* ---- trust row: stack to two columns, icon-led ---- */
   .trust-row{ gap:12px 18px; justify-content:flex-start !important; }
@@ -423,9 +453,13 @@ img{ max-width:100%; display:block; }
 
 /* ---- extra-small phones (older/small Androids, ~360px and under) ---- */
 @media(max-width:374px){
-  .cat-scroll{ grid-template-columns:repeat(3,1fr); gap:10px 8px; }
-  .p-card{ flex-basis:128px; }
-  .brand-name{ font-size:14.5px; }
+  .cat-scroll{ grid-template-columns:repeat(3,1fr); gap:9px 7px; }
+  .p-card{ flex-basis:150px; }
+  .p-card__body{ padding:10px 11px 13px; }
+  .p-card__name{ font-size:12.5px; min-height:32px; }
+  .price-tag{ font-size:14px; }
+  .brand-name{ font-size:13px; }
+  .brand-name__line2{ font-size:9.5px; }
   .header-row{ gap:8px; }
 }
 
@@ -848,8 +882,3 @@ img{ max-width:100%; display:block; }
   .pd-related-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .pd-wholesale-panel__head { flex-direction: column; align-items: flex-start; }
 }
-
-
-
-
-

@@ -48,6 +48,12 @@ function ssProductCard(p) {
   // displayPrice (virtual = discounted price), isHotDeal, ratingsAverage,
   // ratingsCount, stock, sellerRole, minOrderQuantity, pricingTiers,
   // freeDelivery.
+
+  // Cache every product the moment its card is built so ssQuickAdd()
+  // (the + button) works from ANY rail/grid, not just search results.
+  window.__ssProductCache = window.__ssProductCache || {};
+  if (p && p.id) window.__ssProductCache[p.id] = p;
+
   const price = p.displayPrice ?? p.finalPrice ?? 0;
   const hasDiscount = (p.discountPercent || 0) > 0 && p.finalPrice && price < p.finalPrice;
   const discount = hasDiscount ? p.discountPercent : 0;
@@ -59,7 +65,6 @@ function ssProductCard(p) {
 
   let wholesaleBlock = "";
   if (wholesale) {
-    const sellerName = p.seller?.businessName || p.seller?.shopName || p.seller?.name || "Verified seller";
     const moq = p.minOrderQuantity || 1;
     const tiers = Array.isArray(p.pricingTiers) ? [...p.pricingTiers].sort((a, b) => a.minQty - b.minQty) : [];
 
@@ -72,7 +77,7 @@ function ssProductCard(p) {
     }
 
     wholesaleBlock = `
-      <div class="seller-info"><i class="fa-regular fa-store"></i> ${sellerName}</div>
+      <div class="seller-info"><i class="fa-regular fa-store"></i> Wholesale</div>
       <div class="wholesale-details">
         <span class="moq-badge"><i class="fa-solid fa-box"></i> Min: ${moq} units</span>
         ${p.freeDelivery ? `<span class="free-delivery-tag"><i class="fa-solid fa-truck-fast"></i> Free Delivery</span>` : ""}
@@ -83,7 +88,6 @@ function ssProductCard(p) {
 
   return `
     <div class="p-card ${wholesale ? "wholesale" : ""} ${outOfStock ? "out-of-stock" : ""}" data-id="${p.id}">
-      ${wholesale ? `<span class="wholesale-tag"><i class="fa-solid fa-boxes-stacked"></i> Wholesale</span>` : ""}
       <div class="p-card__badges">
         ${discount ? `<div class="p-card__discount">-${discount}%</div>` : "<span></span>"}
         ${p.isHotDeal ? `<div class="p-card__hot"><i class="fa-solid fa-fire"></i> Hot</div>` : ""}
@@ -158,7 +162,7 @@ function ssRenderHeader(active = "") {
       <a href="index.html" class="brand">
         <div class="brand-mark"><img src="images/logo.jpg" alt="Six Star Suppliers logo"></div>
         <div>
-          <div class="brand-name">Six Star Suppliers</div>
+          <div class="brand-name"><span class="brand-name__line1">Six Star</span><span class="brand-name__line2">Suppliers</span></div>
           <div class="brand-tag">Quality · Affordable</div>
         </div>
       </a>
@@ -219,13 +223,10 @@ function ssRenderHeader(active = "") {
     <div class="drawer-links">
       ${link("index.html", "Home", "fa-house")}
       ${link("product.html", "All Products", "fa-bag-shopping")}
-      ${link("wholesale.html", "Wholesale", "fa-wholesale")}
-      ${link("category.html", "Categories", "fa-list")}
+      ${link("wholesale.html", "Wholesale", "fa-boxes-stacked")}
+      
       ${link("about.html", "About", "fa-circle-info")}
-      ${link("cart.html", "My Cart", "fa-cart-shopping")}
-      ${link("track-order.html", "Track My Order", "fa-truck-fast")}
-      ${link("contact.html", "Contact", "fa-phone")}
-      ${link("profile.html", "Profile", "fa-user")}
+   
       ${link("login.html", "Login", "fa-right-to-bracket")}
       ${link("register.html", "Sell With Us", "fa-store")}
     </div>
@@ -652,6 +653,11 @@ async function ssRenderAdSlot(targetId, placement, opts = {}) {
   startAutoRotate();
 }
 
+
+
+
+
+
 /* ---------- flash-sale style countdown timer ----------
    Counts down to the next midnight and loops daily. Purely a
    visual urgency cue for the Hot Deals rail — no backend timestamp
@@ -684,3 +690,5 @@ document.addEventListener("DOMContentLoaded", () => {
   ssRenderWhatsApp();
   ssHideLoader();
 });
+
+
