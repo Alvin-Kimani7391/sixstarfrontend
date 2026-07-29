@@ -129,6 +129,12 @@ const SS_API = (() => {
     trackProductView(productId) {
       return request(`/users/recently-viewed/${productId}`, { method: "POST", requiresAuth: true });
     },
+    // Public, fire-and-forget view counter — hits PATCH /products/:id/view
+    // (productController.trackProductViewCount). Guests are included, so this
+    // must NOT require auth.
+    trackProductViewCount(productId) {
+      return request(`/products/${productId}/view`, { method: "PATCH", requiresAuth: false });
+    },
 
     // ============================================================
     // PRODUCTS - PUBLIC

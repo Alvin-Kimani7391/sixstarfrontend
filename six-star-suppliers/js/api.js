@@ -1,7 +1,15 @@
 /* ============================================================
    SIX STAR SUPPLIERS — API client
-   Cookie-based authentication
-   Uses httpOnly JWT cookie from Express backend.
+   Cookie-based authentication (httpOnly JWT cookie from Express backend).
+
+   This merges two earlier versions of api.js into one:
+   - the newer one (auth + seller/admin product & order management)
+   - the older one (buyer profile, buyer orders, reviews, agents)
+
+   Where both files had a different name for the same endpoint, both
+   names are kept as aliases so nothing already wired up in your HTML
+   breaks. See the comments next to createOrder/placeOrder and
+   addReview/postReview below.
    ============================================================ */
 
 const SS_API = (() => {
@@ -26,7 +34,7 @@ const SS_API = (() => {
 
     if (body !== undefined && body !== null) {
       if (isForm) {
-        options.body = body;
+        options.body = body; // FormData — browser sets the multipart header
       } else {
         options.headers["Content-Type"] = "application/json";
         options.body = JSON.stringify(body);
@@ -83,11 +91,43 @@ const SS_API = (() => {
     login({ email, password }) {
       return request("/auth/login", { method: "POST", body: { email, password }, requiresAuth: false });
     },
+    // Sends the Google ID token (from Google Identity Services) to the backend for verification.
+    googleAuth({ credential }) {
+      return request("/auth/google", { method: "POST", body: { credential }, requiresAuth: false });
+    },
+    // Always resolves (never throws for "email not found") — the backend intentionally
+    // returns the same generic message either way, so it can't be used to enumerate accounts.
+    forgotPassword({ email }) {
+      return request("/auth/forgot-password", { method: "POST", body: { email }, requiresAuth: false });
+    },
+    // token comes from the ?token= query param on reset-password.html (the link that was emailed).
+    resetPassword(token, { password }) {
+      return request(`/auth/reset-password/${token}`, { method: "POST", body: { password }, requiresAuth: false });
+    },
     logout() {
       return request("/auth/logout", { method: "POST" }).finally(() => { SS_AUTH.clear(); });
     },
     getMe() {
       return request("/auth/me", { method: "GET" });
+    },
+
+    // ============================================================
+    // USER PROFILE  (from /users/* — separate from /auth/me)
+    // ============================================================
+    getProfile() {
+      return request("/users/profile", { requiresAuth: true });
+    },
+    updateProfile(payload) {
+      return request("/users/profile", { method: "PUT", body: payload, requiresAuth: true });
+    },
+    changePassword(payload) {
+      return request("/users/change-password", { method: "PUT", body: payload, requiresAuth: true });
+    },
+    getRecentlyViewed() {
+      return request("/users/recently-viewed", { requiresAuth: true });
+    },
+    trackProductView(productId) {
+      return request(`/users/recently-viewed/${productId}`, { method: "POST", requiresAuth: true });
     },
 
     // ============================================================
@@ -98,6 +138,13 @@ const SS_API = (() => {
     },
     getProduct(id) {
       return request(`/products/${id}`, { requiresAuth: false });
+    },
+    // Public "someone looked at this product" ping — separate from trackProductView
+    // above (which tracks the logged-in BUYER's own recently-viewed list). This one
+    // increments the product's own view counter and feeds the seller's analytics
+    // dashboard. Fires for guests too, so it never requires auth.
+    trackProductViewCount(id) {
+      return request(`/products/${id}/view`, { method: "PATCH", requiresAuth: false });
     },
 
     // ============================================================
@@ -114,6 +161,12 @@ const SS_API = (() => {
     },
     submitProduct(id) {
       return request(`/products/${id}/submit`, { method: "PATCH", requiresAuth: true });
+    },
+    // Seller/wholesaler product-view analytics: lifetime + 14-day totals, a daily
+    // trend, and a per-product view-count breakdown. Used by the dashboard's
+    // Analytics screen.
+    getMyProductAnalytics() {
+      return request("/products/analytics", { requiresAuth: true });
     },
 
     // ============================================================
@@ -132,8 +185,26 @@ const SS_API = (() => {
     // ============================================================
     // ORDERS
     // ============================================================
+    // createOrder / placeOrder both POST /orders — kept as aliases since each
+    // version of api.js used a different name for checkout. Point any new code
+    // at createOrder; placeOrder stays only so older pages don't break.
     createOrder(payload) {
       return request("/orders", { method: "POST", body: payload, requiresAuth: true });
+    },
+    placeOrder(payload) {
+      return request("/orders", { method: "POST", body: payload, requiresAuth: true });
+    },
+    getMyOrders() {
+      return request("/orders/my-orders", { requiresAuth: true });
+    },
+    getOrder(id) {
+      return request(`/orders/${id}`, { requiresAuth: true });
+    },
+    trackOrder(orderId, phone) {
+      return request("/orders/track", { query: { orderId, phone }, requiresAuth: false });
+    },
+    cancelOrder(id) {
+      return request(`/orders/${id}/cancel`, { method: "PATCH", requiresAuth: true });
     },
     getSellerOrders() {
       return request("/orders/seller-orders", { method: "GET", requiresAuth: true });
@@ -151,7 +222,14 @@ const SS_API = (() => {
     // ============================================================
     // REVIEWS
     // ============================================================
+    getProductReviews(productId) {
+      return request(`/products/${productId}/reviews`, { requiresAuth: false });
+    },
+    // addReview / postReview both POST the same endpoint — same alias situation as orders above.
     addReview(productId, payload) {
+      return request(`/products/${productId}/reviews`, { method: "POST", body: payload, requiresAuth: true });
+    },
+    postReview(productId, payload) {
       return request(`/products/${productId}/reviews`, { method: "POST", body: payload, requiresAuth: true });
     },
 
@@ -169,6 +247,13 @@ const SS_API = (() => {
     },
 
     // ============================================================
+    // AGENTS
+    // ============================================================
+    getAgents() {
+      return request("/agents", { requiresAuth: false });
+    },
+
+    // ============================================================
     // CATEGORIES
     // ============================================================
     getCategories() {
@@ -178,6 +263,9 @@ const SS_API = (() => {
     // seller's cascading category picker during product creation.
     getCategoryTree() {
       return request("/categories/tree", { requiresAuth: false });
+    },
+    getCategoryBySlug(slug) {
+      return request(`/categories/${slug}`, { requiresAuth: false });
     },
     createCategory(payload) {
       return request("/categories", { method: "POST", body: payload, requiresAuth: true });

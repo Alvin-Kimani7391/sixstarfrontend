@@ -4,6 +4,13 @@
    (with live tiered pricing for wholesalers), accurate stock
    state, MOQ, delivery terms, rating, reviews, and a "related
    products" rail pulled from the same category.
+
+   Wholesale delivery now branches on `deliveryType`:
+     - 'simple' -> this product ships exactly like a normal retail
+       item; standard regional transport fees apply at checkout,
+       no MOQ-style delivery math is shown here.
+     - 'heavy'  -> the classic wholesale delivery panel (free
+       delivery / fixed / per-unit / negotiated) applies as before.
    ============================================================ */
 (function () {
   const id = new URLSearchParams(location.search).get("id");
@@ -25,6 +32,13 @@
 
   function isWholesaler(p) {
     return p.sellerRole === "wholesaler";
+  }
+
+  // 'heavy' wholesale products carry their own negotiated/bulky transport terms.
+  // 'simple' ones (the default for anything not explicitly flagged heavy) ship
+  // just like a normal retail product — standard checkout delivery fee applies.
+  function isHeavyWholesale(p) {
+    return isWholesaler(p) && p.deliveryType === "heavy";
   }
 
   function sortedTiers(p) {
@@ -79,6 +93,7 @@
     const images = Array.isArray(p.images) && p.images.length ? p.images : [ssImg(p)];
 
     const wholesale = isWholesaler(p);
+    const heavyWholesale = isHeavyWholesale(p);
     const price = basePrice(p);
     const hasDiscount = (p.discountPercent || 0) > 0 && p.finalPrice && price < p.finalPrice;
     const moq = wholesale ? (p.minOrderQuantity || 1) : 1;
@@ -132,7 +147,7 @@
 
           <p class="pd-desc">${p.description || "No description provided for this product yet."}</p>
 
-          ${wholesale ? renderWholesalePanel(p, moq, tiers) : ""}
+          ${wholesale ? renderWholesalePanel(p, moq, tiers, heavyWholesale) : ""}
 
           <div class="qty-row">
             <div class="qty-stepper">
@@ -202,11 +217,10 @@
     bindQty(p, wholesale, moq, stock);
     bindActions(p, wholesale, moq, stock);
     bindReviewForm(p);
-    if (wholesale) updateWholesaleLive(p, moq, tiers);
+    if (wholesale) updateWholesaleLive(p, moq, tiers, heavyWholesale);
   }
 
-  function renderWholesalePanel(p, moq, tiers) {
-    const delivery = deliveryCostAt(p, moq);
+  function renderWholesalePanel(p, moq, tiers, heavyWholesale) {
     return `
       <div class="pd-wholesale-panel">
         <div class="pd-wholesale-panel__head">
@@ -228,23 +242,26 @@
             </table>
           ` : `<p class="form-hint" style="margin-bottom:14px;">This seller doesn't offer extra bulk discounts beyond the listed price — the minimum order quantity still applies.</p>`}
 
-          <div class="pd-delivery-info ${p.freeDelivery ? "free" : ""}" id="pdDeliveryInfo">
+          <div class="pd-delivery-info ${heavyWholesale && p.freeDelivery ? "free" : ""}" id="pdDeliveryInfo">
             <i class="fa-solid fa-truck-fast"></i>
-            <div>${deliveryLine(p, moq)}</div>
+            <div>${deliveryLine(p, moq, heavyWholesale)}</div>
           </div>
         </div>
       </div>
     `;
   }
 
-  function deliveryLine(p, quantity) {
+  function deliveryLine(p, quantity, heavyWholesale) {
+    if (!heavyWholesale) {
+      return `<strong>Delivery:</strong> Ships like a standard product — regular delivery rates apply at checkout based on your location`;
+    }
     if (p.freeDelivery) return `<strong>Free delivery</strong> on this order`;
     const d = deliveryCostAt(p, quantity);
     if (d.amount === null) return `<strong>Delivery:</strong> ${d.label}`;
     return `<strong>Delivery:</strong> ${ssFmtPrice(d.amount)} (${d.label})`;
   }
 
-  function updateWholesaleLive(p, moq, tiers) {
+  function updateWholesaleLive(p, moq, tiers, heavyWholesale) {
     const unit = unitPriceAt(p, qty);
     const total = unit * qty;
 
@@ -265,9 +282,9 @@
       row.classList.toggle("active-tier", qty >= Number(row.dataset.min));
     });
 
-    // delivery updates with quantity for quantity-based charges
+    // delivery updates with quantity for quantity-based charges (heavy only)
     const delInfo = document.getElementById("pdDeliveryInfo");
-    if (delInfo) delInfo.innerHTML = `<i class="fa-solid fa-truck-fast"></i><div>${deliveryLine(p, qty)}</div>`;
+    if (delInfo) delInfo.innerHTML = `<i class="fa-solid fa-truck-fast"></i><div>${deliveryLine(p, qty, heavyWholesale)}</div>`;
 
     // warn if stock can't cover the minimum order
     const warn = document.getElementById("pdMoqStockWarn");
@@ -305,7 +322,7 @@
     function refresh() {
       qtyVal.textContent = qty;
       minusBtn.disabled = qty <= floor;
-      if (wholesale) updateWholesaleLive(p, moq, sortedTiers(p));
+      if (wholesale) updateWholesaleLive(p, moq, sortedTiers(p), isHeavyWholesale(p));
     }
 
     minusBtn.addEventListener("click", () => {
@@ -449,7 +466,8 @@
       render(p.product || p);
       loadReviews();
       loadRelated(p.product || p);
-      SS_API.trackProductView(id).catch(() => {}); // best-effort, don't block the page
+      SS_API.trackProductView(id).catch(() => {}); // best-effort: adds to buyer's recently-viewed
+      SS_API.trackProductViewCount(id).catch(() => {}); // best-effort: feeds seller analytics
     } catch (_) {
       // fallback: pull from the full list and find it client-side
       try {
@@ -461,6 +479,7 @@
           loadReviews();
           loadRelated(found);
           SS_API.trackProductView(id).catch(() => {});
+          SS_API.trackProductViewCount(id).catch(() => {});
           return;
         }
         throw new Error("not found");

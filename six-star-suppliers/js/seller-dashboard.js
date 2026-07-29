@@ -20,9 +20,19 @@
        instead of a plain field, since each combination needs its own
        stock count.
      - Wholesalers additionally get a "Wholesale details" section: MOQ,
-       quantity-based pricing tiers, and delivery terms (free delivery,
-       or fixed / per-unit / negotiated charges). Retailers never see
-       this section and none of those fields are sent for them.
+       quantity-based pricing tiers, a transport-type toggle, and
+       delivery terms. The transport toggle decides:
+         'simple' -> ships like a normal retail product; no delivery
+                     fields are shown or sent, buyer pays the standard
+                     regional fee at checkout.
+         'heavy'  -> the classic wholesale delivery panel applies
+                     (free delivery, or fixed / per-unit / negotiated
+                     charges). Retailers never see any of this section.
+
+   Analytics:
+   - A new header button opens a full-page Analytics overlay showing
+     total views, a 14-day trend bar chart, and a per-product view
+     breakdown, powered by GET /api/products/analytics.
 
    Orders:
    - Bell button opens a full professional "Orders" page (stat tiles,
@@ -38,6 +48,7 @@
 
    Routes used:
      GET    /api/products/my-products
+     GET    /api/products/analytics
      POST   /api/products
      PUT    /api/products/:id
      PATCH  /api/products/:id/submit
@@ -139,6 +150,7 @@
   // ---------- wholesale-only state ----------
   let pricingTierRows = []; // [{ localId, minQty, price }]
   let tierRowSeq = 0;
+  let currentDeliveryType = "heavy"; // 'simple' | 'heavy' — drives which fields show/submit
 
   const els = {
     greeting: document.getElementById("greeting"),
@@ -220,6 +232,12 @@
     pMOQ: document.getElementById("pMOQ"),
     pricingTierRowsWrap: document.getElementById("pricingTierRows"),
     addTierRow: document.getElementById("addTierRow"),
+
+    // transport / delivery type toggle
+    deliveryTypeGroup: document.getElementById("deliveryTypeGroup"),
+    heavyDeliveryFields: document.getElementById("heavyDeliveryFields"),
+    simpleDeliveryNote: document.getElementById("simpleDeliveryNote"),
+
     pFreeDelivery: document.getElementById("pFreeDelivery"),
     deliveryChargeFields: document.getElementById("deliveryChargeFields"),
     deliveryFixedFields: document.getElementById("deliveryFixedFields"),
@@ -256,6 +274,20 @@
     orderDetailOverlay: document.getElementById("orderDetailOverlay"),
     orderDetailBody: document.getElementById("orderDetailBody"),
     orderDetailBack: document.getElementById("orderDetailBack"),
+
+    // analytics "page"
+    analyticsToggleBtn: document.getElementById("analyticsToggleBtn"),
+    analyticsOverlay: document.getElementById("analyticsOverlay"),
+    analyticsBack: document.getElementById("analyticsBack"),
+    analyticsLoading: document.getElementById("analyticsLoading"),
+    analyticsContent: document.getElementById("analyticsContent"),
+    analyticsEmpty: document.getElementById("analyticsEmpty"),
+    statTotalViews: document.getElementById("statTotalViews"),
+    statViews14: document.getElementById("statViews14"),
+    statTopProductViews: document.getElementById("statTopProductViews"),
+    statTopProductLabel: document.getElementById("statTopProductLabel"),
+    analyticsTrend: document.getElementById("analyticsTrend"),
+    analyticsProductList: document.getElementById("analyticsProductList"),
   };
 
   function hideLoader() {
@@ -288,6 +320,13 @@
     ]
       .filter(Boolean)
       .join(" ");
+  }
+
+  // Retailers never deal in wholesale transport terms — hide the toggle entirely
+  // for them (defensive: the whole wholesale step is already skipped for
+  // retailers via getActiveSteps(), this just guards direct DOM access).
+  if (!IS_WHOLESALER && els.deliveryTypeGroup) {
+    els.deliveryTypeGroup.closest(".wizard-panel")?.setAttribute("hidden", "hidden");
   }
 
   if (els.logoutBtn) {
@@ -686,7 +725,7 @@
   if (els.addVariantRow) els.addVariantRow.addEventListener("click", addVariantRow);
 
   // =========================================================
-  // ---------- wholesaler-only: MOQ, pricing tiers, delivery ----------
+  // ---------- wholesaler-only: transport type, MOQ, pricing tiers, delivery ----------
   // =========================================================
 
   function addTierRow(prefill) {
@@ -745,7 +784,28 @@
       .map((r) => ({ minQty: Number(r.minQty), price: Number(r.price) }));
   }
 
-  // free delivery toggle hides/shows the delivery-charge fields
+  // ---- transport type toggle (Simple vs Heavy) ----
+  function setDeliveryTypeUI(type) {
+    currentDeliveryType = type === "simple" ? "simple" : "heavy";
+
+    if (els.deliveryTypeGroup) {
+      els.deliveryTypeGroup.querySelectorAll(".delivery-type-card").forEach((card) => {
+        card.classList.toggle("active", card.dataset.deliveryCard === currentDeliveryType);
+      });
+    }
+
+    const isHeavy = currentDeliveryType === "heavy";
+    if (els.heavyDeliveryFields) els.heavyDeliveryFields.style.display = isHeavy ? "block" : "none";
+    if (els.simpleDeliveryNote) els.simpleDeliveryNote.style.display = isHeavy ? "none" : "block";
+  }
+
+  if (els.deliveryTypeGroup) {
+    els.deliveryTypeGroup.querySelectorAll("input[name='deliveryType']").forEach((radio) => {
+      radio.addEventListener("change", () => setDeliveryTypeUI(radio.value));
+    });
+  }
+
+  // free delivery toggle hides/shows the delivery-charge fields (heavy only)
   if (els.pFreeDelivery) {
     els.pFreeDelivery.addEventListener("change", () => {
       if (els.deliveryChargeFields) {
@@ -780,6 +840,12 @@
     if (els.pMOQ) els.pMOQ.value = "";
     pricingTierRows = [];
     renderTierRows();
+
+    setDeliveryTypeUI("heavy");
+    if (els.deliveryTypeGroup) {
+      els.deliveryTypeGroup.querySelectorAll("input[name='deliveryType']").forEach((r) => (r.checked = r.value === "heavy"));
+    }
+
     if (els.pFreeDelivery) els.pFreeDelivery.checked = false;
     if (els.deliveryChargeFields) els.deliveryChargeFields.style.display = "block";
     document.querySelectorAll("input[name='deliveryChargeType']").forEach((r) => (r.checked = r.value === "fixed"));
@@ -795,6 +861,12 @@
 
     pricingTierRows = (product.pricingTiers || []).map((t) => ({ localId: ++tierRowSeq, minQty: t.minQty, price: t.price }));
     renderTierRows();
+
+    const deliveryType = product.deliveryType === "simple" ? "simple" : "heavy";
+    setDeliveryTypeUI(deliveryType);
+    if (els.deliveryTypeGroup) {
+      els.deliveryTypeGroup.querySelectorAll("input[name='deliveryType']").forEach((r) => (r.checked = r.value === deliveryType));
+    }
 
     const free = !!product.freeDelivery;
     if (els.pFreeDelivery) els.pFreeDelivery.checked = free;
@@ -1130,7 +1202,7 @@
 
   function closeOrdersList() {
     if (els.ordersListOverlay) els.ordersListOverlay.classList.remove("active");
-    if (!els.orderDetailOverlay?.classList.contains("active")) {
+    if (!els.orderDetailOverlay?.classList.contains("active") && !els.analyticsOverlay?.classList.contains("active")) {
       document.body.style.overflow = "";
     }
   }
@@ -1194,6 +1266,104 @@
       loadSellerOrders();
     } catch (err) {
       ssToast(err.message || "Couldn't update order status", "fa-triangle-exclamation");
+    }
+  }
+
+  // =========================================================
+  // ---------- ANALYTICS "page" (opened by the header icon) ----------
+  // =========================================================
+  function openAnalytics() {
+    if (!els.analyticsOverlay) return;
+    els.analyticsOverlay.classList.add("active");
+    document.body.style.overflow = "hidden";
+    loadAnalytics();
+  }
+
+  function closeAnalytics() {
+    if (els.analyticsOverlay) els.analyticsOverlay.classList.remove("active");
+    if (!els.ordersListOverlay?.classList.contains("active") && !els.orderDetailOverlay?.classList.contains("active")) {
+      document.body.style.overflow = "";
+    }
+  }
+
+  if (els.analyticsToggleBtn) els.analyticsToggleBtn.addEventListener("click", openAnalytics);
+  if (els.analyticsBack) els.analyticsBack.addEventListener("click", closeAnalytics);
+
+  async function loadAnalytics() {
+    if (els.analyticsLoading) els.analyticsLoading.style.display = "block";
+    if (els.analyticsContent) els.analyticsContent.style.display = "none";
+    if (els.analyticsEmpty) els.analyticsEmpty.style.display = "none";
+
+    try {
+      const res = await SS_API.getMyProductAnalytics();
+      renderAnalytics(res);
+    } catch (err) {
+      console.error("ANALYTICS LOAD FAILED:", err);
+      if (els.analyticsLoading) els.analyticsLoading.style.display = "none";
+      if (els.analyticsEmpty) {
+        els.analyticsEmpty.style.display = "block";
+        els.analyticsEmpty.innerHTML = `
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <h3>Couldn't load analytics</h3>
+          <p>${escapeHtml(err.message || "Please try again shortly.")}</p>`;
+      }
+    }
+  }
+
+  function renderAnalytics(data) {
+    if (els.analyticsLoading) els.analyticsLoading.style.display = "none";
+
+    const products = data.products || [];
+
+    if (!products.length) {
+      if (els.analyticsEmpty) els.analyticsEmpty.style.display = "block";
+      return;
+    }
+
+    if (els.analyticsContent) els.analyticsContent.style.display = "block";
+
+    if (els.statTotalViews) els.statTotalViews.textContent = (data.totalViews || 0).toLocaleString();
+    if (els.statViews14) els.statViews14.textContent = (data.viewsLast14Days || 0).toLocaleString();
+
+    const top = products[0]; // already sorted by viewCount desc from the backend
+    if (els.statTopProductViews) els.statTopProductViews.textContent = (top?.viewCount || 0).toLocaleString();
+    if (els.statTopProductLabel) {
+      els.statTopProductLabel.textContent = top && top.viewCount > 0 ? `Top: ${top.name}` : "Top product";
+    }
+
+    // ---- 14-day trend bar chart ----
+    if (els.analyticsTrend) {
+      const trend = data.dailyTrend || [];
+      const maxCount = Math.max(1, ...trend.map((d) => d.count));
+      els.analyticsTrend.innerHTML = trend
+        .map((d) => {
+          const heightPct = Math.max(4, Math.round((d.count / maxCount) * 100));
+          const label = new Date(d.date).toLocaleDateString("en-KE", { day: "numeric", month: "short" });
+          return `<div class="analytics-trend-bar-wrap" title="${label}: ${d.count} view${d.count === 1 ? "" : "s"}">
+            <div class="analytics-trend-bar" style="height:${heightPct}%"></div>
+            <span class="analytics-trend-label">${new Date(d.date).getDate()}</span>
+          </div>`;
+        })
+        .join("");
+    }
+
+    // ---- per-product breakdown ----
+    if (els.analyticsProductList) {
+      const maxViews = Math.max(1, ...products.map((p) => p.viewCount || 0));
+      els.analyticsProductList.innerHTML = products
+        .map((p) => {
+          const pct = Math.max(2, Math.round(((p.viewCount || 0) / maxViews) * 100));
+          const cover = p.image || "https://placehold.co/60x60/E4D6BD/5B564C?text=%20";
+          return `<div class="analytics-product-row">
+            <img src="${cover}" alt="" />
+            <div class="analytics-product-info">
+              <div class="analytics-product-name">${escapeHtml(p.name)}</div>
+              <div class="analytics-product-bar-track"><div class="analytics-product-bar-fill" style="width:${pct}%"></div></div>
+            </div>
+            <div class="analytics-product-views">${(p.viewCount || 0).toLocaleString()}</div>
+          </div>`;
+        })
+        .join("");
     }
   }
 
@@ -1311,7 +1481,8 @@
       p.sellerRole === "wholesaler"
         ? `<div class="sp-card__wholesale">
             ${p.minOrderQuantity ? `<small>MOQ: ${p.minOrderQuantity}</small>` : ""}
-            ${p.freeDelivery ? '<span class="wholesale-badge"><i class="fa-solid fa-truck"></i> Free delivery</span>' : ""}
+            <small>${p.deliveryType === "simple" ? "Simple transport" : "Heavy transport"}</small>
+            ${p.deliveryType === "heavy" && p.freeDelivery ? '<span class="wholesale-badge"><i class="fa-solid fa-truck"></i> Free delivery</span>' : ""}
             ${p.pricingTiers && p.pricingTiers.length ? `<small>${p.pricingTiers.length} price tier${p.pricingTiers.length > 1 ? "s" : ""}</small>` : ""}
           </div>`
         : "";
@@ -1329,6 +1500,9 @@
           <div class="sp-card__meta">
             <span class="price-tag">KES ${price}</span>
             <small>${p.stock ?? 0} in stock</small>
+          </div>
+          <div class="sp-card__meta">
+            <small><i class="fa-solid fa-eye"></i> ${(p.viewCount || 0).toLocaleString()} views</small>
           </div>
           ${wholesaleMeta}
           ${
@@ -1600,8 +1774,11 @@
       fd.append("variants", JSON.stringify(collectVariantsFromUI()));
 
       if (IS_WHOLESALER) {
+        fd.append("deliveryType", currentDeliveryType);
         fd.append("minOrderQuantity", els.pMOQ?.value || 1);
         fd.append("pricingTiers", JSON.stringify(collectPricingTiers()));
+        // Free delivery / delivery charge only matter for 'heavy' products — still
+        // sent either way, the backend simply ignores them when deliveryType is 'simple'.
         fd.append("freeDelivery", els.pFreeDelivery?.checked ? "true" : "false");
         fd.append("deliveryCharge", JSON.stringify(collectDeliveryCharge()));
       }

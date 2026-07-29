@@ -10,6 +10,66 @@
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/dashboard.css">
 <link rel="stylesheet" href="css/wizard.css">
+<style>
+  /* ---- Delivery-type toggle (wholesale wizard step) ---- */
+  .delivery-type-group {
+    display: flex; flex-direction: column; gap: 10px; margin-bottom: 4px;
+  }
+  .delivery-type-card {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 12px 14px; border: 1.5px solid var(--line, #e4d6bd);
+    border-radius: 12px; cursor: pointer; transition: .2s ease;
+  }
+  .delivery-type-card:hover { border-color: var(--marigold, #f2a93b); }
+  .delivery-type-card input { margin-top: 3px; }
+  .delivery-type-card__title { font-weight: 700; font-size: 13.5px; }
+  .delivery-type-card__desc { font-size: 12px; color: var(--ink-soft, #7a7268); margin-top: 2px; }
+  .delivery-type-card.active { border-color: var(--marigold, #f2a93b); background: rgba(242,169,59,.06); }
+
+  /* ---- Analytics screen ---- */
+  .analytics-stat-cards { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 22px; }
+  .analytics-trend-wrap { margin-bottom: 26px; }
+  .analytics-trend-title { font-size: 13px; font-weight: 700; color: var(--ink-soft, #7a7268); margin-bottom: 12px; }
+  .analytics-trend {
+    display: flex; align-items: flex-end; gap: 6px; height: 120px;
+    padding: 10px; border: 1px solid var(--line, #e4d6bd); border-radius: 14px; background: var(--white, #fff);
+  }
+  .analytics-trend-bar-wrap {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 6px;
+  }
+  .analytics-trend-bar {
+    width: 100%; max-width: 22px; border-radius: 5px 5px 2px 2px;
+    background: linear-gradient(180deg, var(--marigold, #f2a93b), var(--marigold-deep, #d98c1f));
+    min-height: 3px; transition: height .3s ease;
+  }
+  .analytics-trend-label { font-size: 9px; color: var(--ink-faint, #a89f92); }
+  .analytics-product-list { display: flex; flex-direction: column; gap: 10px; }
+  .analytics-product-row {
+    display: flex; align-items: center; gap: 12px; padding: 12px;
+    border: 1px solid var(--line, #e4d6bd); border-radius: 12px; background: var(--white, #fff);
+  }
+  .analytics-product-row img {
+    width: 46px; height: 46px; border-radius: 8px; object-fit: cover; flex-shrink: 0;
+    border: 1px solid var(--line, #e4d6bd);
+  }
+  .analytics-product-info { flex: 1; min-width: 0; }
+  .analytics-product-name {
+    font-weight: 700; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .analytics-product-bar-track {
+    height: 6px; border-radius: 4px; background: rgba(242,169,59,.12); margin-top: 6px; overflow: hidden;
+  }
+  .analytics-product-bar-fill {
+    height: 100%; border-radius: 4px;
+    background: linear-gradient(90deg, var(--marigold, #f2a93b), var(--marigold-deep, #d98c1f));
+  }
+  .analytics-product-views {
+    font-family: var(--font-mono, monospace); font-weight: 800; font-size: 15px; color: var(--marigold-deep, #d98c1f);
+    flex-shrink: 0; min-width: 64px; text-align: right;
+  }
+  .analytics-empty { text-align: center; padding: 40px 10px; color: var(--ink-soft, #7a7268); }
+  .analytics-empty i { font-size: 30px; margin-bottom: 10px; display: block; color: var(--line, #e4d6bd); }
+</style>
 </head>
 <body>
 
@@ -25,6 +85,9 @@
         <div class="brand-tag">Seller Dashboard</div>
       </div>
     </a>
+    <button class="iconbtn" id="analyticsToggleBtn" title="Analytics">
+      <i class="fa-solid fa-chart-line"></i>
+    </button>
     <button class="iconbtn orders-bell" id="ordersToggleBtn" title="Orders" aria-expanded="false">
       <i class="fa-solid fa-bell"></i>
       <span class="orders-badge" id="ordersBadge">0</span>
@@ -218,40 +281,66 @@
         <div id="pricingTierRows"></div>
         <button type="button" class="btn btn-outline btn-sm btn-add-row" id="addTierRow"><i class="fa-solid fa-plus"></i> Add price tier</button>
 
-        <div class="toggle-row" style="margin-top:20px;">
-          <input type="checkbox" id="pFreeDelivery" />
-          <label for="pFreeDelivery">This product ships with free delivery</label>
+        <!-- ---- Transport section: Simple vs Heavy product ---- -->
+        <label style="margin-top:22px;display:block;">Transport type</label>
+        <p class="form-hint">This decides whether the product needs its own delivery terms, or ships like a normal retail item.</p>
+        <div class="delivery-type-group" id="deliveryTypeGroup">
+          <label class="delivery-type-card" data-delivery-card="simple">
+            <input type="radio" name="deliveryType" value="simple" />
+            <div>
+              <div class="delivery-type-card__title">Simple product</div>
+              <div class="delivery-type-card__desc">Ships like a normal retail item — no special transport terms. The buyer just pays the regular delivery fee for their region at checkout.</div>
+            </div>
+          </label>
+          <label class="delivery-type-card" data-delivery-card="heavy">
+            <input type="radio" name="deliveryType" value="heavy" checked />
+            <div>
+              <div class="delivery-type-card__title">Heavy / bulky product</div>
+              <div class="delivery-type-card__desc">Needs its own transport terms — set free delivery, a flat fee, per-unit fee, or negotiate directly with buyers below.</div>
+            </div>
+          </label>
         </div>
 
-        <div id="deliveryChargeFields">
-          <label>Delivery charge type</label>
-          <div class="charge-type-group">
-            <label><input type="radio" name="deliveryChargeType" value="fixed" checked /> Fixed amount</label>
-            <label><input type="radio" name="deliveryChargeType" value="quantity_based" /> Per unit ordered</label>
-            <label><input type="radio" name="deliveryChargeType" value="negotiated" /> Negotiated with buyer</label>
+        <div id="heavyDeliveryFields" style="margin-top:16px;">
+          <div class="toggle-row">
+            <input type="checkbox" id="pFreeDelivery" />
+            <label for="pFreeDelivery">This product ships with free delivery</label>
           </div>
 
-          <div class="form-row-2" id="deliveryFixedFields">
-            <div class="form-field">
-              <label for="pDeliveryFixedAmount">Flat delivery charge (KES)</label>
-              <input type="number" id="pDeliveryFixedAmount" min="0" step="1" placeholder="e.g. 500" />
+          <div id="deliveryChargeFields">
+            <label>Delivery charge type</label>
+            <div class="charge-type-group">
+              <label><input type="radio" name="deliveryChargeType" value="fixed" checked /> Fixed amount</label>
+              <label><input type="radio" name="deliveryChargeType" value="quantity_based" /> Per unit ordered</label>
+              <label><input type="radio" name="deliveryChargeType" value="negotiated" /> Negotiated with buyer</label>
             </div>
-            <div></div>
-          </div>
 
-          <div class="form-row-2" id="deliveryQtyFields" style="display:none;">
-            <div class="form-field">
-              <label for="pDeliveryPerUnit">Delivery charge per unit (KES)</label>
-              <input type="number" id="pDeliveryPerUnit" min="0" step="1" placeholder="e.g. 15" />
+            <div class="form-row-2" id="deliveryFixedFields">
+              <div class="form-field">
+                <label for="pDeliveryFixedAmount">Flat delivery charge (KES)</label>
+                <input type="number" id="pDeliveryFixedAmount" min="0" step="1" placeholder="e.g. 500" />
+              </div>
+              <div></div>
             </div>
-            <div></div>
-          </div>
 
-          <div class="form-field" id="deliveryNegotiatedFields" style="display:none;">
-            <label for="pDeliveryNotes">Delivery notes for buyers</label>
-            <textarea id="pDeliveryNotes" placeholder="e.g. Delivery quoted based on destination and order volume — contact us after ordering."></textarea>
+            <div class="form-row-2" id="deliveryQtyFields" style="display:none;">
+              <div class="form-field">
+                <label for="pDeliveryPerUnit">Delivery charge per unit (KES)</label>
+                <input type="number" id="pDeliveryPerUnit" min="0" step="1" placeholder="e.g. 15" />
+              </div>
+              <div></div>
+            </div>
+
+            <div class="form-field" id="deliveryNegotiatedFields" style="display:none;">
+              <label for="pDeliveryNotes">Delivery notes for buyers</label>
+              <textarea id="pDeliveryNotes" placeholder="e.g. Delivery quoted based on destination and order volume — contact us after ordering."></textarea>
+            </div>
           </div>
         </div>
+
+        <p class="form-hint" id="simpleDeliveryNote" style="display:none;margin-top:12px;">
+          <i class="fa-solid fa-circle-info"></i> This product will ship exactly like a retail product — standard regional delivery fees apply at checkout, no extra setup needed here.
+        </p>
       </div>
 
       <!-- STEP: photos -->
@@ -372,6 +461,60 @@
     </div>
     <div class="orders-page__body">
       <div class="order-detail-single" id="orderDetailBody"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ANALYTICS "PAGE" ============ -->
+<div class="orders-page-overlay" id="analyticsOverlay">
+  <div class="orders-page">
+    <div class="orders-page__head">
+      <button type="button" class="order-detail-back" id="analyticsBack">
+        <i class="fa-solid fa-arrow-left"></i>
+      </button>
+      <div class="orders-page__title">
+        <h2>Analytics</h2>
+        <p>How many people are viewing your products</p>
+      </div>
+    </div>
+
+    <div class="orders-page__body">
+      <div id="analyticsLoading" class="orders-skel-wrap">
+        <div class="skel orders-skel"></div>
+        <div class="skel orders-skel"></div>
+        <div class="skel orders-skel"></div>
+      </div>
+
+      <div id="analyticsContent" style="display:none;">
+        <div class="analytics-stat-cards">
+          <div class="orders-stat">
+            <span class="orders-stat__num" id="statTotalViews">0</span>
+            <span class="orders-stat__label">Total views</span>
+          </div>
+          <div class="orders-stat">
+            <span class="orders-stat__num" id="statViews14">0</span>
+            <span class="orders-stat__label">Last 14 days</span>
+          </div>
+          <div class="orders-stat">
+            <span class="orders-stat__num" id="statTopProductViews">0</span>
+            <span class="orders-stat__label" id="statTopProductLabel">Top product</span>
+          </div>
+        </div>
+
+        <div class="analytics-trend-wrap">
+          <div class="analytics-trend-title">Views — last 14 days</div>
+          <div class="analytics-trend" id="analyticsTrend"></div>
+        </div>
+
+        <div class="analytics-trend-title">By product</div>
+        <div class="analytics-product-list" id="analyticsProductList"></div>
+      </div>
+
+      <div id="analyticsEmpty" class="analytics-empty" style="display:none;">
+        <i class="fa-solid fa-chart-line"></i>
+        <h3>No views yet</h3>
+        <p>Once buyers start opening your product pages, views will show up here.</p>
+      </div>
     </div>
   </div>
 </div>

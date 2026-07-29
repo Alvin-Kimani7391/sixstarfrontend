@@ -101,7 +101,7 @@ document.getElementById("loginForm").addEventListener("submit", async e => {
 
         case "retailer":
 
-          target = "six-star-suppliers/seller-dashboard.html";
+          target = "seller-dashboard.html";
 
           break;
 
