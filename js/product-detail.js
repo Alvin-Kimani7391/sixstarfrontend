@@ -123,10 +123,7 @@
 
           <h1 class="pd-title">${p.name}</h1>
 
-          <div class="pd-seller-line">
-            <i class="fa-regular fa-store"></i> ${sellerName}
-            <span class="role-chip">${wholesale ? "Wholesaler" : "Retailer"}</span>
-          </div>
+          
 
           <div class="review-stars" id="pdRatingSummary">
             ${p.ratingsCount
@@ -412,7 +409,7 @@
 
     return `
       <div class="p-card ${wholesale ? "wholesale" : ""}" data-id="${p.id}">
-        ${wholesale ? `<span class="wholesale-tag"><i class="fa-solid fa-boxes-stacked"></i> Wholesale</span>` : ""}
+        
         <div class="p-card__badges">
           ${hasDiscount ? `<div class="p-card__discount">-${p.discountPercent}%</div>` : "<span></span>"}
           ${p.isHotDeal ? `<div class="p-card__hot"><i class="fa-solid fa-fire"></i> Hot</div>` : ""}
@@ -422,6 +419,12 @@
         </div>
         <div class="p-card__body">
           <div class="p-card__name">${p.name}</div>
+
+          <div class="pd-seller-line">
+            <i class="fa-regular fa-store"></i>
+            <span class="role-chip">${wholesale ? "Wholesaler" : "Retailer"}</span>
+          </div>
+
           ${wholesale ? `<span class="moq-badge"><i class="fa-solid fa-box"></i> Min: ${p.minOrderQuantity || 1} units</span>` : ""}
           ${p.ratingsCount ? `<div class="p-card__rating"><i class="fa-solid fa-star"></i> ${(p.ratingsAverage || 0).toFixed(1)} <span>(${p.ratingsCount})</span></div>` : ""}
           ${hasDiscount ? `<div class="p-card__old">${ssFmtPrice(p.finalPrice)}</div>` : ""}

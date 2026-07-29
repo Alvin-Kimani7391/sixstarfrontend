@@ -557,7 +557,7 @@
 
     return `
       <div class="p-card wholesale" data-id="${p.id}">
-        <span class="wholesale-tag"><i class="fa-solid fa-wholesale"></i> Wholesale</span>
+        
         <div class="p-card__badges">
           ${discount ? `<div class="p-card__discount">-${discount}%</div>` : "<span></span>"}
           ${p.isHotDeal ? `<div class="p-card__hot"><i class="fa-solid fa-fire"></i> Hot</div>` : ""}
@@ -567,7 +567,7 @@
         </div>
         <div class="p-card__body">
           <div class="p-card__name">${p.name}</div>
-          <div class="seller-info"><i class="fa-regular fa-store"></i> ${sellerName}</div>
+          <div class="seller-info"><i class="fa-regular fa-store"></i>Wholesale</div>
           <div class="wholesale-details">
             <span class="moq-badge"><i class="fa-solid fa-box"></i> Min: ${minQty} units</span>
             ${freeDelivery ? ` <span class="free-delivery-tag"><i class="fa-solid fa-truck-fast"></i> Free Delivery</span>` : ''}
