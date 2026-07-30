@@ -170,6 +170,21 @@ const SS_API = (() => {
     },
 
     // ============================================================
+    // SHOP (seller's own optional shop)
+    // ============================================================
+    // Returns { success, shop } where shop is null if the seller hasn't created one yet.
+    getMyShop() {
+      return request("/shops/my-shop", { requiresAuth: true });
+    },
+    // payload: { shopName, description, businessCategory, businessHours, logo, banner }
+    createShop(payload) {
+      return request("/shops", { method: "POST", body: payload, requiresAuth: true });
+    },
+    updateMyShop(payload) {
+      return request("/shops/my-shop", { method: "PUT", body: payload, requiresAuth: true });
+    },
+
+    // ============================================================
     // ADMIN PRODUCTS
     // ============================================================
     getPendingProducts(params = {}) {

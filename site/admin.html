@@ -31,7 +31,7 @@
   }
   .order-detail-grid > div { line-height: 1.5; }
 
-  /* NEW: attribute management styling */
+  /* attribute management styling */
   .attr-type-badge {
     display: inline-block;
     font-size: 0.7rem;
@@ -84,6 +84,28 @@
   .assigned-attr-empty { color: var(--ink-soft, #888); font-size: 0.9rem; padding: 12px 0; }
   .options-field { display: none; }
   .options-field.show { display: block; }
+
+  /* NEW: shop management styling */
+  .pill-pending_approval { background: rgba(230,168,44,0.15); color: #a86a0f; }
+  .pill-approved { background: rgba(46,160,90,0.15); color: #1e7c43; }
+  .shop-review-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    font-size: 0.85rem;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+  }
+  .shop-review-grid > div { line-height: 1.5; }
+  .shop-modal-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 18px;
+  }
+  .shop-modal-actions button { flex: 1 1 auto; min-width: 140px; }
+  .badge-row { display: flex; gap: 6px; flex-wrap: wrap; }
 </style>
 </head>
 <body class="admin-body">
@@ -124,6 +146,7 @@
       <button data-tab="products"><i class="fa-solid fa-boxes-stacked"></i> All Products</button>
       <button data-tab="categories"><i class="fa-solid fa-tags"></i> Categories</button>
       <button data-tab="attributes"><i class="fa-solid fa-sliders"></i> Attributes</button>
+      <button data-tab="shops"><i class="fa-solid fa-store"></i> Shops</button>
       <button data-tab="ads"><i class="fa-solid fa-rectangle-ad"></i> Ads</button>
       <button data-tab="orders"><i class="fa-solid fa-receipt"></i> Orders &amp; Payments</button>
       <button data-tab="users"><i class="fa-solid fa-users"></i> Users</button>
@@ -149,7 +172,7 @@
         <div class="dash-card">
           <div class="dash-card__head"><h3>Welcome</h3></div>
           <div style="padding:18px;">
-            <p class="text-muted">Use the sidebar to review pending products and set final prices, manage the category tree and its attributes, manage ad banners, verify M-Pesa payments, manage sales agents, and suspend or reactivate any wholesaler, retailer, or buyer account.</p>
+            <p class="text-muted">Use the sidebar to review pending products and set final prices, manage the category tree and its attributes, review and approve seller shops, manage ad banners, verify M-Pesa payments, manage sales agents, and suspend or reactivate any wholesaler, retailer, or buyer account.</p>
           </div>
         </div>
       </div>
@@ -216,7 +239,7 @@
         </div>
       </div>
 
-      <!-- ===== ATTRIBUTES (NEW) ===== -->
+      <!-- ===== ATTRIBUTES ===== -->
       <div class="tab-panel" id="panel-attributes">
         <div class="dash-card">
           <div class="dash-card__head">
@@ -228,6 +251,34 @@
             <table class="dtable">
               <thead><tr><th>Name</th><th>Type</th><th>Options</th><th>Active</th><th>Actions</th></tr></thead>
               <tbody id="attributesBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== SHOPS (NEW) ===== -->
+      <div class="tab-panel" id="panel-shops">
+        <div class="dash-card">
+          <div class="dash-card__head">
+            <h3>Shops</h3>
+            <div class="dash-toolbar">
+              <input type="text" id="shopSearchInput" placeholder="Search by shop name...">
+              <select id="shopStatusSelect">
+                <option value="">All statuses</option>
+                <option value="pending_approval">Pending approval</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+                <option value="suspended">Suspended</option>
+              </select>
+            </div>
+          </div>
+          <p class="text-muted" style="padding:0 18px;">Optional branded storefronts for sellers. Creating a shop is optional and never blocks a seller from selling normally. New shops and major shop edits require your approval before going public.</p>
+          <div class="table-scroll">
+            <table class="dtable">
+              <thead>
+                <tr><th>Logo</th><th>Shop</th><th>Seller</th><th>Category</th><th>Status</th><th>Badges</th><th>Actions</th></tr>
+              </thead>
+              <tbody id="shopsBody"></tbody>
             </table>
           </div>
         </div>
@@ -457,7 +508,7 @@
   </div>
 </div>
 
-<!-- Category Attributes modal (NEW) -->
+<!-- Category Attributes modal -->
 <div class="modal-overlay" id="categoryAttributesModal">
   <div class="modal">
     <div class="modal-head">
@@ -476,7 +527,7 @@
   </div>
 </div>
 
-<!-- Attribute modal (add/edit) (NEW) -->
+<!-- Attribute modal (add/edit) -->
 <div class="modal-overlay" id="attributeModal">
   <div class="modal">
     <div class="modal-head">
@@ -515,6 +566,91 @@
         <label for="attrActive" style="margin:0;">Active</label>
       </div>
       <button type="submit" class="btn btn-primary btn-block">Save Attribute</button>
+    </form>
+  </div>
+</div>
+
+<!-- Shop review/edit modal (NEW) -->
+<div class="modal-overlay" id="shopModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Shop — <span id="shopModalName"></span></h3>
+      <button class="modal-close" data-close-modal="shopModal">&times;</button>
+    </div>
+
+    <div class="shop-review-grid">
+      <div>
+        <div class="text-muted">Seller</div>
+        <strong id="shopSellerName"></strong>
+        <div id="shopSellerContact" class="text-muted"></div>
+      </div>
+      <div>
+        <div class="text-muted">Status</div>
+        <span id="shopStatusPill" class="pill"></span>
+      </div>
+      <div>
+        <div class="text-muted">Badges</div>
+        <div class="badge-row" id="shopBadgeRow"></div>
+      </div>
+      <div>
+        <div class="text-muted">Submitted</div>
+        <div id="shopCreatedAt"></div>
+      </div>
+    </div>
+
+    <div id="shopRejectionNote" class="alert alert-error" style="display:none; margin-bottom:16px;"></div>
+
+    <form id="shopEditForm" class="form-grid">
+      <div class="form-field">
+        <label for="shopEditName">Shop Name</label>
+        <input type="text" id="shopEditName" required>
+      </div>
+      <div class="form-field">
+        <label for="shopEditCategory">Business Category</label>
+        <input type="text" id="shopEditCategory">
+      </div>
+      <div class="form-field">
+        <label for="shopEditDescription">Description</label>
+        <textarea id="shopEditDescription"></textarea>
+      </div>
+      <div class="form-field">
+        <label for="shopEditHours">Business Hours</label>
+        <input type="text" id="shopEditHours">
+      </div>
+      <div class="form-field">
+        <label for="shopEditLogoInput">Replace Logo (optional)</label>
+        <input type="file" id="shopEditLogoInput" accept="image/*">
+        <div class="image-preview-row" id="shopLogoPreview"></div>
+      </div>
+      <div class="form-field">
+        <label for="shopEditBannerInput">Replace Banner (optional)</label>
+        <input type="file" id="shopEditBannerInput" accept="image/*">
+        <div class="image-preview-row" id="shopBannerPreview"></div>
+      </div>
+      <div class="form-field" style="flex-direction:row; align-items:center; gap:10px;">
+        <label class="switch"><input type="checkbox" id="shopEditActive"><span class="track"></span></label>
+        <label for="shopEditActive" style="margin:0;">Active</label>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Save Shop Details</button>
+    </form>
+
+    <div class="shop-modal-actions" id="shopModalActions"></div>
+  </div>
+</div>
+
+<!-- Shop reject modal (NEW) -->
+<div class="modal-overlay" id="shopRejectModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Reject Shop</h3>
+      <button class="modal-close" data-close-modal="shopRejectModal">&times;</button>
+    </div>
+    <form id="shopRejectForm" class="form-grid">
+      <div class="form-field">
+        <label for="shopRejectReason">Reason (shown to the seller)</label>
+        <textarea id="shopRejectReason" required placeholder="e.g. Logo image is too low resolution"></textarea>
+      </div>
+      <button type="submit" class="btn btn-dark btn-block">Reject Shop</button>
     </form>
   </div>
 </div>

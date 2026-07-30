@@ -15,9 +15,13 @@ let orderSubTab = 'pending-payment';
 let allOrdersCache = [];      // last fetched "all orders" list, keyed by lookup below
 let agentOrdersCache = {};    // agentId -> orders[] (lazy-loaded on first expand)
 
-// NEW: working state for the category-attributes assignment modal
+// working state for the category-attributes assignment modal
 let catAttrAssigned = []; // [{ attributeId, name, isRequired }] in display order
 let catAttrTargetCategoryId = null;
+
+// NEW: shops state
+let shopFilters = { status: '', search: '' };
+let shopsCache = [];
 
 const MAX_CATEGORY_LEVEL = 2; // 0 = Parent Category, 1 = Category, 2 = Sub Category
 
@@ -133,6 +137,7 @@ function switchTab(tab) {
   if (tab === 'products') loadAllProducts();
   if (tab === 'categories') loadCategoriesTable();
   if (tab === 'attributes') loadAttributes();
+  if (tab === 'shops') loadShops();
   if (tab === 'ads') loadAds();
   if (tab === 'orders') loadOrdersTab();
   if (tab === 'users') loadUsers();
@@ -364,6 +369,34 @@ function wireStaticButtons() {
       orderSubTab = btn.dataset.subtab;
       loadOrdersTab();
     });
+  });
+
+  // NEW: shops
+  document.getElementById('shopEditForm').addEventListener('submit', submitShopEdit);
+
+  document.getElementById('shopRejectForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('shopRejectModal').dataset.shopId;
+    const reason = document.getElementById('shopRejectReason').value.trim();
+    try {
+      await apiPatch(`/shops/admin/${id}/reject`, { reason });
+      showToast('Shop rejected and sent back to the seller');
+      closeModal('shopRejectModal');
+      closeModal('shopModal');
+      loadShops();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+
+  document.getElementById('shopSearchInput').addEventListener('input', debounce(() => {
+    shopFilters.search = document.getElementById('shopSearchInput').value.trim();
+    loadShops();
+  }, 400));
+
+  document.getElementById('shopStatusSelect').addEventListener('change', (e) => {
+    shopFilters.status = e.target.value;
+    loadShops();
   });
 }
 
@@ -940,6 +973,237 @@ async function submitCategoryAttributes() {
     await apiPut(`/admin/categories/${catAttrTargetCategoryId}/attributes`, payload);
     showToast('Category attributes saved');
     closeModal('categoryAttributesModal');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+// ===================================================================
+// SHOPS (NEW — approve / reject / suspend / reactivate / verify / feature / edit / remove)
+// ===================================================================
+const SHOP_STATUS_PILL = {
+  pending_approval: 'pill-pending_approval',
+  approved: 'pill-approved',
+  rejected: 'pill-rejected',
+  suspended: 'pill-suspended',
+};
+
+async function loadShops() {
+  const tbody = document.getElementById('shopsBody');
+  tbody.innerHTML = `<tr><td colspan="7"><div class="spinner"></div></td></tr>`;
+  try {
+    const params = new URLSearchParams();
+    if (shopFilters.status) params.set('status', shopFilters.status);
+    if (shopFilters.search) params.set('search', shopFilters.search);
+    const { shops } = await apiGet(`/shops/admin?${params.toString()}`);
+    shopsCache = shops;
+
+    if (shops.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7"><div class="dash-empty"><i class="fa-solid fa-store"></i><p>No shops match these filters.</p></div></td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = shops
+      .map((s) => {
+        const badges = [];
+        if (s.verificationStatus === 'verified') badges.push('<span class="pill pill-active">Verified</span>');
+        if (s.isFeatured) badges.push('<span class="pill pill-active">Featured</span>');
+        if (!s.isActive) badges.push('<span class="pill pill-rejected">Inactive</span>');
+
+        return `
+      <tr>
+        <td>${s.logo ? `<img class="thumb" src="${s.logo}" alt="">` : ''}</td>
+        <td class="wrap-cell"><strong>${escapeHtml(s.shopName)}</strong><div class="text-muted">/${escapeHtml(s.slug)}</div></td>
+        <td>${escapeHtml(s.seller?.businessName || s.seller?.shopName || s.seller?.name || '-')}</td>
+        <td>${escapeHtml(s.businessCategory || '-')}</td>
+        <td><span class="pill ${SHOP_STATUS_PILL[s.status] || ''}">${s.status.replace(/_/g, ' ')}</span></td>
+        <td>${badges.join(' ') || '<span class="text-muted">—</span>'}</td>
+        <td>
+          <div class="row-actions">
+            <button class="act-edit" data-view-shop="${s._id}">${s.status === 'pending_approval' ? 'Review' : 'View / Edit'}</button>
+          </div>
+        </td>
+      </tr>`;
+      })
+      .join('');
+
+    tbody.querySelectorAll('[data-view-shop]').forEach((btn) =>
+      btn.addEventListener('click', () => openShopModal(shopsCache.find((s) => s._id === btn.dataset.viewShop)))
+    );
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="dash-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>${err.message}</p></div></td></tr>`;
+  }
+}
+
+function openShopModal(shop) {
+  const modal = document.getElementById('shopModal');
+  modal.dataset.shopId = shop._id;
+
+  document.getElementById('shopModalName').textContent = shop.shopName;
+  document.getElementById('shopSellerName').textContent =
+    shop.seller?.businessName || shop.seller?.shopName || shop.seller?.name || '-';
+  document.getElementById('shopSellerContact').textContent =
+    [shop.seller?.email, shop.seller?.phone].filter(Boolean).join(' · ');
+
+  const statusPill = document.getElementById('shopStatusPill');
+  statusPill.className = `pill ${SHOP_STATUS_PILL[shop.status] || ''}`;
+  statusPill.textContent = shop.status.replace(/_/g, ' ');
+
+  const badgeRow = document.getElementById('shopBadgeRow');
+  const badges = [];
+  if (shop.verificationStatus === 'verified') badges.push('<span class="pill pill-active">Verified</span>');
+  if (shop.isFeatured) badges.push('<span class="pill pill-active">Featured</span>');
+  if (!shop.isActive) badges.push('<span class="pill pill-rejected">Inactive</span>');
+  badgeRow.innerHTML = badges.join(' ') || '<span class="text-muted">—</span>';
+
+  document.getElementById('shopCreatedAt').textContent = new Date(shop.createdAt).toLocaleString();
+
+  const rejNote = document.getElementById('shopRejectionNote');
+  if (shop.status === 'rejected' && shop.rejectionReason) {
+    rejNote.style.display = 'block';
+    rejNote.textContent = `Rejected: ${shop.rejectionReason}`;
+  } else {
+    rejNote.style.display = 'none';
+  }
+
+  document.getElementById('shopEditName').value = shop.shopName || '';
+  document.getElementById('shopEditCategory').value = shop.businessCategory || '';
+  document.getElementById('shopEditDescription').value = shop.description || '';
+  document.getElementById('shopEditHours').value = shop.businessHours || '';
+  document.getElementById('shopEditActive').checked = !!shop.isActive;
+  document.getElementById('shopEditLogoInput').value = '';
+  document.getElementById('shopEditBannerInput').value = '';
+  document.getElementById('shopLogoPreview').innerHTML = shop.logo ? `<img src="${shop.logo}" alt="">` : '';
+  document.getElementById('shopBannerPreview').innerHTML = shop.banner ? `<img src="${shop.banner}" alt="">` : '';
+
+  renderShopModalActions(shop);
+  openModal('shopModal');
+}
+
+function renderShopModalActions(shop) {
+  const wrap = document.getElementById('shopModalActions');
+  const buttons = [];
+
+  if (shop.status === 'pending_approval') {
+    buttons.push(`<button type="button" class="btn btn-primary act-approve" id="shopApproveBtn">Approve Shop</button>`);
+    buttons.push(`<button type="button" class="btn btn-dark act-reject" id="shopRejectBtn">Reject Shop</button>`);
+  }
+  if (shop.status === 'approved') {
+    buttons.push(`<button type="button" class="btn btn-dark act-suspend" id="shopSuspendBtn">Suspend Shop</button>`);
+    buttons.push(`<button type="button" class="btn btn-primary" id="shopVerifyBtn">${shop.verificationStatus === 'verified' ? 'Remove Verified Badge' : 'Mark Verified'}</button>`);
+    buttons.push(`<button type="button" class="btn btn-primary" id="shopFeatureBtn">${shop.isFeatured ? 'Unfeature Shop' : 'Feature Shop'}</button>`);
+  }
+  if (shop.status === 'suspended') {
+    buttons.push(`<button type="button" class="btn btn-primary act-approve" id="shopReactivateBtn">Reactivate Shop</button>`);
+  }
+  buttons.push(`<button type="button" class="btn btn-dark act-reject" id="shopDeleteBtn">Remove Shop</button>`);
+
+  wrap.innerHTML = buttons.join('');
+
+  document.getElementById('shopApproveBtn')?.addEventListener('click', () => approveShopRow(shop._id));
+  document.getElementById('shopRejectBtn')?.addEventListener('click', () => {
+    document.getElementById('shopRejectReason').value = '';
+    document.getElementById('shopRejectModal').dataset.shopId = shop._id;
+    openModal('shopRejectModal');
+  });
+  document.getElementById('shopSuspendBtn')?.addEventListener('click', () => suspendShopRow(shop._id));
+  document.getElementById('shopReactivateBtn')?.addEventListener('click', () => reactivateShopRow(shop._id));
+  document.getElementById('shopVerifyBtn')?.addEventListener('click', () =>
+    setShopVerificationRow(shop._id, shop.verificationStatus === 'verified' ? 'unverified' : 'verified')
+  );
+  document.getElementById('shopFeatureBtn')?.addEventListener('click', () => setShopFeaturedRow(shop._id, !shop.isFeatured));
+  document.getElementById('shopDeleteBtn')?.addEventListener('click', () => deleteShopRow(shop._id));
+}
+
+async function approveShopRow(id) {
+  try {
+    await apiPatch(`/shops/admin/${id}/approve`);
+    showToast('Shop approved and published');
+    closeModal('shopModal');
+    loadShops();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function suspendShopRow(id) {
+  if (!confirm('Suspend this shop? Its storefront will be pulled immediately.')) return;
+  try {
+    await apiPatch(`/shops/admin/${id}/suspend`);
+    showToast('Shop suspended');
+    closeModal('shopModal');
+    loadShops();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function reactivateShopRow(id) {
+  try {
+    await apiPatch(`/shops/admin/${id}/reactivate`);
+    showToast('Shop reactivated');
+    closeModal('shopModal');
+    loadShops();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function setShopVerificationRow(id, verificationStatus) {
+  try {
+    await apiPatch(`/shops/admin/${id}/verify`, { verificationStatus });
+    showToast(verificationStatus === 'verified' ? 'Shop marked as verified' : 'Verified badge removed');
+    closeModal('shopModal');
+    loadShops();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function setShopFeaturedRow(id, isFeatured) {
+  try {
+    await apiPatch(`/shops/admin/${id}/feature`, { isFeatured });
+    showToast(isFeatured ? 'Shop featured' : 'Shop unfeatured');
+    closeModal('shopModal');
+    loadShops();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function deleteShopRow(id) {
+  if (!confirm('Remove this shop permanently? The seller can create a new one later.')) return;
+  try {
+    await apiDelete(`/shops/admin/${id}`);
+    showToast('Shop removed');
+    closeModal('shopModal');
+    loadShops();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function submitShopEdit(e) {
+  e.preventDefault();
+  const id = document.getElementById('shopModal').dataset.shopId;
+
+  const formData = new FormData();
+  formData.append('shopName', document.getElementById('shopEditName').value.trim());
+  formData.append('businessCategory', document.getElementById('shopEditCategory').value.trim());
+  formData.append('description', document.getElementById('shopEditDescription').value.trim());
+  formData.append('businessHours', document.getElementById('shopEditHours').value.trim());
+  formData.append('isActive', document.getElementById('shopEditActive').checked);
+
+  const logoFile = document.getElementById('shopEditLogoInput').files[0];
+  if (logoFile) formData.append('logo', logoFile);
+  const bannerFile = document.getElementById('shopEditBannerInput').files[0];
+  if (bannerFile) formData.append('banner', bannerFile);
+
+  try {
+    await apiPatch(`/shops/admin/${id}`, formData, true);
+    showToast('Shop details updated');
+    closeModal('shopModal');
+    loadShops();
   } catch (err) {
     showToast(err.message, 'error');
   }

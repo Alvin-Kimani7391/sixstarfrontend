@@ -34,6 +34,17 @@
      total views, a 14-day trend bar chart, and a per-product view
      breakdown, powered by GET /api/products/analytics.
 
+   My Shop:
+   - A header button opens a full-page "My Shop" overlay.
+   - If the seller has no shop yet, shows an explainer + "Create my
+     shop" button, which opens a form (POST /api/shops).
+   - If a shop exists, shows its current status (pending approval /
+     approved / rejected / suspended) with an "Edit shop" button that
+     opens the same form pre-filled (PUT /api/shops/my-shop).
+   - Creating a shop and having it approved doesn't require any change
+     to product creation — the backend silently attaches new products
+     to an approved shop on its own.
+
    Orders:
    - Bell button opens a full professional "Orders" page (stat tiles,
      filter tabs, search, skeleton loading, contextual empty states).
@@ -56,6 +67,9 @@
      GET    /api/categories/:id/attributes
      GET    /api/orders/seller-orders
      PATCH  /api/orders/:id/status
+     GET    /api/shops/my-shop
+     POST   /api/shops
+     PUT    /api/shops/my-shop
    ============================================================ */
 
 (async () => {
@@ -104,6 +118,13 @@
     rejected: "Payment rejected",
   };
 
+  const SHOP_STATUS_LABEL = {
+    pending_approval: "Pending approval",
+    approved: "Approved",
+    rejected: "Rejected",
+    suspended: "Suspended",
+  };
+
   // ---------- wizard step config ----------
   let currentStepIdx = 0;
 
@@ -137,6 +158,9 @@
 
   let ordersFilter = "all";
   let ordersSearchTerm = "";
+
+  // ---------- shop state ----------
+  let myShop = null; // null = no shop yet, otherwise the shop object from the API
 
   // ---------- category / attribute / variant state ----------
   let categoryTree = [];
@@ -288,6 +312,46 @@
     statTopProductLabel: document.getElementById("statTopProductLabel"),
     analyticsTrend: document.getElementById("analyticsTrend"),
     analyticsProductList: document.getElementById("analyticsProductList"),
+
+    // My Shop "page"
+    myShopToggleBtn: document.getElementById("myShopToggleBtn"),
+    myShopOverlay: document.getElementById("myShopOverlay"),
+    myShopBack: document.getElementById("myShopBack"),
+    myShopLoading: document.getElementById("myShopLoading"),
+    myShopEmpty: document.getElementById("myShopEmpty"),
+    myShopContent: document.getElementById("myShopContent"),
+    myShopErrorState: document.getElementById("myShopErrorState"),
+    myShopErrorMsg: document.getElementById("myShopErrorMsg"),
+    createShopBtn: document.getElementById("createShopBtn"),
+    editShopBtn: document.getElementById("editShopBtn"),
+
+    shopBannerPreview: document.getElementById("shopBannerPreview"),
+    shopLogoPreview: document.getElementById("shopLogoPreview"),
+    shopNameDisplay: document.getElementById("shopNameDisplay"),
+    shopStatusBadge: document.getElementById("shopStatusBadge"),
+    shopPendingNote: document.getElementById("shopPendingNote"),
+    shopSuspendedNote: document.getElementById("shopSuspendedNote"),
+    shopRejectionBox: document.getElementById("shopRejectionBox"),
+    shopRejectionText: document.getElementById("shopRejectionText"),
+    shopDescDisplay: document.getElementById("shopDescDisplay"),
+    shopCategoryDisplay: document.getElementById("shopCategoryDisplay"),
+    shopHoursDisplay: document.getElementById("shopHoursDisplay"),
+
+    // create/edit shop modal
+    shopFormModal: document.getElementById("shopFormModal"),
+    shopFormTitle: document.getElementById("shopFormTitle"),
+    shopFormSubtitle: document.getElementById("shopFormSubtitle"),
+    closeShopFormModal: document.getElementById("closeShopFormModal"),
+    shopForm: document.getElementById("shopForm"),
+    shopFormError: document.getElementById("shopFormError"),
+    shopNameInput: document.getElementById("shopNameInput"),
+    shopCategoryInput: document.getElementById("shopCategoryInput"),
+    shopDescInput: document.getElementById("shopDescInput"),
+    shopLogoInput: document.getElementById("shopLogoInput"),
+    shopBannerInput: document.getElementById("shopBannerInput"),
+    shopHoursInput: document.getElementById("shopHoursInput"),
+    cancelShopForm: document.getElementById("cancelShopForm"),
+    saveShopBtn: document.getElementById("saveShopBtn"),
   };
 
   function hideLoader() {
@@ -1202,7 +1266,11 @@
 
   function closeOrdersList() {
     if (els.ordersListOverlay) els.ordersListOverlay.classList.remove("active");
-    if (!els.orderDetailOverlay?.classList.contains("active") && !els.analyticsOverlay?.classList.contains("active")) {
+    if (
+      !els.orderDetailOverlay?.classList.contains("active") &&
+      !els.analyticsOverlay?.classList.contains("active") &&
+      !els.myShopOverlay?.classList.contains("active")
+    ) {
       document.body.style.overflow = "";
     }
   }
@@ -1281,7 +1349,11 @@
 
   function closeAnalytics() {
     if (els.analyticsOverlay) els.analyticsOverlay.classList.remove("active");
-    if (!els.ordersListOverlay?.classList.contains("active") && !els.orderDetailOverlay?.classList.contains("active")) {
+    if (
+      !els.ordersListOverlay?.classList.contains("active") &&
+      !els.orderDetailOverlay?.classList.contains("active") &&
+      !els.myShopOverlay?.classList.contains("active")
+    ) {
       document.body.style.overflow = "";
     }
   }
@@ -1365,6 +1437,189 @@
         })
         .join("");
     }
+  }
+
+  // =========================================================
+  // ---------- MY SHOP "page" (opened by the header icon) ----------
+  // =========================================================
+  function openMyShop() {
+    if (!els.myShopOverlay) return;
+    els.myShopOverlay.classList.add("active");
+    document.body.style.overflow = "hidden";
+    loadMyShop();
+  }
+
+  function closeMyShop() {
+    if (els.myShopOverlay) els.myShopOverlay.classList.remove("active");
+    if (
+      !els.ordersListOverlay?.classList.contains("active") &&
+      !els.orderDetailOverlay?.classList.contains("active") &&
+      !els.analyticsOverlay?.classList.contains("active")
+    ) {
+      document.body.style.overflow = "";
+    }
+  }
+
+  if (els.myShopToggleBtn) els.myShopToggleBtn.addEventListener("click", openMyShop);
+  if (els.myShopBack) els.myShopBack.addEventListener("click", closeMyShop);
+
+  async function loadMyShop() {
+    if (els.myShopLoading) els.myShopLoading.style.display = "block";
+    if (els.myShopEmpty) els.myShopEmpty.style.display = "none";
+    if (els.myShopContent) els.myShopContent.style.display = "none";
+    if (els.myShopErrorState) els.myShopErrorState.style.display = "none";
+
+    try {
+      const res = await SS_API.getMyShop();
+      myShop = res.shop || null;
+      renderMyShop();
+    } catch (err) {
+      console.error("MY SHOP LOAD FAILED:", err);
+      if (els.myShopLoading) els.myShopLoading.style.display = "none";
+      if (els.myShopErrorState) {
+        els.myShopErrorState.style.display = "block";
+        if (els.myShopErrorMsg) els.myShopErrorMsg.textContent = err.message || "Please try again shortly.";
+      }
+    }
+  }
+
+  function renderMyShop() {
+    if (els.myShopLoading) els.myShopLoading.style.display = "none";
+
+    if (!myShop) {
+      if (els.myShopEmpty) els.myShopEmpty.style.display = "block";
+      if (els.myShopContent) els.myShopContent.style.display = "none";
+      return;
+    }
+
+    if (els.myShopEmpty) els.myShopEmpty.style.display = "none";
+    if (els.myShopContent) els.myShopContent.style.display = "block";
+
+    if (els.shopBannerPreview) {
+      els.shopBannerPreview.style.backgroundImage = myShop.banner ? `url('${myShop.banner}')` : "none";
+    }
+    if (els.shopLogoPreview) {
+      els.shopLogoPreview.innerHTML = myShop.logo
+        ? `<img src="${myShop.logo}" alt="${escapeHtml(myShop.shopName)}" />`
+        : `<i class="fa-solid fa-shop"></i>`;
+    }
+    if (els.shopNameDisplay) els.shopNameDisplay.textContent = myShop.shopName;
+
+    if (els.shopStatusBadge) {
+      els.shopStatusBadge.className = `shop-status-badge ${myShop.status}`;
+      els.shopStatusBadge.textContent = SHOP_STATUS_LABEL[myShop.status] || myShop.status;
+    }
+
+    if (els.shopPendingNote) els.shopPendingNote.style.display = myShop.status === "pending_approval" ? "flex" : "none";
+    if (els.shopSuspendedNote) els.shopSuspendedNote.style.display = myShop.status === "suspended" ? "flex" : "none";
+
+    if (els.shopRejectionBox) {
+      const showRejection = myShop.status === "rejected" && myShop.rejectionReason;
+      els.shopRejectionBox.style.display = showRejection ? "flex" : "none";
+      if (showRejection && els.shopRejectionText) els.shopRejectionText.textContent = myShop.rejectionReason;
+    }
+
+    if (els.shopDescDisplay) {
+      els.shopDescDisplay.textContent = myShop.description || "No description added yet.";
+    }
+    if (els.shopCategoryDisplay) els.shopCategoryDisplay.textContent = myShop.businessCategory || "—";
+    if (els.shopHoursDisplay) els.shopHoursDisplay.textContent = myShop.businessHours || "—";
+  }
+
+  // ---------- create / edit shop modal ----------
+  function openShopForm() {
+    if (els.shopFormError) els.shopFormError.classList.remove("show");
+    if (els.shopForm) els.shopForm.reset();
+
+    const isEdit = !!myShop;
+
+    if (els.shopFormTitle) els.shopFormTitle.textContent = isEdit ? "Edit your shop" : "Create your shop";
+    if (els.shopFormSubtitle) {
+      els.shopFormSubtitle.textContent = isEdit
+        ? "Changing anything on an already-approved shop sends it back to admin for re-approval."
+        : "Sellers who don't create a shop keep selling exactly as they do today.";
+    }
+    if (els.saveShopBtn) els.saveShopBtn.textContent = isEdit ? "Save changes" : "Create shop";
+
+    if (isEdit) {
+      if (els.shopNameInput) els.shopNameInput.value = myShop.shopName || "";
+      if (els.shopCategoryInput) els.shopCategoryInput.value = myShop.businessCategory || "";
+      if (els.shopDescInput) els.shopDescInput.value = myShop.description || "";
+      if (els.shopLogoInput) els.shopLogoInput.value = myShop.logo || "";
+      if (els.shopBannerInput) els.shopBannerInput.value = myShop.banner || "";
+      if (els.shopHoursInput) els.shopHoursInput.value = myShop.businessHours || "";
+    }
+
+    if (els.shopFormModal) els.shopFormModal.classList.add("active");
+  }
+
+  function closeShopForm() {
+    if (els.shopFormModal) els.shopFormModal.classList.remove("active");
+  }
+
+  if (els.createShopBtn) els.createShopBtn.addEventListener("click", openShopForm);
+  if (els.editShopBtn) els.editShopBtn.addEventListener("click", openShopForm);
+  if (els.closeShopFormModal) els.closeShopFormModal.addEventListener("click", closeShopForm);
+  if (els.cancelShopForm) els.cancelShopForm.addEventListener("click", closeShopForm);
+  if (els.shopFormModal) {
+    els.shopFormModal.addEventListener("click", (e) => {
+      if (e.target === els.shopFormModal) closeShopForm();
+    });
+  }
+
+  function showShopFormError(msg) {
+    if (els.shopFormError) {
+      els.shopFormError.textContent = msg;
+      els.shopFormError.classList.add("show");
+    }
+  }
+
+  if (els.shopForm) {
+    els.shopForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (els.shopFormError) els.shopFormError.classList.remove("show");
+
+      const shopName = els.shopNameInput?.value.trim();
+      if (!shopName) {
+        showShopFormError("Please enter a shop name.");
+        return;
+      }
+
+      const payload = {
+        shopName,
+        businessCategory: els.shopCategoryInput?.value.trim() || "",
+        description: els.shopDescInput?.value.trim() || "",
+        logo: els.shopLogoInput?.value.trim() || "",
+        banner: els.shopBannerInput?.value.trim() || "",
+        businessHours: els.shopHoursInput?.value.trim() || "",
+      };
+
+      const isEdit = !!myShop;
+
+      if (els.saveShopBtn) {
+        els.saveShopBtn.disabled = true;
+        els.saveShopBtn.textContent = "Saving…";
+      }
+
+      try {
+        if (isEdit) {
+          await SS_API.updateMyShop(payload);
+          ssToast("Shop updated — sent to admin for re-approval", "fa-circle-check");
+        } else {
+          await SS_API.createShop(payload);
+          ssToast("Shop submitted for admin approval", "fa-circle-check");
+        }
+        closeShopForm();
+        loadMyShop();
+      } catch (err) {
+        showShopFormError(err.message || "Couldn't save your shop. Please try again.");
+      } finally {
+        if (els.saveShopBtn) {
+          els.saveShopBtn.disabled = false;
+          els.saveShopBtn.textContent = isEdit ? "Save changes" : "Create shop";
+        }
+      }
+    });
   }
 
   // ---------- counts + tabs (products) ----------
@@ -1487,6 +1742,10 @@
           </div>`
         : "";
 
+    const shopMeta = p.shop?.shopName
+      ? `<div class="sp-card__meta"><small><i class="fa-solid fa-shop"></i> ${escapeHtml(p.shop.shopName)}</small></div>`
+      : "";
+
     return `
       <div class="sp-card">
         <div class="sp-card__img">
@@ -1504,6 +1763,7 @@
           <div class="sp-card__meta">
             <small><i class="fa-solid fa-eye"></i> ${(p.viewCount || 0).toLocaleString()} views</small>
           </div>
+          ${shopMeta}
           ${wholesaleMeta}
           ${
             status === "rejected" && p.rejectionReason

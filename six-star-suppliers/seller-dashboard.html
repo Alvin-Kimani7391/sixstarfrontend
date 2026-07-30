@@ -69,6 +69,50 @@
   }
   .analytics-empty { text-align: center; padding: 40px 10px; color: var(--ink-soft, #7a7268); }
   .analytics-empty i { font-size: 30px; margin-bottom: 10px; display: block; color: var(--line, #e4d6bd); }
+
+  /* ---- My Shop screen ---- */
+  .shop-empty { text-align: center; padding: 50px 16px; }
+  .shop-empty i { font-size: 34px; color: var(--marigold, #f2a93b); margin-bottom: 14px; display: block; }
+  .shop-empty h3 { margin-bottom: 8px; }
+  .shop-empty p { color: var(--ink-soft, #7a7268); max-width: 460px; margin: 0 auto 20px; font-size: 13.5px; line-height: 1.55; }
+
+  .shop-card { border: 1px solid var(--line, #e4d6bd); border-radius: 16px; overflow: hidden; background: var(--white, #fff); }
+  .shop-card__banner {
+    height: 120px; background: linear-gradient(135deg, rgba(242,169,59,.28), rgba(217,140,31,.16));
+    background-size: cover; background-position: center;
+  }
+  .shop-card__body { padding: 18px; }
+  .shop-card__top { display: flex; align-items: center; gap: 14px; margin-top: -42px; margin-bottom: 14px; }
+  .shop-card__logo {
+    width: 64px; height: 64px; border-radius: 14px; background: var(--white, #fff); border: 2px solid var(--white, #fff);
+    box-shadow: 0 2px 10px rgba(0,0,0,.14); display: flex; align-items: center; justify-content: center;
+    font-size: 22px; color: var(--marigold-deep, #d98c1f); overflow: hidden; flex-shrink: 0;
+  }
+  .shop-card__logo img { width: 100%; height: 100%; object-fit: cover; }
+  .shop-card__titles { padding-top: 32px; }
+  .shop-card__titles h3 { margin: 0 0 5px; font-size: 17px; }
+  .shop-status-badge {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700;
+    padding: 3px 10px; border-radius: 999px; text-transform: uppercase; letter-spacing: .03em;
+  }
+  .shop-status-badge.pending_approval { background: rgba(242,169,59,.16); color: #a86a12; }
+  .shop-status-badge.approved { background: rgba(56,161,105,.16); color: #1f7a44; }
+  .shop-status-badge.rejected { background: rgba(224,80,80,.16); color: #b13a3a; }
+  .shop-status-badge.suspended { background: rgba(120,120,120,.16); color: #5c5c5c; }
+
+  .shop-rejection-box {
+    display: flex; gap: 8px; align-items: flex-start; background: rgba(224,80,80,.08);
+    border: 1px solid rgba(224,80,80,.25); color: #a33; padding: 10px 12px; border-radius: 10px;
+    font-size: 12.5px; margin-bottom: 14px; line-height: 1.5;
+  }
+  .shop-card__desc { color: var(--ink-soft, #7a7268); font-size: 13.5px; line-height: 1.55; margin-bottom: 14px; }
+  .shop-card__meta { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12.5px; color: var(--ink-soft, #7a7268); margin-bottom: 16px; }
+  .shop-card__meta i { color: var(--marigold-deep, #d98c1f); margin-right: 4px; }
+  .shop-pending-note {
+    display: flex; gap: 8px; align-items: flex-start; background: rgba(242,169,59,.08);
+    border: 1px solid rgba(242,169,59,.25); color: #a86a12; padding: 10px 12px; border-radius: 10px;
+    font-size: 12.5px; margin-bottom: 14px; line-height: 1.5;
+  }
 </style>
 </head>
 <body>
@@ -85,6 +129,9 @@
         <div class="brand-tag">Seller Dashboard</div>
       </div>
     </a>
+    <button class="iconbtn" id="myShopToggleBtn" title="My Shop">
+      <i class="fa-solid fa-shop"></i>
+    </button>
     <button class="iconbtn" id="analyticsToggleBtn" title="Analytics">
       <i class="fa-solid fa-chart-line"></i>
     </button>
@@ -516,6 +563,141 @@
         <p>Once buyers start opening your product pages, views will show up here.</p>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ============ MY SHOP "PAGE" ============ -->
+<div class="orders-page-overlay" id="myShopOverlay">
+  <div class="orders-page">
+    <div class="orders-page__head">
+      <button type="button" class="order-detail-back" id="myShopBack">
+        <i class="fa-solid fa-arrow-left"></i>
+      </button>
+      <div class="orders-page__title">
+        <h2>My Shop</h2>
+        <p>Your branded storefront — completely optional</p>
+      </div>
+    </div>
+
+    <div class="orders-page__body">
+      <div id="myShopLoading" class="orders-skel-wrap">
+        <div class="skel orders-skel"></div>
+        <div class="skel orders-skel"></div>
+      </div>
+
+      <!-- No shop yet -->
+      <div id="myShopEmpty" class="shop-empty" style="display:none;">
+        <i class="fa-solid fa-shop"></i>
+        <h3>You don't have a shop yet</h3>
+        <p>
+          Creating a shop is optional — you can keep selling exactly as you do today without one.
+          A shop gives you a branded storefront that customers can browse and follow. New shops
+          need admin approval before they go live, and products you list while your shop is
+          approved will automatically appear in it.
+        </p>
+        <button class="btn btn-primary" id="createShopBtn"><i class="fa-solid fa-plus"></i> Create my shop</button>
+      </div>
+
+      <!-- Existing shop -->
+      <div id="myShopContent" style="display:none;">
+        <div class="shop-card">
+          <div class="shop-card__banner" id="shopBannerPreview"></div>
+          <div class="shop-card__body">
+            <div class="shop-card__top">
+              <div class="shop-card__logo" id="shopLogoPreview"><i class="fa-solid fa-shop"></i></div>
+              <div class="shop-card__titles">
+                <h3 id="shopNameDisplay">Shop name</h3>
+                <span class="shop-status-badge" id="shopStatusBadge">Pending approval</span>
+              </div>
+            </div>
+
+            <div id="shopPendingNote" class="shop-pending-note" style="display:none;">
+              <i class="fa-solid fa-hourglass-half"></i>
+              <span>Your shop is awaiting admin approval. It isn't visible to customers yet — you'll be notified once it's reviewed.</span>
+            </div>
+
+            <div id="shopSuspendedNote" class="shop-rejection-box" style="display:none;">
+              <i class="fa-solid fa-ban"></i>
+              <span>Your shop has been suspended by the admin team and is not currently visible to customers.</span>
+            </div>
+
+            <div id="shopRejectionBox" class="shop-rejection-box" style="display:none;">
+              <i class="fa-solid fa-circle-info"></i>
+              <span id="shopRejectionText"></span>
+            </div>
+
+            <p class="shop-card__desc" id="shopDescDisplay"></p>
+
+            <div class="shop-card__meta">
+              <div><i class="fa-solid fa-tag"></i> <span id="shopCategoryDisplay">—</span></div>
+              <div><i class="fa-solid fa-clock"></i> <span id="shopHoursDisplay">—</span></div>
+            </div>
+
+            <button class="btn btn-outline btn-sm" id="editShopBtn"><i class="fa-solid fa-pen"></i> Edit shop</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="myShopErrorState" style="display:none;" class="analytics-empty">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <h3>Couldn't load your shop</h3>
+        <p id="myShopErrorMsg">Please try again shortly.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CREATE / EDIT SHOP MODAL ============ -->
+<div class="modal-overlay" id="shopFormModal">
+  <div class="modal-sheet">
+    <div class="modal-head">
+      <div>
+        <h2 id="shopFormTitle">Create your shop</h2>
+        <p id="shopFormSubtitle">Sellers who don't create a shop keep selling exactly as they do today.</p>
+      </div>
+      <button class="modal-close" id="closeShopFormModal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+
+    <div id="shopFormError" class="alert alert-error"></div>
+
+    <form id="shopForm" class="form-grid" novalidate>
+      <div class="form-field">
+        <label for="shopNameInput">Shop name</label>
+        <input type="text" id="shopNameInput" required placeholder="e.g. Amina's Fresh Produce" />
+      </div>
+
+      <div class="form-field">
+        <label for="shopCategoryInput">Business category <span class="label-soft">(optional)</span></label>
+        <input type="text" id="shopCategoryInput" placeholder="e.g. Fresh produce, Electronics, Fashion" />
+      </div>
+
+      <div class="form-field">
+        <label for="shopDescInput">Description <span class="label-soft">(optional)</span></label>
+        <textarea id="shopDescInput" placeholder="Tell buyers what your shop is about…"></textarea>
+      </div>
+
+      <div class="form-row-2">
+        <div class="form-field">
+          <label for="shopLogoInput">Logo URL <span class="label-soft">(optional)</span></label>
+          <input type="text" id="shopLogoInput" placeholder="https://…" />
+        </div>
+        <div class="form-field">
+          <label for="shopBannerInput">Banner URL <span class="label-soft">(optional)</span></label>
+          <input type="text" id="shopBannerInput" placeholder="https://…" />
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label for="shopHoursInput">Business hours <span class="label-soft">(optional)</span></label>
+        <input type="text" id="shopHoursInput" placeholder="e.g. Mon–Sat, 8am–6pm" />
+      </div>
+
+      <div class="wizard-footer">
+        <div class="wizard-footer__spacer"></div>
+        <button type="button" class="btn btn-outline" id="cancelShopForm">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="saveShopBtn">Create shop</button>
+      </div>
+    </form>
   </div>
 </div>
 
