@@ -159,3 +159,101 @@
   .shop-passport__actions .btn{ flex:1; }
   .shop-hero__banner, .shop-hero__banner-fallback{ aspect-ratio:16/9; }
 }
+
+
+
+
+
+/* ============================================================
+   SEARCH BAR — polished, animated focus state
+   ============================================================ */
+.shops-search{
+  position:relative; z-index:1;
+  margin-top:26px; max-width:480px; display:flex; align-items:center;
+  background:#fff; border-radius:30px; padding:4px;
+  box-shadow:0 14px 30px rgba(0,0,0,.18);
+  border:2px solid transparent;
+  transition:border-color .2s var(--ease-out), box-shadow .2s var(--ease-out), transform .2s var(--ease-out);
+}
+.shops-search:focus-within{
+  border-color:var(--sun);
+  box-shadow:0 16px 34px rgba(0,0,0,.22), 0 0 0 4px rgba(255,255,255,.15);
+  transform:translateY(-1px);
+}
+.shops-search input{
+  flex:1; border:none; outline:none; padding:12px 18px; font-size:14px;
+  font-family:var(--font-body); background:transparent; min-width:0; color:var(--ink);
+}
+.shops-search input::placeholder{ color:var(--ink-faint); }
+.shops-search button{
+  width:46px; height:44px; border:none; border-radius:24px;
+  background:var(--grad-brand-deep); color:#fff; cursor:pointer; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  transition:transform .18s var(--ease-out), box-shadow .18s var(--ease-out);
+}
+.shops-search button:hover{
+  transform:scale(1.06);
+  box-shadow:0 6px 16px rgba(0,0,0,.25);
+}
+.shops-search button:active{ transform:scale(.96); }
+
+/* ============================================================
+   TOOLBAR — filter chips + sort select
+   ============================================================ */
+.shops-toolbar{
+  margin-top:-30px; position:relative; z-index:2;
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-card); padding:16px 18px; display:flex; gap:14px; align-items:center;
+  flex-wrap:wrap; justify-content:space-between;
+}
+
+.shops-toolbar__filters{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+
+.shops-toolbar__filters .chip{
+  cursor:pointer; display:inline-flex; align-items:center; gap:6px;
+  padding:8px 16px; border-radius:999px; border:1.5px solid var(--line);
+  background:var(--paper-dim); font-size:12.5px; font-weight:600; color:var(--ink-soft);
+  user-select:none; white-space:nowrap;
+  transition:background .18s var(--ease-out), border-color .18s var(--ease-out),
+             color .18s var(--ease-out), transform .15s var(--ease-out), box-shadow .18s var(--ease-out);
+}
+.shops-toolbar__filters .chip:hover{
+  border-color:var(--brand);
+  color:var(--ink);
+  transform:translateY(-1px);
+}
+.shops-toolbar__filters .chip:active{ transform:translateY(0); }
+
+.shops-toolbar__filters .chip.active{
+  background:var(--brand-dark);
+  border-color:var(--brand-dark);
+  color:#fff;
+  box-shadow:0 4px 12px rgba(0,0,0,.18);
+}
+.shops-toolbar__filters .chip.active i{ color:#fff !important; }
+
+.sort-select{
+  appearance:none; -webkit-appearance:none;
+  padding:9px 34px 9px 14px; border-radius:999px; border:1.5px solid var(--line);
+  background:var(--paper-dim) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="%234A4A4A" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>') no-repeat right 14px center;
+  font-size:12.5px; font-weight:600; color:var(--ink); cursor:pointer;
+  transition:border-color .18s var(--ease-out), box-shadow .18s var(--ease-out);
+}
+.sort-select:hover{ border-color:var(--brand); }
+.sort-select:focus{
+  outline:none;
+  border-color:var(--brand-dark);
+  box-shadow:0 0 0 3px rgba(0,0,0,.06);
+}
+
+.shops-toolbar .count{
+  font-size:.85rem; color:var(--ink-soft); white-space:nowrap;
+  font-family:var(--font-mono); letter-spacing:.02em;
+}
+
+@media(max-width:640px){
+  .shops-toolbar{ margin-top:-24px; padding:14px; }
+  .shops-toolbar__filters{ width:100%; }
+  .shops-toolbar__filters .chip{ flex:1; justify-content:center; padding:9px 10px; }
+  .sort-select{ flex:1; min-width:140px; }
+}

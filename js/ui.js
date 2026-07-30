@@ -1,6 +1,9 @@
 /* ============================================================
    UI — header/footer injection + small shared helpers used by
    every page (toast, price formatting, product card markup).
+   All internal links/assets are root-relative (leading "/") so
+   this works correctly no matter what URL depth the page is
+   served at (e.g. /shop/miamii-bags as well as /shops.html).
    ============================================================ */
 
 function ssFmtPrice(n) {
@@ -82,7 +85,7 @@ function ssLogout() {
   // If you add a backend logout route later (to also clear the httpOnly
   // cookie), call it here too, e.g.: SS_API.logout().catch(() => {});
   ssToast("You've been logged out", "fa-circle-check");
-  setTimeout(() => { location.href = "index.html"; }, 500);
+  setTimeout(() => { location.href = "/index.html"; }, 500);
 }
 
 // Renders one product card, used everywhere (home rails, product.html
@@ -140,7 +143,7 @@ function ssProductCard(p) {
         ${p.isHotDeal ? `<div class="p-card__hot"><i class="fa-solid fa-fire"></i> Hot</div>` : ""}
       </div>
       <div class="p-card__img">
-        <img src="${ssImg(p)}" alt="${p.name}" loading="lazy" onclick="location.href='product-detail.html?id=${p.id}'">
+        <img src="${ssImg(p)}" alt="${p.name}" loading="lazy" onclick="location.href='/product-detail.html?id=${p.id}'">
         ${outOfStock ? `<div class="p-card__oos-overlay">Out of stock</div>` : ""}
       </div>
       <div class="p-card__body">
@@ -163,7 +166,7 @@ function ssProductCard(p) {
 window.__ssProductCache = window.__ssProductCache || {};
 function ssQuickAdd(id) {
   const p = window.__ssProductCache[id];
-  if (!p) { location.href = `product-detail.html?id=${id}`; return; }
+  if (!p) { location.href = `/product-detail.html?id=${id}`; return; }
   if ((Number(p.stock) || 0) <= 0) { ssToast("This product is out of stock", "fa-circle-exclamation"); return; }
   const qty = p.sellerRole === "wholesaler" ? (p.minOrderQuantity || 1) : 1;
   SS_CART.add(p, qty);
@@ -186,10 +189,10 @@ function ssRenderHeader(active = "") {
   el.innerHTML = `
     <div class="top-bar">
       <div class="top-bar__row">
-        <a href="register.html" class="top-bar__sell"><i class="fa-solid fa-store"></i> Sell With Us</a>
+        <a href="/register.html" class="top-bar__sell"><i class="fa-solid fa-store"></i> Sell With Us</a>
         <div class="top-bar__links">
-          <a href="track-order.html"><i class="fa-solid fa-truck-fast"></i> Track Order</a>
-          <a href="contact.html"><i class="fa-regular fa-circle-question"></i> Help</a>
+          <a href="/track-order.html"><i class="fa-solid fa-truck-fast"></i> Track Order</a>
+          <a href="/contact.html"><i class="fa-regular fa-circle-question"></i> Help</a>
           <a href="https://wa.me/254794327798" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i> Order on WhatsApp</a>
         </div>
       </div>
@@ -210,8 +213,8 @@ function ssRenderHeader(active = "") {
         <span class="hamburger-icon"><span></span><span></span><span></span></span>
       </button>
 
-      <a href="index.html" class="brand">
-        <div class="brand-mark"><img src="images/logo.jpg" alt="Six Star Suppliers logo"></div>
+      <a href="/index.html" class="brand">
+        <div class="brand-mark"><img src="/images/logo.jpg" alt="Six Star Suppliers logo"></div>
         <div>
           <div class="brand-name"><span class="brand-name__line1">Six Star</span><span class="brand-name__line2">Suppliers</span></div>
           <div class="brand-tag">Quality · Affordable</div>
@@ -227,10 +230,10 @@ function ssRenderHeader(active = "") {
       </div>
 
       <div class="header-actions">
-         <a class="action-link" href="profile.html" aria-label="Profile">
+         <a class="action-link" href="/profile.html" aria-label="Profile">
           <i class="fa-solid fa-user"></i> Account
         </a>
-        <a class="action-link" href="contact.html" aria-label="Help">
+        <a class="action-link" href="/contact.html" aria-label="Help">
           <i class="fa-regular fa-circle-question"></i> Help
         </a>
         <button class="action-link" id="cartBtn" aria-label="Cart">
@@ -241,20 +244,20 @@ function ssRenderHeader(active = "") {
     </div>
 
     <nav class="main-nav">
-      ${link("index.html", "Home", "fa-house")}
-      ${link("product.html", "All Products", "fa-bag-shopping")}
-      ${link("about.html", "About", "fa-circle-info")}
-      ${link("track-order.html", "Track Order", "fa-truck-fast")}
-      ${link("contact.html", "Contact", "fa-phone")}
+      ${link("/index.html", "Home", "fa-house")}
+      ${link("/product.html", "All Products", "fa-bag-shopping")}
+      ${link("/about.html", "About", "fa-circle-info")}
+      ${link("/track-order.html", "Track Order", "fa-truck-fast")}
+      ${link("/contact.html", "Contact", "fa-phone")}
     </nav>
   `;
 
-  document.getElementById("cartBtn").addEventListener("click", () => location.href = "cart.html");
+  document.getElementById("cartBtn").addEventListener("click", () => location.href = "/cart.html");
   document.getElementById("headerSearchForm").addEventListener("submit", e => {
     e.preventDefault();
     const q = document.getElementById("headerSearchInput").value.trim();
     document.getElementById("headerSuggestions").style.display = "none";
-    location.href = `product.html?search=${encodeURIComponent(q)}`;
+    location.href = `/product.html?search=${encodeURIComponent(q)}`;
   });
 
   ssBindSearchSuggestions(
@@ -284,19 +287,19 @@ function ssRenderHeader(active = "") {
 
   const authLinkHtml = auth.loggedIn
     ? `<a href="#" id="drawerLogoutBtn" class="drawer-links__logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>`
-    : link("login.html", "Login", "fa-right-to-bracket");
+    : link("/login.html", "Login", "fa-right-to-bracket");
 
   drawer.innerHTML = `
     <button class="drawer-close" id="drawerCloseBtn" aria-label="Close menu">&times;</button>
     ${userCardHtml}
     <div class="drawer-links">
-      ${link("index.html", "Home", "fa-house")}
-      ${link("product.html", "All Products", "fa-bag-shopping")}
-      ${link("shop.html", "Shops", "fa-list")}
-      ${link("wholesale.html", "Wholesale", "fa-boxes-stacked")}
-      ${link("about.html", "About", "fa-circle-info")}
+      ${link("/index.html", "Home", "fa-house")}
+      ${link("/product.html", "All Products", "fa-bag-shopping")}
+      ${link("/shop.html", "Shops", "fa-list")}
+      ${link("/wholesale.html", "Wholesale", "fa-boxes-stacked")}
+      ${link("/about.html", "About", "fa-circle-info")}
       ${authLinkHtml}
-      ${link("register.html", "Sell With Us", "fa-store")}
+      ${link("/register.html", "Sell With Us", "fa-store")}
     </div>
   `;
   document.body.appendChild(overlay);
@@ -414,12 +417,12 @@ function ssBindSearchSuggestions(inputEl, boxEl) {
 
     boxEl.querySelectorAll(".sug-item").forEach(item => {
       item.addEventListener("click", () => {
-        location.href = `product-detail.html?id=${item.dataset.id}`;
+        location.href = `/product-detail.html?id=${item.dataset.id}`;
       });
     });
 
     document.getElementById("sugSeeAll").addEventListener("click", () => {
-      location.href = `product.html?search=${encodeURIComponent(query)}`;
+      location.href = `/product.html?search=${encodeURIComponent(query)}`;
     });
 
     document.getElementById("sugClearBtn").addEventListener("click", () => {
@@ -476,21 +479,21 @@ function ssRenderFooter() {
     <div class="footer-grid">
       <div>
         <h4>Customer Service</h4>
-        <a href="contact.html">Contact Us / Visit Us</a>
-        <a href="about.html">FAQs</a>
-        <a href="track-order.html">Track My Order</a>
+        <a href="/contact.html">Contact Us / Visit Us</a>
+        <a href="/about.html">FAQs</a>
+        <a href="/track-order.html">Track My Order</a>
       </div>
       <div>
         <h4>About Us</h4>
-        <a href="about.html">Our Story</a>
-        <a href="contact.html">Our Depot</a>
-        <a href="product.html">Our Products</a>
+        <a href="/about.html">Our Story</a>
+        <a href="/contact.html">Our Depot</a>
+        <a href="/product.html">Our Products</a>
       </div>
       <div>
         <h4>Sell With Us</h4>
-        <a href="register.html">Become a Retailer</a>
-        <a href="register.html">Become a Wholesaler</a>
-        <a href="login.html">Seller Login</a>
+        <a href="/register.html">Become a Retailer</a>
+        <a href="/register.html">Become a Wholesaler</a>
+        <a href="/login.html">Seller Login</a>
       </div>
       <div>
         <h4>Get in Touch</h4>
@@ -548,7 +551,7 @@ function ssRenderCategoryGrid(targetId, limit = null) {
     el.innerHTML = list.map(c => {
       const catRef = c._id || c.id || c.slug;
       return `
-      <a class="cat-item" href="product.html?category=${encodeURIComponent(catRef)}">
+      <a class="cat-item" href="/product.html?category=${encodeURIComponent(catRef)}">
         <div class="cat-thumb"><img src="${c.image || 'https://placehold.co/300/F3F4F8/15161A?text=' + encodeURIComponent(c.name)}" alt="${c.name}"></div>
         <span>${c.name}</span>
       </a>`;
@@ -575,7 +578,7 @@ async function ssRenderMegaMenu(targetId) {
     return;
   }
 
-  const catLink = (cat) => `product.html?category=${encodeURIComponent(cat._id || cat.id)}`;
+  const catLink = (cat) => `/product.html?category=${encodeURIComponent(cat._id || cat.id)}`;
 
   el.innerHTML = `
     <div class="mega-menu__sidebar">
