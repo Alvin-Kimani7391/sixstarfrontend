@@ -71,8 +71,8 @@ function ssRenderShopPassport(shop) {
       </div>
     </div>
     <div class="shop-passport__actions">
-      <a href="product.html" class="btn btn-outline btn-sm">Continue shopping</a>
-      <a href="contact.html" class="btn btn-dark btn-sm">Contact support</a>
+      <a href="/product.html" class="btn btn-outline btn-sm">Continue shopping</a>
+      <a href="/contact.html" class="btn btn-dark btn-sm">Contact support</a>
     </div>
   `;
 }
