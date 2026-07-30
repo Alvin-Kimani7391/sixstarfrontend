@@ -111,6 +111,17 @@ const SS_API = (() => {
       return request("/auth/me", { method: "GET" });
     },
 
+
+    // ============================================================
+// SHOPS - PUBLIC
+// ============================================================
+getShops(params = {}) {
+  return request("/shops", { query: params, requiresAuth: false });
+},
+getShopBySlug(slug) {
+  return request(`/shops/${slug}`, { requiresAuth: false });
+},
+
     // ============================================================
     // USER PROFILE  (from /users/* — separate from /auth/me)
     // ============================================================

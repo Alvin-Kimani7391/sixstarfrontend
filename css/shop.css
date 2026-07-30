@@ -1,0 +1,161 @@
+/* ============================================================
+   SHOPS — directory + individual storefront
+   Loaded AFTER theme.css. Reuses all existing CSS variables,
+   fonts and component classes (.chip, .pagination, .btn, .p-grid,
+   .empty-state, .trust-row, ssShimmer keyframe, etc).
+
+   Signature: the "shop passport" — the same die-cut ticket
+   silhouette as .price-tag, extended into a logo treatment used
+   everywhere a shop is represented (directory card + storefront
+   hero), so a shop reads as a stamped, verified stall in the
+   market rather than a generic profile page.
+   ============================================================ */
+
+/* ---------- shared: verified pill + featured ribbon ---------- */
+.shop-verified{
+  display:inline-flex; align-items:center; gap:4px;
+  font-size:10.5px; font-weight:800; color:#fff;
+  background:var(--price); padding:2px 9px 2px 7px; border-radius:999px;
+  letter-spacing:.2px; white-space:nowrap;
+}
+.shop-verified i{ font-size:9px; }
+
+.shop-featured-ribbon{
+  position:absolute; top:12px; left:-1px; z-index:4;
+  background:var(--sun); color:var(--ink);
+  font-family:var(--font-mono); font-size:10px; font-weight:800;
+  padding:4px 12px 4px 10px; letter-spacing:.4px; text-transform:uppercase;
+  clip-path:polygon(0 0,100% 0,92% 50%,100% 100%,0 100%);
+  box-shadow:0 4px 10px rgba(0,0,0,.12);
+}
+
+/* ============================================================
+   SHOP DIRECTORY (shops.html)
+   ============================================================ */
+.shops-hero{
+  background:linear-gradient(160deg,var(--brand-dark),var(--brand) 60%,var(--sun));
+  color:#fff; padding:54px 0 74px; position:relative; overflow:hidden;
+}
+.shops-hero::after{
+  content:""; position:absolute; inset:0;
+  background:radial-gradient(60% 80% at 85% 20%, rgba(255,255,255,.16), transparent 60%);
+  pointer-events:none;
+}
+.shops-hero__inner{ position:relative; z-index:1; max-width:640px; }
+.shops-hero h1{ font-family:var(--font-display); font-size:clamp(1.8rem,4vw,2.6rem); color:#fff; }
+.shops-hero p{ color:rgba(255,255,255,.85); margin-top:10px; font-size:.98rem; line-height:1.6; max-width:56ch; }
+
+.shops-search{
+  position:relative; z-index:1;
+  margin-top:26px; max-width:480px; display:flex; align-items:center;
+  background:#fff; border-radius:30px; padding:4px; box-shadow:0 14px 30px rgba(0,0,0,.18);
+}
+.shops-search input{ flex:1; border:none; outline:none; padding:12px 16px; font-size:14px; font-family:var(--font-body); background:transparent; min-width:0; }
+.shops-search button{ width:46px; height:44px; border:none; border-radius:24px; background:var(--grad-brand-deep); color:#fff; cursor:pointer; flex-shrink:0; }
+
+.shops-toolbar{
+  margin-top:-30px; position:relative; z-index:2;
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-card); padding:16px 18px; display:flex; gap:14px; align-items:center;
+  flex-wrap:wrap; justify-content:space-between;
+}
+.shops-toolbar__filters{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.shops-toolbar__filters .chip{ cursor:pointer; display:inline-flex; align-items:center; }
+.shops-toolbar .count{ font-size:.85rem; color:var(--ink-soft); white-space:nowrap; }
+
+.shops-grid{
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr));
+  gap:22px; padding:30px 0 10px;
+}
+
+.shop-card{
+  position:relative; background:var(--surface); border:1px solid var(--line-soft);
+  border-radius:var(--radius-lg); overflow:hidden; box-shadow:var(--shadow-soft);
+  display:flex; flex-direction:column; transition:transform .25s var(--ease-out), box-shadow .25s var(--ease-out);
+}
+.shop-card:hover{ transform:translateY(-5px); box-shadow:var(--shadow-card-hover); }
+
+.shop-card__banner{ position:relative; aspect-ratio:16/7; background:var(--paper-dim); overflow:hidden; }
+.shop-card__banner img{ width:100%; height:100%; object-fit:cover; }
+.shop-card__banner::after{ content:""; position:absolute; inset:0; background:linear-gradient(180deg,transparent 55%,rgba(0,0,0,.35)); }
+
+.shop-card__logo{
+  position:absolute; left:16px; bottom:-28px; width:60px; height:60px; border-radius:16px;
+  background:var(--paper-dim); border:3px solid #fff; box-shadow:0 6px 16px rgba(0,0,0,.18);
+  overflow:hidden; display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-display); font-weight:700; font-size:1.3rem; color:var(--brand-dark);
+  z-index:3;
+}
+.shop-card__logo img{ width:100%; height:100%; object-fit:cover; }
+
+.shop-card__body{ padding:36px 16px 14px; display:flex; flex-direction:column; gap:6px; flex:1; }
+.shop-card__name-row{ display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+.shop-card__name{ font-family:var(--font-display); font-size:1.02rem; font-weight:600; color:var(--ink); }
+.shop-card__category{ font-family:var(--font-mono); font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--brand-dark); }
+.shop-card__desc{ font-size:12.5px; color:var(--ink-soft); line-height:1.55; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; min-height:36px; margin-top:2px; }
+.shop-card__meta{ display:flex; align-items:center; gap:14px; margin-top:6px; font-size:11.5px; color:var(--ink-faint); font-weight:600; }
+.shop-card__meta i{ color:var(--brand-dark); margin-right:4px; }
+
+.shop-card__foot{ padding:12px 16px 16px; margin-top:auto; }
+.shop-card__foot .btn{ width:100%; }
+
+/* skeleton (reuses ssShimmer keyframe already defined in style.css) */
+.shop-card.skel{ min-height:230px; }
+.shop-card.skel .shop-card__banner{ background:linear-gradient(100deg,var(--line-soft) 30%,#fff 50%,var(--line-soft) 70%); background-size:200% 100%; animation:ssShimmer 1.3s ease-in-out infinite; }
+
+/* ============================================================
+   SHOP STOREFRONT (shop-detail.html)
+   ============================================================ */
+.shop-hero{ position:relative; background:var(--ink); }
+.shop-hero__banner{ width:100%; aspect-ratio:21/6; min-height:160px; object-fit:cover; display:block; opacity:.92; }
+.shop-hero__banner-fallback{ width:100%; aspect-ratio:21/6; min-height:160px; background:linear-gradient(135deg,var(--brand-dark),var(--sun)); }
+
+.shop-passport{ max-width:1240px; margin:-58px auto 0; padding:0 16px; position:relative; z-index:3; }
+.shop-passport__card{
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-card); padding:20px 22px; display:flex; gap:18px; align-items:flex-start;
+  flex-wrap:wrap;
+}
+.shop-passport__logo{
+  width:88px; height:88px; border-radius:20px; background:var(--paper-dim); border:3px solid #fff;
+  box-shadow:0 8px 20px rgba(0,0,0,.14); overflow:hidden; flex-shrink:0; margin-top:-46px;
+  display:flex; align-items:center; justify-content:center; font-family:var(--font-display);
+  font-weight:700; font-size:2rem; color:var(--brand-dark);
+}
+.shop-passport__logo img{ width:100%; height:100%; object-fit:cover; }
+
+.shop-passport__info{ flex:1; min-width:220px; }
+.shop-passport__name-row{ display:flex; align-items:center; gap:9px; flex-wrap:wrap; }
+.shop-passport__name{ font-family:var(--font-display); font-size:1.5rem; font-weight:600; color:var(--ink); }
+.shop-passport__category{ font-family:var(--font-mono); font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--brand-dark); margin-top:2px; }
+.shop-passport__desc{ margin-top:10px; color:var(--ink-soft); line-height:1.7; max-width:64ch; font-size:.92rem; }
+
+.shop-passport__stats{ display:flex; gap:22px; flex-wrap:wrap; margin-top:14px; }
+.shop-passport__stat strong{ display:block; font-family:var(--font-mono); font-size:1.1rem; color:var(--ink); }
+.shop-passport__stat span{ font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-faint); font-weight:700; }
+
+.shop-passport__actions{ display:flex; flex-direction:column; gap:8px; margin-left:auto; }
+
+.shop-hint{
+  display:flex; align-items:flex-start; gap:8px; background:var(--paper-dim);
+  border:1px solid var(--line); border-radius:var(--radius-s); padding:10px 13px;
+  font-size:.78rem; color:var(--ink-soft); line-height:1.5; margin-top:14px; max-width:64ch;
+}
+.shop-hint i{ color:var(--brand-dark); margin-top:2px; flex-shrink:0; }
+
+.shop-section{ padding:30px 0; }
+.shop-section h2{ font-family:var(--font-display); font-size:1.2rem; color:var(--ink); margin-bottom:4px; }
+
+.shop-not-found{ text-align:center; padding:90px 20px; }
+.shop-not-found i{ font-size:2.6rem; color:var(--brand); margin-bottom:16px; }
+
+@media(max-width:640px){
+  .shops-hero{ padding:40px 0 60px; }
+  .shops-toolbar{ margin-top:-24px; padding:14px; }
+  .shop-passport{ margin-top:-40px; }
+  .shop-passport__card{ padding:16px; }
+  .shop-passport__logo{ width:68px; height:68px; margin-top:-36px; }
+  .shop-passport__actions{ margin-left:0; width:100%; flex-direction:row; }
+  .shop-passport__actions .btn{ flex:1; }
+  .shop-hero__banner, .shop-hero__banner-fallback{ aspect-ratio:16/9; }
+}

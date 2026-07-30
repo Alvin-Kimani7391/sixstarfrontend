@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Shops — Six Star Suppliers | Kenya</title>
+<meta name="description" content="Browse verified shops on Six Star Suppliers — trusted wholesalers and retailers, all orders handled securely through the marketplace.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://kit.fontawesome.com/e1426ab85b.js" crossorigin="anonymous"></script>
+
+<link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/shop.css">
+</head>
+<body data-page="shops.html">
+<div id="pageLoader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+
+<header class="site-header" id="site-header"></header>
+
+<main>
+
+  <section class="shops-hero">
+    <div class="wrap">
+      <div class="shops-hero__inner">
+        <h1>Shops on Six Star</h1>
+        <p>Every shop here is reviewed and approved by Six Star Suppliers before it goes live. Browse, compare and order with confidence — payment and delivery are always handled by us, never the seller directly.</p>
+      </div>
+      <form class="shops-search" id="shopSearchForm" role="search">
+        <input type="text" id="shopSearchInput" placeholder="Search shops by name..." autocomplete="off">
+        <button type="submit" aria-label="Search"><i class="fa-solid fa-magnifying-glass"></i></button>
+      </form>
+    </div>
+  </section>
+
+  <div class="wrap">
+    <div class="shops-toolbar" id="shopsToolbar">
+      <div class="shops-toolbar__filters">
+        <span class="chip" data-filter="verified"><i class="fa-solid fa-check" style="color:var(--price);margin-right:5px;"></i>Verified only</span>
+        <span class="chip" data-filter="featured"><i class="fa-solid fa-star" style="color:var(--sun);margin-right:5px;"></i>Featured only</span>
+        <select class="sort-select" id="shopSortSelect" aria-label="Sort shops">
+          <option value="featured">Featured first</option>
+          <option value="newest">Newest</option>
+          <option value="name">Name A–Z</option>
+        </select>
+      </div>
+      <span class="count" id="shopsCount">Loading…</span>
+    </div>
+
+    <div class="shops-grid" id="shopsGrid"></div>
+    <div class="pagination" id="shopsPagination"></div>
+  </div>
+
+</main>
+
+<footer class="site-footer" id="site-footer"></footer>
+<a href="#" class="wa-float" id="wa-float"></a>
+<div id="toast"></div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/cart.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/shops.js"></script>
+</body>
+</html>

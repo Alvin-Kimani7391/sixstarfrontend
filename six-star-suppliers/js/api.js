@@ -176,12 +176,18 @@ const SS_API = (() => {
     getMyShop() {
       return request("/shops/my-shop", { requiresAuth: true });
     },
-    // payload: { shopName, description, businessCategory, businessHours, logo, banner }
+    // payload: { shopName, description, businessCategory, businessHours, logo, banner,
+    //            homepageLayout, themeConfiguration }
     createShop(payload) {
       return request("/shops", { method: "POST", body: payload, requiresAuth: true });
     },
     updateMyShop(payload) {
       return request("/shops/my-shop", { method: "PUT", body: payload, requiresAuth: true });
+    },
+    // Pause ("go dark" on the storefront) / resume an already-approved shop.
+    // Matches PATCH /api/shops/my-shop/toggle-active on the backend.
+    toggleShopActive() {
+      return request("/shops/my-shop/toggle-active", { method: "PATCH", requiresAuth: true });
     },
 
     // ============================================================

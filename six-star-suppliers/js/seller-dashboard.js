@@ -38,8 +38,8 @@
    - A header button opens a full-page "My Shop" overlay.
    - If the seller has no shop yet, shows an explainer + "Create my
      shop" button, which opens a form (POST /api/shops).
-   - If a shop exists, shows its current status (pending approval /
-     approved / rejected / suspended) with an "Edit shop" button that
+   - If a shop exists, shows a tabbed storefront preview (Overview /
+     Products / Analytics / Settings) with an "Edit shop" button that
      opens the same form pre-filled (PUT /api/shops/my-shop).
    - Creating a shop and having it approved doesn't require any change
      to product creation — the backend silently attaches new products
@@ -70,6 +70,7 @@
      GET    /api/shops/my-shop
      POST   /api/shops
      PUT    /api/shops/my-shop
+     PATCH  /api/shops/my-shop/toggle-active
    ============================================================ */
 
 (async () => {
@@ -323,19 +324,6 @@
     myShopErrorState: document.getElementById("myShopErrorState"),
     myShopErrorMsg: document.getElementById("myShopErrorMsg"),
     createShopBtn: document.getElementById("createShopBtn"),
-    editShopBtn: document.getElementById("editShopBtn"),
-
-    shopBannerPreview: document.getElementById("shopBannerPreview"),
-    shopLogoPreview: document.getElementById("shopLogoPreview"),
-    shopNameDisplay: document.getElementById("shopNameDisplay"),
-    shopStatusBadge: document.getElementById("shopStatusBadge"),
-    shopPendingNote: document.getElementById("shopPendingNote"),
-    shopSuspendedNote: document.getElementById("shopSuspendedNote"),
-    shopRejectionBox: document.getElementById("shopRejectionBox"),
-    shopRejectionText: document.getElementById("shopRejectionText"),
-    shopDescDisplay: document.getElementById("shopDescDisplay"),
-    shopCategoryDisplay: document.getElementById("shopCategoryDisplay"),
-    shopHoursDisplay: document.getElementById("shopHoursDisplay"),
 
     // create/edit shop modal
     shopFormModal: document.getElementById("shopFormModal"),
@@ -1495,38 +1483,315 @@
     if (els.myShopEmpty) els.myShopEmpty.style.display = "none";
     if (els.myShopContent) els.myShopContent.style.display = "block";
 
-    if (els.shopBannerPreview) {
-      els.shopBannerPreview.style.backgroundImage = myShop.banner ? `url('${myShop.banner}')` : "none";
-    }
-    if (els.shopLogoPreview) {
-      els.shopLogoPreview.innerHTML = myShop.logo
-        ? `<img src="${myShop.logo}" alt="${escapeHtml(myShop.shopName)}" />`
-        : `<i class="fa-solid fa-shop"></i>`;
-    }
-    if (els.shopNameDisplay) els.shopNameDisplay.textContent = myShop.shopName;
+    const overviewTab = document.getElementById("shopOverviewTab");
+    if (overviewTab) overviewTab.innerHTML = renderShopStorefront(myShop);
 
-    if (els.shopStatusBadge) {
-      els.shopStatusBadge.className = `shop-status-badge ${myShop.status}`;
-      els.shopStatusBadge.textContent = SHOP_STATUS_LABEL[myShop.status] || myShop.status;
-    }
+    const shareBtn = document.getElementById("shareShopBtn");
+    if (shareBtn) shareBtn.onclick = shareShop;
 
-    if (els.shopPendingNote) els.shopPendingNote.style.display = myShop.status === "pending_approval" ? "flex" : "none";
-    if (els.shopSuspendedNote) els.shopSuspendedNote.style.display = myShop.status === "suspended" ? "flex" : "none";
+    const qrBtn = document.getElementById("qrShopBtn");
+    if (qrBtn) qrBtn.onclick = generateShopQRCode;
 
-    if (els.shopRejectionBox) {
-      const showRejection = myShop.status === "rejected" && myShop.rejectionReason;
-      els.shopRejectionBox.style.display = showRejection ? "flex" : "none";
-      if (showRejection && els.shopRejectionText) els.shopRejectionText.textContent = myShop.rejectionReason;
-    }
-
-    if (els.shopDescDisplay) {
-      els.shopDescDisplay.textContent = myShop.description || "No description added yet.";
-    }
-    if (els.shopCategoryDisplay) els.shopCategoryDisplay.textContent = myShop.businessCategory || "—";
-    if (els.shopHoursDisplay) els.shopHoursDisplay.textContent = myShop.businessHours || "—";
+    // Refresh whichever secondary tab is currently open so it doesn't go stale
+    const activeTabBtn = document.querySelector(".shop-tab.active");
+    const activeTab = activeTabBtn?.dataset.tab;
+    if (activeTab === "products") loadShopProducts();
+    else if (activeTab === "analytics") loadShopAnalytics();
+    else if (activeTab === "settings") renderShopSettings();
   }
 
+  // ---------- Shop tab switching ----------
+  window.switchShopTab = function (tab) {
+    document.querySelectorAll(".shop-tab").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.tab === tab);
+    });
+    document.querySelectorAll(".shop-tab-content").forEach((panel) => {
+      panel.classList.toggle("active", panel.id === `shop${tab.charAt(0).toUpperCase() + tab.slice(1)}Tab`);
+    });
+
+    if (tab === "products") loadShopProducts();
+    else if (tab === "analytics") loadShopAnalytics();
+    else if (tab === "settings") renderShopSettings();
+  };
+
+  // ---------- Render Shop Storefront (Overview tab) ----------
+  function renderShopStorefront(shop) {
+    if (!shop) return "";
+
+    const shopProducts = allProducts.filter((p) => p.shop?._id === shop._id);
+    const isActive = shop.isActive !== false;
+
+    const rejection =
+      shop.status === "rejected" && shop.rejectionReason
+        ? `<div class="shop-rejection-box"><i class="fa-solid fa-circle-info"></i> ${escapeHtml(shop.rejectionReason)}</div>`
+        : "";
+    const pendingNote =
+      shop.status === "pending_approval"
+        ? `<div class="shop-pending-note"><i class="fa-solid fa-hourglass-half"></i> Your shop is waiting on admin approval. You can still edit it while you wait.</div>`
+        : "";
+    const suspendedNote =
+      shop.status === "suspended"
+        ? `<div class="shop-paused-note"><i class="fa-solid fa-ban"></i> This shop has been suspended by an admin.</div>`
+        : "";
+    const pausedNote =
+      shop.status === "approved" && !isActive
+        ? `<div class="shop-paused-note"><i class="fa-solid fa-circle-pause"></i> Your shop is paused and hidden from buyers. Reactivate it any time.</div>`
+        : "";
+
+    return `
+      <div class="shop-storefront-preview">
+        <div class="shop-banner-preview" style="background-image:url('${shop.banner || ""}')">
+          <div class="shop-header-content">
+            <div class="shop-logo-container">
+              ${shop.logo ? `<img src="${shop.logo}" alt="${escapeHtml(shop.shopName)}">` : `<div class="shop-logo-placeholder"><i class="fa-solid fa-store"></i></div>`}
+            </div>
+            <div class="shop-header-info">
+              <div class="shop-name-display">${escapeHtml(shop.shopName)}</div>
+              <div class="shop-badges">
+                <span class="shop-status-badge ${shop.status}">${SHOP_STATUS_LABEL[shop.status] || shop.status}</span>
+                ${shop.verificationStatus === "verified" ? `<span class="shop-mini-badge verified"><i class="fa-solid fa-circle-check"></i> Verified</span>` : ""}
+                ${shop.isFeatured ? `<span class="shop-mini-badge featured"><i class="fa-solid fa-star"></i> Featured</span>` : ""}
+                ${!isActive ? `<span class="shop-mini-badge paused"><i class="fa-solid fa-circle-pause"></i> Paused</span>` : shop.status === "approved" ? `<span class="shop-mini-badge live"><i class="fa-solid fa-circle"></i> Live</span>` : ""}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        ${rejection}${pendingNote}${suspendedNote}${pausedNote}
+
+        <div class="shop-details-grid">
+          <div class="shop-detail-item">
+            <i class="fa-solid fa-tag"></i>
+            <div><div class="detail-label">Category</div><div class="detail-value">${escapeHtml(shop.businessCategory || "Not set")}</div></div>
+          </div>
+          <div class="shop-detail-item">
+            <i class="fa-solid fa-clock"></i>
+            <div><div class="detail-label">Business hours</div><div class="detail-value">${escapeHtml(shop.businessHours || "Not set")}</div></div>
+          </div>
+          <div class="shop-detail-item">
+            <i class="fa-solid fa-file-lines"></i>
+            <div><div class="detail-label">Description</div><div class="detail-value">${escapeHtml(shop.description || "No description yet")}</div></div>
+          </div>
+          <div class="shop-detail-item">
+            <i class="fa-solid fa-cube"></i>
+            <div><div class="detail-label">Products</div><div class="detail-value">${shopProducts.length} product${shopProducts.length === 1 ? "" : "s"}</div></div>
+          </div>
+        </div>
+
+        <div class="shop-actions">
+          <button class="btn btn-primary btn-sm" onclick="openShopForm()"><i class="fa-solid fa-pen"></i> Edit shop</button>
+          ${
+            shop.status === "approved"
+              ? `<button class="btn ${isActive ? "btn-outline" : "btn-primary"} btn-sm" onclick="toggleShopActive()">
+                   <i class="fa-solid ${isActive ? "fa-pause" : "fa-play"}"></i> ${isActive ? "Pause shop" : "Activate shop"}
+                 </button>`
+              : ""
+          }
+          ${shop.slug ? `<button class="btn btn-outline btn-sm" onclick="viewShopStorefront('${shop.slug}')"><i class="fa-solid fa-eye"></i> View storefront</button>` : ""}
+        </div>
+      </div>`;
+  }
+
+  window.toggleShopActive = async function () {
+    if (!myShop) return;
+    const isActive = myShop.isActive !== false;
+    const confirmMsg = isActive
+      ? "Pausing your shop hides it from buyers. Your products stay saved and reappear the moment you reactivate. Continue?"
+      : "Activating your shop makes it visible to buyers again. Continue?";
+    if (!confirm(confirmMsg)) return;
+
+    try {
+      const result = await SS_API.toggleShopActive();
+      myShop.isActive = result.shop.isActive;
+      renderMyShop();
+      ssToast(`Shop ${result.shop.isActive ? "activated" : "paused"}`, "fa-circle-check");
+    } catch (err) {
+      ssToast(err.message || "Couldn't update shop status", "fa-triangle-exclamation");
+    }
+  };
+
+  window.viewShopStorefront = function (slug) {
+    window.open(`/shop/${slug}`, "_blank");
+  };
+
+  // ---------- Products tab ----------
+  async function loadShopProducts() {
+    const container = document.getElementById("shopProductsContainer");
+    if (!container || !myShop) return;
+
+    const shopProducts = allProducts.filter((p) => p.shop?._id === myShop._id);
+
+    if (!shopProducts.length) {
+      container.innerHTML = `
+        <div class="empty-state" style="padding:40px 20px;">
+          <i class="fa-solid fa-box-open"></i>
+          <h3>No products in this shop yet</h3>
+          <p>Products you add while your shop is approved show up here automatically.</p>
+          <button class="btn btn-primary" onclick="document.getElementById('openAddProduct').click()">
+            <i class="fa-solid fa-plus"></i> Add product
+          </button>
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = shopProducts
+      .map(
+        (p) => `
+      <div class="shop-product-card">
+        <img src="${p.images?.[0] || "https://placehold.co/80x80/E4D6BD/5B564C?text=%20"}" alt="${escapeHtml(p.name)}">
+        <div class="shop-product-info">
+          <div class="shop-product-name">${escapeHtml(p.name)}</div>
+          <div class="shop-product-price">KES ${(p.sellerPrice || 0).toLocaleString()}</div>
+          <div class="shop-product-stock">${p.stock || 0} in stock</div>
+        </div>
+        <div class="shop-product-actions">
+          <button class="btn btn-sm btn-outline" onclick="editProduct('${p._id}')"><i class="fa-solid fa-pen"></i></button>
+          <span class="status-badge ${p.status}">${STATUS_LABEL[p.status] || p.status}</span>
+        </div>
+      </div>`
+      )
+      .join("");
+  }
+
+  // ---------- Analytics tab ----------
+  async function loadShopAnalytics() {
+    const container = document.getElementById("shopAnalyticsContainer");
+    if (!container || !myShop) return;
+
+    const shopProducts = allProducts.filter((p) => p.shop?._id === myShop._id);
+    const totalViews = shopProducts.reduce((s, p) => s + (p.viewCount || 0), 0);
+    const totalStock = shopProducts.reduce((s, p) => s + (p.stock || 0), 0);
+    const totalProducts = shopProducts.length;
+    const avgPrice = totalProducts ? shopProducts.reduce((s, p) => s + (p.sellerPrice || 0), 0) / totalProducts : 0;
+
+    container.innerHTML = `
+      <div class="shop-analytics-grid">
+        <div class="stat-card"><div class="stat-icon"><i class="fa-solid fa-eye"></i></div>
+          <div class="stat-info"><div class="stat-label">Total views</div><div class="stat-value">${totalViews.toLocaleString()}</div></div></div>
+        <div class="stat-card"><div class="stat-icon"><i class="fa-solid fa-cube"></i></div>
+          <div class="stat-info"><div class="stat-label">Products</div><div class="stat-value">${totalProducts}</div></div></div>
+        <div class="stat-card"><div class="stat-icon"><i class="fa-solid fa-boxes"></i></div>
+          <div class="stat-info"><div class="stat-label">Total stock</div><div class="stat-value">${totalStock.toLocaleString()}</div></div></div>
+        <div class="stat-card"><div class="stat-icon"><i class="fa-solid fa-tag"></i></div>
+          <div class="stat-info"><div class="stat-label">Avg. price</div><div class="stat-value">KES ${avgPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div></div></div>
+      </div>`;
+  }
+
+  // ---------- Settings tab ----------
+  function renderShopSettings() {
+    const settingsTab = document.getElementById("shopSettingsTab");
+    if (!settingsTab || !myShop) return;
+
+    const layouts = { default: "Default", "banner-focus": "Banner focus", "grid-focus": "Grid focus" };
+    const layoutIcon = { default: "fa-grip", "banner-focus": "fa-image", "grid-focus": "fa-table-cells-large" };
+
+    settingsTab.innerHTML = `
+      <div class="shop-settings-section">
+        <h3 style="margin-bottom:14px;">Storefront layout</h3>
+        <div style="display:flex; gap:12px; margin-bottom:24px; flex-wrap:wrap;">
+          ${Object.keys(layouts)
+            .map(
+              (key) => `
+            <div class="layout-select-card ${myShop.homepageLayout === key ? "active" : ""}"
+                 style="flex:1; min-width:140px; text-align:center;" onclick="updateShopLayout('${key}')">
+              <div><i class="fa-solid ${layoutIcon[key]}" style="font-size:20px; margin-bottom:6px; display:block;"></i>
+              <span class="layout-select-card__title">${layouts[key]}</span></div>
+            </div>`
+            )
+            .join("")}
+        </div>
+
+        <h3 style="margin-bottom:14px;">Theme colours</h3>
+        <div class="theme-color-row" style="margin-bottom:20px;">
+          <div class="theme-color-field">
+            <label>Primary</label>
+            <input type="color" id="themePrimaryColor" value="${myShop.themeConfiguration?.primaryColor || "#f2a93b"}" onchange="updateTheme('primaryColor', this.value)" />
+          </div>
+          <div class="theme-color-field">
+            <label>Accent</label>
+            <input type="color" id="themeAccentColor" value="${myShop.themeConfiguration?.accentColor || "#d98c1f"}" onchange="updateTheme('accentColor', this.value)" />
+          </div>
+        </div>
+
+        <button class="btn btn-primary btn-sm" onclick="saveShopSettings()"><i class="fa-solid fa-floppy-disk"></i> Save settings</button>
+      </div>`;
+  }
+
+  window.updateShopLayout = async function (layout) {
+    try {
+      await SS_API.updateMyShop({ homepageLayout: layout });
+      myShop.homepageLayout = layout;
+      renderShopSettings();
+      ssToast("Layout updated", "fa-circle-check");
+    } catch (err) {
+      ssToast(err.message || "Couldn't update layout", "fa-triangle-exclamation");
+    }
+  };
+
+  let pendingThemeUpdates = {};
+  window.updateTheme = function (key, value) {
+    pendingThemeUpdates[key] = value;
+  };
+
+  window.saveShopSettings = async function () {
+    try {
+      const themeConfiguration = { ...myShop.themeConfiguration, ...pendingThemeUpdates };
+      await SS_API.updateMyShop({ themeConfiguration });
+      myShop.themeConfiguration = themeConfiguration;
+      pendingThemeUpdates = {};
+      ssToast("Settings saved", "fa-circle-check");
+    } catch (err) {
+      ssToast(err.message || "Couldn't save settings", "fa-triangle-exclamation");
+    }
+  };
+
+  // ---------- Share / QR ----------
+  window.shareShop = function () {
+    if (!myShop?.slug) return;
+    const url = `${window.location.origin}/shop/${myShop.slug}`;
+    if (navigator.share) {
+      navigator.share({ title: myShop.shopName, text: `Check out ${myShop.shopName} on Six Star Suppliers!`, url }).catch(() => {});
+    } else {
+      navigator.clipboard
+        .writeText(url)
+        .then(() => ssToast("Shop link copied to clipboard!", "fa-copy"))
+        .catch(() => ssToast("Couldn't copy link", "fa-triangle-exclamation"));
+    }
+  };
+  function shareShop() { window.shareShop(); }
+
+  window.generateShopQRCode = function () {
+    if (!myShop?.slug) return;
+    const url = `${window.location.origin}/shop/${myShop.slug}`;
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`;
+    document.getElementById("qrCodeImage").src = qrUrl;
+    document.getElementById("qrShopName").textContent = myShop.shopName;
+    document.getElementById("qrModal").style.display = "flex";
+  };
+  function generateShopQRCode() { window.generateShopQRCode(); }
+
+  window.closeQRModal = function () {
+    document.getElementById("qrModal").style.display = "none";
+  };
+
+  // ---------- Edit product (used from the Products tab) ----------
+  window.editProduct = function (productId) {
+    const product = allProducts.find((p) => (p._id || p.id) === productId);
+    if (product) openProductModal(product);
+  };
+
+  // =========================================================
   // ---------- create / edit shop modal ----------
+  // =========================================================
+  function syncLayoutCardActive() {
+    document.querySelectorAll("#homepageLayoutGroup .layout-select-card").forEach((card) => {
+      card.classList.toggle("active", card.querySelector("input")?.checked);
+    });
+  }
+  document.querySelectorAll('#homepageLayoutGroup input[name="homepageLayout"]').forEach((radio) => {
+    radio.addEventListener("change", syncLayoutCardActive);
+  });
+
   function openShopForm() {
     if (els.shopFormError) els.shopFormError.classList.remove("show");
     if (els.shopForm) els.shopForm.reset();
@@ -1548,17 +1813,26 @@
       if (els.shopLogoInput) els.shopLogoInput.value = myShop.logo || "";
       if (els.shopBannerInput) els.shopBannerInput.value = myShop.banner || "";
       if (els.shopHoursInput) els.shopHoursInput.value = myShop.businessHours || "";
+
+      const layout = myShop.homepageLayout || "default";
+      document.querySelectorAll('input[name="homepageLayout"]').forEach((r) => (r.checked = r.value === layout));
+
+      const primary = document.getElementById("shopPrimaryColorInput");
+      const accent = document.getElementById("shopAccentColorInput");
+      if (primary) primary.value = myShop.themeConfiguration?.primaryColor || "#f2a93b";
+      if (accent) accent.value = myShop.themeConfiguration?.accentColor || "#d98c1f";
     }
 
+    syncLayoutCardActive();
     if (els.shopFormModal) els.shopFormModal.classList.add("active");
   }
+  window.openShopForm = openShopForm;
 
   function closeShopForm() {
     if (els.shopFormModal) els.shopFormModal.classList.remove("active");
   }
 
   if (els.createShopBtn) els.createShopBtn.addEventListener("click", openShopForm);
-  if (els.editShopBtn) els.editShopBtn.addEventListener("click", openShopForm);
   if (els.closeShopFormModal) els.closeShopFormModal.addEventListener("click", closeShopForm);
   if (els.cancelShopForm) els.cancelShopForm.addEventListener("click", closeShopForm);
   if (els.shopFormModal) {
@@ -1585,6 +1859,10 @@
         return;
       }
 
+      const homepageLayout = document.querySelector('input[name="homepageLayout"]:checked')?.value || "default";
+      const primaryColor = document.getElementById("shopPrimaryColorInput")?.value || "#f2a93b";
+      const accentColor = document.getElementById("shopAccentColorInput")?.value || "#d98c1f";
+
       const payload = {
         shopName,
         businessCategory: els.shopCategoryInput?.value.trim() || "",
@@ -1592,6 +1870,8 @@
         logo: els.shopLogoInput?.value.trim() || "",
         banner: els.shopBannerInput?.value.trim() || "",
         businessHours: els.shopHoursInput?.value.trim() || "",
+        homepageLayout,
+        themeConfiguration: { primaryColor, accentColor },
       };
 
       const isEdit = !!myShop;

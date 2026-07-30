@@ -11,7 +11,7 @@
 <link rel="stylesheet" href="css/dashboard.css">
 <link rel="stylesheet" href="css/wizard.css">
 <style>
-  /* ---- Delivery-type toggle (wholesale wizard step) ---- */
+  /* ---- Delivery-type toggle (wholes ale wizard step) ---- */
   .delivery-type-group {
     display: flex; flex-direction: column; gap: 10px; margin-bottom: 4px;
   }
@@ -100,19 +100,224 @@
   .shop-status-badge.rejected { background: rgba(224,80,80,.16); color: #b13a3a; }
   .shop-status-badge.suspended { background: rgba(120,120,120,.16); color: #5c5c5c; }
 
+  /* ---- Verified / Featured / Paused badges ---- */
+  .shop-badge-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .shop-mini-badge {
+    display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 700;
+    padding: 3px 9px; border-radius: 999px; text-transform: uppercase; letter-spacing: .03em;
+  }
+  .shop-mini-badge.verified { background: rgba(59,130,246,.14); color: #1d4ed8; }
+  .shop-mini-badge.featured { background: rgba(242,169,59,.18); color: #a86a12; }
+  .shop-mini-badge.paused { background: rgba(120,120,120,.16); color: #5c5c5c; }
+  .shop-mini-badge.live { background: rgba(56,161,105,.16); color: #1f7a44; }
+
   .shop-rejection-box {
     display: flex; gap: 8px; align-items: flex-start; background: rgba(224,80,80,.08);
     border: 1px solid rgba(224,80,80,.25); color: #a33; padding: 10px 12px; border-radius: 10px;
     font-size: 12.5px; margin-bottom: 14px; line-height: 1.5;
   }
   .shop-card__desc { color: var(--ink-soft, #7a7268); font-size: 13.5px; line-height: 1.55; margin-bottom: 14px; }
-  .shop-card__meta { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12.5px; color: var(--ink-soft, #7a7268); margin-bottom: 16px; }
+  .shop-card__meta { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12.5px; color: var(--ink-soft, #7a7268); margin-bottom: 16px; align-items: center; }
   .shop-card__meta i { color: var(--marigold-deep, #d98c1f); margin-right: 4px; }
   .shop-pending-note {
     display: flex; gap: 8px; align-items: flex-start; background: rgba(242,169,59,.08);
     border: 1px solid rgba(242,169,59,.25); color: #a86a12; padding: 10px 12px; border-radius: 10px;
     font-size: 12.5px; margin-bottom: 14px; line-height: 1.5;
   }
+  .shop-paused-note {
+    display: flex; gap: 8px; align-items: flex-start; background: rgba(120,120,120,.08);
+    border: 1px solid rgba(120,120,120,.25); color: #5c5c5c; padding: 10px 12px; border-radius: 10px;
+    font-size: 12.5px; margin-bottom: 14px; line-height: 1.5;
+  }
+  .shop-card__actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  /* ---- Theme swatch preview (in My Shop meta row) ---- */
+  .shop-theme-swatch-item { display: flex; align-items: center; gap: 6px; }
+  .theme-swatch-dot {
+    display: inline-block; width: 15px; height: 15px; border-radius: 50%;
+    border: 1.5px solid var(--white, #fff); box-shadow: 0 0 0 1px var(--line, #e4d6bd);
+  }
+  .theme-swatch-dot + .theme-swatch-dot { margin-left: -6px; }
+
+  /* ---- Homepage layout picker (shop form) ---- */
+  .layout-select-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 4px; }
+  .layout-select-card {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 12px 14px; border: 1.5px solid var(--line, #e4d6bd);
+    border-radius: 12px; cursor: pointer; transition: .2s ease;
+  }
+  .layout-select-card:hover { border-color: var(--marigold, #f2a93b); }
+  .layout-select-card input { margin-top: 3px; }
+  .layout-select-card__title { font-weight: 700; font-size: 13.5px; }
+  .layout-select-card__desc { font-size: 12px; color: var(--ink-soft, #7a7268); margin-top: 2px; }
+  .layout-select-card.active { border-color: var(--marigold, #f2a93b); background: rgba(242,169,59,.06); }
+
+  /* ---- Theme configuration (shop form) ---- */
+  .theme-color-row { display: flex; gap: 16px; }
+  .theme-color-field { display: flex; flex-direction: column; gap: 6px; }
+  .theme-color-field label { font-size: 12.5px; font-weight: 600; color: var(--ink-soft, #7a7268); }
+  .theme-color-field input[type="color"] {
+    width: 56px; height: 36px; border: 1px solid var(--line, #e4d6bd); border-radius: 8px;
+    padding: 2px; cursor: pointer; background: var(--white, #fff);
+  }
+
+  /* ---- Badge colors used inside the storefront preview banner ---- */
+  .shop-badges .shop-mini-badge.verified{ background: rgba(59,130,246,.32); color:#eaf1ff; }
+  .shop-badges .shop-mini-badge.featured{ background: rgba(242,169,59,.4); color:#3a2705; }
+  .shop-badges .shop-mini-badge.live{ background: rgba(56,161,105,.34); color:#eafff2; }
+  .shop-badges .shop-mini-badge.paused{ background: rgba(255,255,255,.22); color:#fff; }
+  .shop-badges .shop-status-badge{ background: rgba(255,255,255,.22); color:#fff; }
+
+  /* ---- Settings tab card ---- */
+  .shop-settings-section{
+    background: var(--white, #fff); border: 1px solid var(--line, #e4d6bd);
+    border-radius: 14px; padding: 20px;
+  }
+
+
+  /* ============================================================
+   SHOP ENHANCEMENTS - Drop-in styles
+   ============================================================ */
+
+/* ---- Shop Tabs ---- */
+.shop-tabs {
+  display: flex; gap: 4px; border-bottom: 2px solid var(--line, #e4d6bd); margin-bottom: 20px; overflow-x: auto;
+}
+.shop-tab {
+  padding: 12px 20px; background: none; border: none; font-size: 14px; font-weight: 500;
+  color: var(--ink-soft, #7a7268); cursor: pointer; position: relative; transition: all 0.2s; white-space: nowrap;
+}
+.shop-tab:hover { color: var(--ink, #1b1f23); }
+.shop-tab.active { color: var(--marigold, #f2a93b); }
+.shop-tab.active::after {
+  content: ''; position: absolute; bottom: -2px; left: 0; right: 0;
+  height: 2px; background: var(--marigold, #f2a93b);
+}
+.shop-tab-content { display: none; }
+.shop-tab-content.active { display: block; }
+
+/* ---- Shop Storefront Preview ---- */
+.shop-storefront-preview {
+  background: var(--white, #fff); border-radius: 12px; overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.shop-banner-preview {
+  background-size: cover; background-position: center; min-height: 180px;
+  position: relative; background-color: var(--paper-dim, #f1e4ce);
+}
+.shop-banner-preview::after {
+  content: ''; position: absolute; bottom: 0; left: 0; right: 0;
+  height: 50%; background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
+}
+.shop-header-content {
+  position: relative; z-index: 1; padding: 24px; display: flex; align-items: flex-end;
+  gap: 16px; min-height: 180px; color: white;
+}
+.shop-logo-container {
+  width: 80px; height: 80px; border-radius: 50%; border: 3px solid white;
+  overflow: hidden; background: white; flex-shrink: 0;
+}
+.shop-logo-container img { width: 100%; height: 100%; object-fit: cover; }
+.shop-logo-placeholder {
+  width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+  font-size: 32px; color: var(--ink-soft, #7a7268);
+}
+.shop-header-info { flex: 1; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+.shop-name-display { font-size: 24px; font-weight: 700; margin: 0 0 6px 0; }
+.shop-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+.shop-badges span {
+  padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+  background: rgba(255,255,255,0.2); backdrop-filter: blur(4px);
+}
+.shop-details-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px; padding: 18px; background: var(--paper-dim, #f1e4ce);
+}
+.shop-detail-item {
+  display: flex; gap: 10px; align-items: flex-start;
+}
+.shop-detail-item i { color: var(--marigold, #f2a93b); font-size: 16px; margin-top: 2px; }
+.detail-label { font-size: 11px; color: var(--ink-soft, #7a7268); text-transform: uppercase; letter-spacing: 0.5px; }
+.detail-value { font-size: 13px; color: var(--ink, #1b1f23); margin-top: 2px; }
+.shop-actions {
+  display: flex; gap: 10px; padding: 16px 18px; border-top: 1px solid var(--line, #e4d6bd);
+  flex-wrap: wrap;
+}
+
+/* ---- Shop Products List ---- */
+.shop-product-card {
+  display: flex; align-items: center; gap: 14px; padding: 12px;
+  border: 1px solid var(--line, #e4d6bd); border-radius: 10px; margin-bottom: 8px;
+  transition: background 0.2s;
+}
+.shop-product-card:hover { background: var(--paper-dim, #f1e4ce); }
+.shop-product-card img {
+  width: 56px; height: 56px; object-fit: cover; border-radius: 8px;
+}
+.shop-product-info { flex: 1; }
+.shop-product-name { font-weight: 600; font-size: 13px; }
+.shop-product-price { color: var(--marigold-deep, #d98c1f); font-weight: 700; font-size: 14px; }
+.shop-product-stock { font-size: 11px; color: var(--ink-soft, #7a7268); }
+.shop-product-actions { display: flex; align-items: center; gap: 8px; }
+
+/* ---- Shop Analytics ---- */
+.shop-analytics-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px;
+}
+.stat-card {
+  padding: 16px; background: var(--white, #fff); border-radius: 10px;
+  border: 1px solid var(--line, #e4d6bd); display: flex; align-items: center; gap: 14px;
+}
+.stat-card .stat-icon {
+  width: 40px; height: 40px; border-radius: 50%; background: rgba(242,169,59,.12);
+  display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--marigold, #f2a93b);
+}
+.stat-card .stat-info { flex: 1; }
+.stat-card .stat-label { font-size: 11px; color: var(--ink-soft, #7a7268); text-transform: uppercase; }
+.stat-card .stat-value { font-size: 18px; font-weight: 700; color: var(--ink, #1b1f23); }
+
+/* ---- File Upload ---- */
+.file-upload-wrapper {
+  position: relative; border: 2px dashed var(--line, #e4d6bd); border-radius: 10px;
+  padding: 20px; text-align: center; transition: all 0.2s; background: var(--paper, #fbf3e7);
+}
+.file-upload-wrapper:hover { border-color: var(--marigold, #f2a93b); background: rgba(242,169,59,.05); }
+.file-upload-wrapper input[type="file"] {
+  position: absolute; opacity: 0; width: 100%; height: 100%; cursor: pointer; top: 0; left: 0;
+}
+.file-upload-wrapper i { font-size: 24px; color: var(--ink-soft, #7a7268); display: block; margin-bottom: 4px; }
+.file-upload-wrapper span { display: block; font-weight: 500; font-size: 14px; }
+.file-upload-wrapper small { color: var(--ink-soft, #7a7268); font-size: 11px; }
+.image-preview { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; }
+.image-preview img { width: 80px; height: 80px; border-radius: 8px; border: 1px solid var(--line, #e4d6bd); object-fit: cover; }
+
+/* ---- QR Modal ---- */
+.qr-modal {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
+  z-index: 2000;
+}
+.qr-modal-content {
+  background: white; padding: 30px; border-radius: 16px; text-align: center; max-width: 380px;
+}
+.qr-modal-content img { margin: 16px 0; border-radius: 10px; max-width: 200px; }
+.qr-modal-content h3 { margin-bottom: 8px; }
+.qr-modal-content p { color: var(--ink-soft, #7a7268); font-size: 13px; }
+
+/* ---- Responsive ---- */
+@media (max-width: 768px) {
+  .shop-header-content { flex-direction: column; align-items: center; text-align: center; padding: 16px; }
+  .shop-details-grid { grid-template-columns: 1fr; }
+  .shop-actions { flex-direction: column; }
+  .shop-actions .btn { width: 100%; }
+  .shop-analytics-grid { grid-template-columns: 1fr; }
+  .shop-tabs { overflow-x: auto; flex-wrap: nowrap; }
+  .shop-tab { padding: 10px 14px; font-size: 13px; }
+  .shop-card__top { flex-direction: column; text-align: center; }
+  .shop-card__titles { padding-top: 0; }
+  .shop-badge-row { justify-content: center; }
+  .shop-card__actions { justify-content: center; }
+}
 </style>
 </head>
 <body>
@@ -566,7 +771,7 @@
   </div>
 </div>
 
-<!-- ============ MY SHOP "PAGE" ============ -->
+<!-- ============ MY SHOP "PAGE" (ENHANCED) ============ -->
 <div class="orders-page-overlay" id="myShopOverlay">
   <div class="orders-page">
     <div class="orders-page__head">
@@ -576,6 +781,14 @@
       <div class="orders-page__title">
         <h2>My Shop</h2>
         <p>Your branded storefront — completely optional</p>
+      </div>
+      <div class="orders-page__actions" style="display:flex; gap:8px; margin-left:auto;">
+        <button class="iconbtn" id="shareShopBtn" title="Share Shop">
+          <i class="fa-solid fa-share-nodes"></i>
+        </button>
+        <button class="iconbtn" id="qrShopBtn" title="QR Code">
+          <i class="fa-solid fa-qrcode"></i>
+        </button>
       </div>
     </div>
 
@@ -598,43 +811,42 @@
         <button class="btn btn-primary" id="createShopBtn"><i class="fa-solid fa-plus"></i> Create my shop</button>
       </div>
 
-      <!-- Existing shop -->
+      <!-- Existing shop with tabs -->
       <div id="myShopContent" style="display:none;">
-        <div class="shop-card">
-          <div class="shop-card__banner" id="shopBannerPreview"></div>
-          <div class="shop-card__body">
-            <div class="shop-card__top">
-              <div class="shop-card__logo" id="shopLogoPreview"><i class="fa-solid fa-shop"></i></div>
-              <div class="shop-card__titles">
-                <h3 id="shopNameDisplay">Shop name</h3>
-                <span class="shop-status-badge" id="shopStatusBadge">Pending approval</span>
-              </div>
-            </div>
+        <!-- Shop Tabs -->
+        <div class="shop-tabs" id="shopTabs">
+          <button class="shop-tab active" data-tab="overview" onclick="switchShopTab('overview')">
+            <i class="fa-solid fa-house"></i> Overview
+          </button>
+          <button class="shop-tab" data-tab="products" onclick="switchShopTab('products')">
+            <i class="fa-solid fa-box"></i> Products
+          </button>
+          <button class="shop-tab" data-tab="analytics" onclick="switchShopTab('analytics')">
+            <i class="fa-solid fa-chart-line"></i> Analytics
+          </button>
+          <button class="shop-tab" data-tab="settings" onclick="switchShopTab('settings')">
+            <i class="fa-solid fa-gear"></i> Settings
+          </button>
+        </div>
 
-            <div id="shopPendingNote" class="shop-pending-note" style="display:none;">
-              <i class="fa-solid fa-hourglass-half"></i>
-              <span>Your shop is awaiting admin approval. It isn't visible to customers yet — you'll be notified once it's reviewed.</span>
-            </div>
+        <!-- Tab: Overview -->
+        <div id="shopOverviewTab" class="shop-tab-content active">
+          <!-- Rendered by JavaScript -->
+        </div>
 
-            <div id="shopSuspendedNote" class="shop-rejection-box" style="display:none;">
-              <i class="fa-solid fa-ban"></i>
-              <span>Your shop has been suspended by the admin team and is not currently visible to customers.</span>
-            </div>
+        <!-- Tab: Products -->
+        <div id="shopProductsTab" class="shop-tab-content">
+          <div id="shopProductsContainer"></div>
+        </div>
 
-            <div id="shopRejectionBox" class="shop-rejection-box" style="display:none;">
-              <i class="fa-solid fa-circle-info"></i>
-              <span id="shopRejectionText"></span>
-            </div>
+        <!-- Tab: Analytics -->
+        <div id="shopAnalyticsTab" class="shop-tab-content">
+          <div id="shopAnalyticsContainer"></div>
+        </div>
 
-            <p class="shop-card__desc" id="shopDescDisplay"></p>
-
-            <div class="shop-card__meta">
-              <div><i class="fa-solid fa-tag"></i> <span id="shopCategoryDisplay">—</span></div>
-              <div><i class="fa-solid fa-clock"></i> <span id="shopHoursDisplay">—</span></div>
-            </div>
-
-            <button class="btn btn-outline btn-sm" id="editShopBtn"><i class="fa-solid fa-pen"></i> Edit shop</button>
-          </div>
+        <!-- Tab: Settings -->
+        <div id="shopSettingsTab" class="shop-tab-content">
+          <!-- Rendered by JavaScript -->
         </div>
       </div>
 
@@ -692,6 +904,51 @@
         <input type="text" id="shopHoursInput" placeholder="e.g. Mon–Sat, 8am–6pm" />
       </div>
 
+      <!-- ---- Homepage layout (maps to Shop.homepageLayout) ---- -->
+      <div class="form-field">
+        <label>Storefront layout</label>
+        <p class="form-hint">Controls how your shop's homepage is arranged for buyers.</p>
+        <div class="layout-select-group" id="homepageLayoutGroup">
+          <label class="layout-select-card" data-layout-card="default">
+            <input type="radio" name="homepageLayout" value="default" checked />
+            <div>
+              <div class="layout-select-card__title">Default</div>
+              <div class="layout-select-card__desc">A balanced mix of your banner, featured products, and full catalogue.</div>
+            </div>
+          </label>
+          <label class="layout-select-card" data-layout-card="banner-focus">
+            <input type="radio" name="homepageLayout" value="banner-focus" />
+            <div>
+              <div class="layout-select-card__title">Banner focus</div>
+              <div class="layout-select-card__desc">Leads with a large banner — good if you have strong brand visuals.</div>
+            </div>
+          </label>
+          <label class="layout-select-card" data-layout-card="grid-focus">
+            <input type="radio" name="homepageLayout" value="grid-focus" />
+            <div>
+              <div class="layout-select-card__title">Grid focus</div>
+              <div class="layout-select-card__desc">Jumps straight into a dense product grid — good for large catalogues.</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- ---- Theme configuration (maps to Shop.themeConfiguration) ---- -->
+      <div class="form-field">
+        <label>Shop colours <span class="label-soft">(optional)</span></label>
+        <p class="form-hint">Used as accents on your storefront page.</p>
+        <div class="theme-color-row">
+          <div class="theme-color-field">
+            <label for="shopPrimaryColorInput">Primary</label>
+            <input type="color" id="shopPrimaryColorInput" value="#f2a93b" />
+          </div>
+          <div class="theme-color-field">
+            <label for="shopAccentColorInput">Accent</label>
+            <input type="color" id="shopAccentColorInput" value="#d98c1f" />
+          </div>
+        </div>
+      </div>
+
       <div class="wizard-footer">
         <div class="wizard-footer__spacer"></div>
         <button type="button" class="btn btn-outline" id="cancelShopForm">Cancel</button>
@@ -700,6 +957,18 @@
     </form>
   </div>
 </div>
+
+<!-- ============ QR CODE MODAL ============ -->
+<div id="qrModal" class="qr-modal" style="display:none;">
+  <div class="qr-modal-content">
+    <h3>Shop QR Code</h3>
+    <p>Scan to visit your shop</p>
+    <img id="qrCodeImage" src="" alt="QR Code" />
+    <p id="qrShopName" style="font-weight:600;"></p>
+    <button class="btn btn-secondary" onclick="closeQRModal()">Close</button>
+  </div>
+</div>
+
 
 <div id="toast"><i class="fa-solid fa-circle-check"></i><span></span></div>
 
