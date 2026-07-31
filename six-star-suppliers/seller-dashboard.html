@@ -888,14 +888,28 @@
         <textarea id="shopDescInput" placeholder="Tell buyers what your shop is about…"></textarea>
       </div>
 
+      <!-- ---- Logo / banner: now real image uploads straight to Cloudinary,
+           same pattern as product photos, instead of pasted URLs. ---- -->
       <div class="form-row-2">
         <div class="form-field">
-          <label for="shopLogoInput">Logo URL <span class="label-soft">(optional)</span></label>
-          <input type="text" id="shopLogoInput" placeholder="https://…" />
+          <label>Shop logo <span class="label-soft">(optional)</span></label>
+          <div class="file-upload-wrapper" id="shopLogoDropzone">
+            <i class="fa-solid fa-image"></i>
+            <span>Click to upload</span>
+            <small>JPG or PNG — a square image works best</small>
+            <input type="file" id="shopLogoInput" accept="image/png,image/jpeg" />
+          </div>
+          <div class="image-preview" id="shopLogoPreview"></div>
         </div>
         <div class="form-field">
-          <label for="shopBannerInput">Banner URL <span class="label-soft">(optional)</span></label>
-          <input type="text" id="shopBannerInput" placeholder="https://…" />
+          <label>Shop banner <span class="label-soft">(optional)</span></label>
+          <div class="file-upload-wrapper" id="shopBannerDropzone">
+            <i class="fa-solid fa-image"></i>
+            <span>Click to upload</span>
+            <small>JPG or PNG — a wide image works best</small>
+            <input type="file" id="shopBannerInput" accept="image/png,image/jpeg" />
+          </div>
+          <div class="image-preview" id="shopBannerPreview"></div>
         </div>
       </div>
 

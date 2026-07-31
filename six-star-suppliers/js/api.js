@@ -176,13 +176,26 @@ const SS_API = (() => {
     getMyShop() {
       return request("/shops/my-shop", { requiresAuth: true });
     },
-    // payload: { shopName, description, businessCategory, businessHours, logo, banner,
-    //            homepageLayout, themeConfiguration }
+    // Accepts EITHER a FormData (when the seller is uploading a logo/banner
+    // file — the dashboard's create/edit shop form now always sends this) OR
+    // a plain object (used internally by things like the Settings tab's
+    // layout/theme-only updates, which don't touch images). isForm is picked
+    // automatically so both call shapes keep working.
     createShop(payload) {
-      return request("/shops", { method: "POST", body: payload, requiresAuth: true });
+      return request("/shops", {
+        method: "POST",
+        body: payload,
+        isForm: payload instanceof FormData,
+        requiresAuth: true,
+      });
     },
     updateMyShop(payload) {
-      return request("/shops/my-shop", { method: "PUT", body: payload, requiresAuth: true });
+      return request("/shops/my-shop", {
+        method: "PUT",
+        body: payload,
+        isForm: payload instanceof FormData,
+        requiresAuth: true,
+      });
     },
     // Pause ("go dark" on the storefront) / resume an already-approved shop.
     // Matches PATCH /api/shops/my-shop/toggle-active on the backend.

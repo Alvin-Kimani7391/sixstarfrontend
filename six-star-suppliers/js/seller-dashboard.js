@@ -44,6 +44,10 @@
    - Creating a shop and having it approved doesn't require any change
      to product creation — the backend silently attaches new products
      to an approved shop on its own.
+   - Shop logo / banner are real image uploads (Cloudinary, same
+     pattern as product photos) — see the "shop image upload" block
+     below. Picking a file previews it immediately; the form is only
+     sent as multipart FormData so the files actually reach the server.
 
    Orders:
    - Bell button opens a full professional "Orders" page (stat tiles,
@@ -162,6 +166,11 @@
 
   // ---------- shop state ----------
   let myShop = null; // null = no shop yet, otherwise the shop object from the API
+
+  // Selected image files for the shop create/edit form. null means "no new
+  // file chosen" — on edit that means "keep whatever the shop already has".
+  let shopLogoFile = null;
+  let shopBannerFile = null;
 
   // ---------- category / attribute / variant state ----------
   let categoryTree = [];
@@ -337,6 +346,10 @@
     shopDescInput: document.getElementById("shopDescInput"),
     shopLogoInput: document.getElementById("shopLogoInput"),
     shopBannerInput: document.getElementById("shopBannerInput"),
+    shopLogoDropzone: document.getElementById("shopLogoDropzone"),
+    shopBannerDropzone: document.getElementById("shopBannerDropzone"),
+    shopLogoPreview: document.getElementById("shopLogoPreview"),
+    shopBannerPreview: document.getElementById("shopBannerPreview"),
     shopHoursInput: document.getElementById("shopHoursInput"),
     cancelShopForm: document.getElementById("cancelShopForm"),
     saveShopBtn: document.getElementById("saveShopBtn"),
@@ -1781,6 +1794,69 @@
   };
 
   // =========================================================
+  // ---------- shop image upload (logo / banner) ----------
+  // Real file uploads, same pattern as product photos: pick a file,
+  // preview it locally with an object URL, and only send it to the
+  // server as part of the multipart FormData on submit.
+  // =========================================================
+  function setShopImagePreview(containerEl, imageUrl) {
+    if (!containerEl) return;
+    if (!imageUrl) {
+      containerEl.innerHTML = "";
+      return;
+    }
+    containerEl.innerHTML = `
+      <div class="image-preview-item">
+        <img src="${imageUrl}" alt="Preview" />
+        <button type="button" class="image-preview-remove" title="Remove image">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>`;
+  }
+
+  function handleShopImagePicked(file, kind) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      ssToast("Please choose a JPG or PNG image", "fa-triangle-exclamation");
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    if (kind === "logo") {
+      shopLogoFile = file;
+      setShopImagePreview(els.shopLogoPreview, url);
+    } else {
+      shopBannerFile = file;
+      setShopImagePreview(els.shopBannerPreview, url);
+    }
+  }
+
+  if (els.shopLogoInput) {
+    els.shopLogoInput.addEventListener("change", (e) => handleShopImagePicked(e.target.files?.[0], "logo"));
+  }
+  if (els.shopBannerInput) {
+    els.shopBannerInput.addEventListener("change", (e) => handleShopImagePicked(e.target.files?.[0], "banner"));
+  }
+
+  // Clicking the × on a preview clears the selection (falls back to whatever
+  // the shop already has saved server-side, if any, when editing).
+  if (els.shopLogoPreview) {
+    els.shopLogoPreview.addEventListener("click", (e) => {
+      if (!e.target.closest(".image-preview-remove")) return;
+      shopLogoFile = null;
+      if (els.shopLogoInput) els.shopLogoInput.value = "";
+      setShopImagePreview(els.shopLogoPreview, "");
+    });
+  }
+  if (els.shopBannerPreview) {
+    els.shopBannerPreview.addEventListener("click", (e) => {
+      if (!e.target.closest(".image-preview-remove")) return;
+      shopBannerFile = null;
+      if (els.shopBannerInput) els.shopBannerInput.value = "";
+      setShopImagePreview(els.shopBannerPreview, "");
+    });
+  }
+
+  // =========================================================
   // ---------- create / edit shop modal ----------
   // =========================================================
   function syncLayoutCardActive() {
@@ -1796,6 +1872,12 @@
     if (els.shopFormError) els.shopFormError.classList.remove("show");
     if (els.shopForm) els.shopForm.reset();
 
+    // Reset image-upload state every time the form opens.
+    shopLogoFile = null;
+    shopBannerFile = null;
+    setShopImagePreview(els.shopLogoPreview, "");
+    setShopImagePreview(els.shopBannerPreview, "");
+
     const isEdit = !!myShop;
 
     if (els.shopFormTitle) els.shopFormTitle.textContent = isEdit ? "Edit your shop" : "Create your shop";
@@ -1810,9 +1892,13 @@
       if (els.shopNameInput) els.shopNameInput.value = myShop.shopName || "";
       if (els.shopCategoryInput) els.shopCategoryInput.value = myShop.businessCategory || "";
       if (els.shopDescInput) els.shopDescInput.value = myShop.description || "";
-      if (els.shopLogoInput) els.shopLogoInput.value = myShop.logo || "";
-      if (els.shopBannerInput) els.shopBannerInput.value = myShop.banner || "";
       if (els.shopHoursInput) els.shopHoursInput.value = myShop.businessHours || "";
+
+      // Show the shop's existing logo/banner as the preview. Picking a new
+      // file replaces this preview and is what actually gets uploaded — if
+      // the seller doesn't pick a new file, the existing image is left as-is.
+      if (myShop.logo) setShopImagePreview(els.shopLogoPreview, myShop.logo);
+      if (myShop.banner) setShopImagePreview(els.shopBannerPreview, myShop.banner);
 
       const layout = myShop.homepageLayout || "default";
       document.querySelectorAll('input[name="homepageLayout"]').forEach((r) => (r.checked = r.value === layout));
@@ -1863,16 +1949,21 @@
       const primaryColor = document.getElementById("shopPrimaryColorInput")?.value || "#f2a93b";
       const accentColor = document.getElementById("shopAccentColorInput")?.value || "#d98c1f";
 
-      const payload = {
-        shopName,
-        businessCategory: els.shopCategoryInput?.value.trim() || "",
-        description: els.shopDescInput?.value.trim() || "",
-        logo: els.shopLogoInput?.value.trim() || "",
-        banner: els.shopBannerInput?.value.trim() || "",
-        businessHours: els.shopHoursInput?.value.trim() || "",
-        homepageLayout,
-        themeConfiguration: { primaryColor, accentColor },
-      };
+      // Always send as multipart FormData so the logo/banner files (if any
+      // were picked) actually reach the server. Text-only fields still work
+      // fine as FormData entries — SS_API detects FormData automatically.
+      const fd = new FormData();
+      fd.append("shopName", shopName);
+      fd.append("businessCategory", els.shopCategoryInput?.value.trim() || "");
+      fd.append("description", els.shopDescInput?.value.trim() || "");
+      fd.append("businessHours", els.shopHoursInput?.value.trim() || "");
+      fd.append("homepageLayout", homepageLayout);
+      fd.append("themeConfiguration", JSON.stringify({ primaryColor, accentColor }));
+
+      // Only attach a file if the seller actually picked a new one — on edit,
+      // leaving these out means "keep the shop's current logo/banner".
+      if (shopLogoFile) fd.append("logo", shopLogoFile);
+      if (shopBannerFile) fd.append("banner", shopBannerFile);
 
       const isEdit = !!myShop;
 
@@ -1883,10 +1974,10 @@
 
       try {
         if (isEdit) {
-          await SS_API.updateMyShop(payload);
+          await SS_API.updateMyShop(fd);
           ssToast("Shop updated — sent to admin for re-approval", "fa-circle-check");
         } else {
-          await SS_API.createShop(payload);
+          await SS_API.createShop(fd);
           ssToast("Shop submitted for admin approval", "fa-circle-check");
         }
         closeShopForm();
