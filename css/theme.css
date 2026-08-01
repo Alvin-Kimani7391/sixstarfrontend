@@ -1166,8 +1166,11 @@ img{ max-width:100%; display:block; }
 /* ============================================================
    LOAD MORE — used on product.html (loads next 8 in place) and
    on index.html's catalog rail (redirects to product.html).
-   Same component, same look, two different click behaviors
-   wired up in home.js / products.js.
+   Rewritten to only use tokens that exist in theme.css
+   (--brand, --brand-dark, --font-body, --ink-faint) — the
+   previous version referenced --grad-brand-deep / --ease-out,
+   which only exist in style.css, so the button rendered with
+   no background at all.
    ============================================================ */
 
 .load-more-wrap{
@@ -1189,7 +1192,7 @@ img{ max-width:100%; display:block; }
   padding:14px 30px;
   border:none;
   border-radius:999px;
-  background:var(--grad-brand-deep);
+  background:linear-gradient(90deg,var(--brand),var(--brand-dark));
   color:#fff;
   font-family:var(--font-body);
   font-weight:700;
@@ -1197,7 +1200,7 @@ img{ max-width:100%; display:block; }
   letter-spacing:.2px;
   cursor:pointer;
   box-shadow:0 10px 24px -10px rgba(255,90,31,.5);
-  transition:transform .22s var(--ease-out), box-shadow .22s var(--ease-out), filter .2s ease;
+  transition:transform .22s ease, box-shadow .22s ease, filter .2s ease;
 }
 
 .btn-loadmore__label{
@@ -1211,7 +1214,7 @@ img{ max-width:100%; display:block; }
   font-family:"Font Awesome 6 Free";
   font-weight:900;
   font-size:11px;
-  transition:transform .25s var(--ease-out), opacity .2s ease;
+  transition:transform .25s ease, opacity .2s ease;
 }
 
 .btn-loadmore:hover:not(:disabled){
