@@ -96,18 +96,17 @@
   </section>
 
   <!-- ===== WHOLESALE SECTION (like Hot Deals) ===== -->
-<!-- ===== WHOLESALE SECTION (like Hot Deals) ===== -->
-<section class="block">
-  <div class="wrap">
-    <div class="rail">
-      <div class="sec-head sec-head--wholesale">
-        <h2><i class="fa-solid fa-wholesale"></i> Wholesale Deals</h2>
-        <a href="wholesale.html" class="see-all">See All <i class="fa-solid fa-arrow-right"></i></a>
+  <section class="block">
+    <div class="wrap">
+      <div class="rail">
+        <div class="sec-head sec-head--wholesale">
+          <h2><i class="fa-solid fa-wholesale"></i> Wholesale Deals</h2>
+          <a href="wholesale.html" class="see-all">See All <i class="fa-solid fa-arrow-right"></i></a>
+        </div>
+        <div class="p-scroll" id="wholesalePreview"></div>
       </div>
-      <div class="p-scroll" id="wholesalePreview"></div>
     </div>
-  </div>
-</section>
+  </section>
 
   <!-- ===== Top Selling — high-stock movers, shuffled on every load ===== -->
   <section class="block">
@@ -123,7 +122,6 @@
   </section>
 
   <!-- ===== Catalog — gray bar ===== -->
- <!-- ===== Catalog — gray bar ===== -->
   <section class="block block--catalog">
     <div class="wrap">
       <div class="rail">
@@ -132,6 +130,16 @@
           <a href="product.html" class="see-all">Browse all</a>
         </div>
         <div class="p-grid" id="catalogPreview"></div>
+
+        <!-- Load More here always sends the shopper into the full
+             product.html listing — this rail is a preview, not the
+             real infinite-loading grid. -->
+        <div class="load-more-wrap" id="catalogLoadMoreWrap" style="display:none;">
+          <button class="btn-loadmore" id="catalogLoadMoreBtn" type="button">
+            <span class="btn-loadmore__label">Browse All Products</span>
+            <span class="btn-loadmore__spinner"></span>
+          </button>
+        </div>
       </div>
     </div>
   </section>

@@ -1,6 +1,9 @@
 (function () {
   const grid = document.getElementById("productGrid");
-  const pagination = document.getElementById("pagination");
+  const loadMoreWrap = document.getElementById("loadMoreWrap");
+  const loadMoreBtn = document.getElementById("loadMoreBtn");
+  const loadMoreLabel = document.getElementById("loadMoreLabel");
+  const loadMoreCount = document.getElementById("loadMoreCount");
   const resultCount = document.getElementById("resultCount");
   const catSelect = document.getElementById("f-category");
   const minInput = document.getElementById("f-min");
@@ -8,21 +11,29 @@
   const hotChip = document.getElementById("f-hotdeals");
   const sortSelect = document.getElementById("f-sort");
 
+  const PAGE_SIZE = 8; // products per batch
+
   function readParams() {
     const p = new URLSearchParams(location.search);
     return {
-      category: p.get("category") || "", // now expected to be a category _id, not a slug
+      category: p.get("category") || "", // category _id, not a slug
       search: p.get("search") || "",
       minPrice: p.get("minPrice") || "",
       maxPrice: p.get("maxPrice") || "",
       hotDeals: p.get("hotDeals") === "true",
-      sort: p.get("sort") || "",
-      page: parseInt(p.get("page") || "1", 10)
+      sort: p.get("sort") || ""
     };
   }
 
   let state = readParams();
   let allCategories = []; // cached so we can look up the display name for the active category
+
+  // Pagination/load-more bookkeeping — separate from `state` (which only
+  // holds filters) so switching filters can freely reset it.
+  let page = 1;
+  let totalCount = 0;
+  let loadedCount = 0;
+  let isLoadingMore = false;
 
   function syncFormToState() {
     catSelect.value = state.category || "";
@@ -36,7 +47,7 @@
   function pushURL() {
     const p = new URLSearchParams();
     Object.entries(state).forEach(([k, v]) => {
-      if (v !== "" && v !== false && !(k === "page" && v === 1)) p.set(k, v);
+      if (v !== "" && v !== false) p.set(k, v);
     });
     history.pushState({}, "", "product.html" + (p.toString() ? "?" + p.toString() : ""));
   }
@@ -80,46 +91,53 @@
     `;
   }
 
-  function renderPagination(totalPages) {
-    pagination.innerHTML = "";
-    if (!totalPages || totalPages <= 1) return;
-    const make = (label, page, cls = "") => {
-      const btn = document.createElement("button");
-      btn.textContent = label;
-      if (cls) btn.classList.add(cls);
-      if (page === state.page) btn.classList.add("active");
-      btn.addEventListener("click", () => { state.page = page; pushURL(); load(); window.scrollTo({ top: 0, behavior: "smooth" }); });
-      return btn;
-    };
-    if (state.page > 1) pagination.appendChild(make("←", state.page - 1, "nav"));
-    const start = Math.max(1, state.page - 2);
-    const end = Math.min(totalPages, start + 4);
-    for (let i = start; i <= end; i++) pagination.appendChild(make(i, i));
-    if (state.page < totalPages) pagination.appendChild(make("→", state.page + 1, "nav"));
+  /* ---------- Load More button state ---------- */
+
+  function setLoadMoreBusy(busy) {
+    isLoadingMore = busy;
+    loadMoreBtn.classList.toggle("is-loading", busy);
+    loadMoreBtn.disabled = busy;
+    loadMoreLabel.textContent = busy ? "Loading" : "Load More";
   }
 
+  function refreshLoadMoreUI() {
+    if (!totalCount || loadedCount >= totalCount) {
+      loadMoreWrap.style.display = "none";
+      return;
+    }
+    loadMoreWrap.style.display = "flex";
+    loadMoreCount.textContent = `Showing ${loadedCount} of ${totalCount} products`;
+  }
 
+  function fetchPage(pageNum) {
+    return SS_API.getProducts({
+      category: state.category || undefined,
+      search: state.search || undefined,
+      minPrice: state.minPrice || undefined,
+      maxPrice: state.maxPrice || undefined,
+      hotDeals: state.hotDeals || undefined,
+      sort: state.sort || undefined,
+      page: pageNum,
+      limit: PAGE_SIZE
+    });
+  }
+
+  // Full (re)load — used on first load, filter changes, and back/forward nav.
   async function load() {
     syncFormToState();
     renderCategoryBanner();
-    grid.innerHTML = ssSkeletonCards(8);
+
+    page = 1;
+    loadedCount = 0;
+    totalCount = 0;
+    loadMoreWrap.style.display = "none";
+    grid.innerHTML = ssSkeletonCards(PAGE_SIZE);
     resultCount.textContent = "Loading products…";
 
     try {
-      const res = await SS_API.getProducts({
-        category: state.category || undefined,
-        search: state.search || undefined,
-        minPrice: state.minPrice || undefined,
-        maxPrice: state.maxPrice || undefined,
-        hotDeals: state.hotDeals || undefined,
-        sort: state.sort || undefined,
-        page: state.page,
-        limit: window.SS_CONFIG.PRODUCTS_PER_PAGE
-      });
-
+      const res = await fetchPage(page);
       const products = res.products || res.data || (Array.isArray(res) ? res : []);
-      const total = res.total ?? res.count ?? products.length;
-      const totalPages = res.totalPages ?? Math.ceil(total / (res.limit || window.SS_CONFIG.PRODUCTS_PER_PAGE || 24));
+      totalCount = res.total ?? res.count ?? products.length;
 
       if (!products.length) {
         grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">
@@ -128,14 +146,14 @@
           <p>Try clearing a filter or searching a different term.</p>
         </div>`;
         resultCount.textContent = "0 results";
-        pagination.innerHTML = "";
         return;
       }
 
       products.forEach(p => { window.__ssProductCache[p.id] = p; });
       grid.innerHTML = products.map(ssProductCard).join("");
-      resultCount.textContent = `${total} product${total === 1 ? "" : "s"} found`;
-      renderPagination(totalPages);
+      loadedCount = products.length;
+      resultCount.textContent = `${totalCount} product${totalCount === 1 ? "" : "s"} found`;
+      refreshLoadMoreUI();
     } catch (err) {
       grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">
         <i class="fa-solid fa-triangle-exclamation"></i>
@@ -143,35 +161,62 @@
         <p>${err.message}</p>
       </div>`;
       resultCount.textContent = "";
+      loadMoreWrap.style.display = "none";
     }
   }
+
+  // Appends the next batch onto the existing grid instead of replacing it.
+  async function loadMore() {
+    if (isLoadingMore || loadedCount >= totalCount) return;
+    setLoadMoreBusy(true);
+
+    const nextPage = page + 1;
+    try {
+      const res = await fetchPage(nextPage);
+      const products = res.products || res.data || (Array.isArray(res) ? res : []);
+
+      if (products.length) {
+        products.forEach(p => { window.__ssProductCache[p.id] = p; });
+        grid.insertAdjacentHTML("beforeend", products.map(ssProductCard).join(""));
+        page = nextPage;
+        loadedCount += products.length;
+      } else {
+        // Backend says there's more (totalCount) but returned nothing — stop asking.
+        totalCount = loadedCount;
+      }
+      refreshLoadMoreUI();
+    } catch (err) {
+      ssToast("Couldn't load more products", "fa-circle-exclamation");
+    } finally {
+      setLoadMoreBusy(false);
+    }
+  }
+
+  loadMoreBtn.addEventListener("click", loadMore);
 
   document.getElementById("f-apply").addEventListener("click", () => {
     state.category = catSelect.value;
     state.minPrice = minInput.value;
     state.maxPrice = maxInput.value;
     state.sort = sortSelect.value;
-    state.page = 1;
     pushURL();
     load();
   });
 
   document.getElementById("f-clear").addEventListener("click", () => {
-    state = { category: "", search: "", minPrice: "", maxPrice: "", hotDeals: false, sort: "", page: 1 };
+    state = { category: "", search: "", minPrice: "", maxPrice: "", hotDeals: false, sort: "" };
     pushURL();
     load();
   });
 
   hotChip.addEventListener("click", () => {
     state.hotDeals = !state.hotDeals;
-    state.page = 1;
     pushURL();
     load();
   });
 
   sortSelect.addEventListener("change", () => {
     state.sort = sortSelect.value;
-    state.page = 1;
     pushURL();
     load();
   });

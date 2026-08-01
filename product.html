@@ -61,7 +61,16 @@
       <div class="p-grid" id="productGrid">
       </div>
 
-      <div class="pagination" id="pagination"></div>
+      <!-- Loads the next 8 products in place, with a spinner inside the
+           button while the request is in flight. Hides itself once every
+           product has been loaded. -->
+      <div class="load-more-wrap" id="loadMoreWrap" style="display:none;">
+        <button class="btn-loadmore" id="loadMoreBtn" type="button">
+          <span class="btn-loadmore__label" id="loadMoreLabel">Load More</span>
+          <span class="btn-loadmore__spinner"></span>
+        </button>
+        <p class="load-more-count" id="loadMoreCount"></p>
+      </div>
     </section>
   </div>
 </main>
@@ -83,7 +92,7 @@
     // Note: This ONLY runs on product-detail.html, not product.html (listing page)
     const urlParams = new URLSearchParams(window.location.search);
     const productId = urlParams.get('id');
-    
+
     // Only track if we're on a product detail page (has ID in URL)
     // and user is logged in
     if (productId && typeof SS_AUTH !== 'undefined' && typeof SS_API !== 'undefined') {

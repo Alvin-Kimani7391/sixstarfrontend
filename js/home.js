@@ -9,13 +9,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   const fresh = document.getElementById("newArrivals");
   const topSelling = document.getElementById("topSelling");
   const catalog = document.getElementById("catalogPreview");
-  const wholesalePreview = document.getElementById("wholesalePreview"); // NEW
+  const wholesalePreview = document.getElementById("wholesalePreview");
+
+  const CATALOG_PAGE_SIZE = 8;
 
   hot.innerHTML = ssSkeletonCards(4);
   fresh.innerHTML = ssSkeletonCards(4);
   topSelling.innerHTML = ssSkeletonCards(4);
-  catalog.innerHTML = ssSkeletonCards(8);
-  if (wholesalePreview) wholesalePreview.innerHTML = ssSkeletonCards(4); // NEW
+  catalog.innerHTML = ssSkeletonCards(CATALOG_PAGE_SIZE);
+  if (wholesalePreview) wholesalePreview.innerHTML = ssSkeletonCards(4);
 
   function cacheAndRender(el, products, empty) {
     if (!products.length) { el.innerHTML = `<p class="form-hint">${empty}</p>`; return; }
@@ -42,26 +44,26 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ---- Wholesale Products Preview (like Hot Deals) ----
   if (wholesalePreview) {
     try {
-      const wholesaleRes = await SS_API.getProducts({ 
-        sellerRole: 'wholesaler', 
+      const wholesaleRes = await SS_API.getProducts({
+        sellerRole: 'wholesaler',
         status: 'active',
-        limit: 10 
+        limit: 10
       });
       let wholesaleProducts = wholesaleRes.products || wholesaleRes.data || wholesaleRes || [];
-      
+
       // If no products with sellerRole filter, try without and filter client-side
       if (!wholesaleProducts.length) {
         const allRes = await SS_API.getProducts({ status: 'active', limit: 50 });
         const allProducts = allRes.products || allRes.data || (Array.isArray(allRes) ? allRes : []);
-        wholesaleProducts = allProducts.filter(p => 
-          p.sellerRole === 'wholesaler' || 
+        wholesaleProducts = allProducts.filter(p =>
+          p.sellerRole === 'wholesaler' ||
           p.sellerRole === 'wholesale' ||
           p.seller?.role === 'wholesaler'
         );
       }
-      
+
       wholesaleProducts.forEach(p => { window.__ssProductCache[p.id] = p; });
-      wholesalePreview.innerHTML = wholesaleProducts.length 
+      wholesalePreview.innerHTML = wholesaleProducts.length
         ? wholesaleProducts.slice(0, 10).map(ssProductCard).join("")
         : `<p class="form-hint">No wholesale products available right now.</p>`;
     } catch (_) {
@@ -80,8 +82,30 @@ document.addEventListener("DOMContentLoaded", async () => {
     cacheAndRender(topSelling, list, "No top-selling products right now.");
   } catch (_) { topSelling.innerHTML = `<p class="form-hint">Couldn't load top-selling products.</p>`; }
 
+  // ---- Catalog preview: first 8 products, then a Load More button that
+  // sends the shopper into the full product.html listing (this rail never
+  // paginates in place — index.html is a preview, product.html is the
+  // real infinite-loading grid).
+  const catalogLoadMoreWrap = document.getElementById("catalogLoadMoreWrap");
+  const catalogLoadMoreBtn = document.getElementById("catalogLoadMoreBtn");
+
   try {
-    const allRes = await SS_API.getProducts({ page: 1 });
-    cacheAndRender(catalog, (allRes.products || allRes.data || allRes || []).slice(0, 12), "No products available yet.");
-  } catch (_) { catalog.innerHTML = `<p class="form-hint">Couldn't load products. Check the API_BASE in js/config.js.</p>`; }
+    const allRes = await SS_API.getProducts({ page: 1, limit: CATALOG_PAGE_SIZE });
+    const products = (allRes.products || allRes.data || allRes || []).slice(0, CATALOG_PAGE_SIZE);
+    cacheAndRender(catalog, products, "No products available yet.");
+    if (catalogLoadMoreWrap) {
+      catalogLoadMoreWrap.style.display = products.length ? "flex" : "none";
+    }
+  } catch (_) {
+    catalog.innerHTML = `<p class="form-hint">Couldn't load products. Check the API_BASE in js/config.js.</p>`;
+    if (catalogLoadMoreWrap) catalogLoadMoreWrap.style.display = "none";
+  }
+
+  if (catalogLoadMoreBtn) {
+    catalogLoadMoreBtn.addEventListener("click", () => {
+      catalogLoadMoreBtn.classList.add("is-loading");
+      catalogLoadMoreBtn.disabled = true;
+      location.href = "product.html";
+    });
+  }
 });
