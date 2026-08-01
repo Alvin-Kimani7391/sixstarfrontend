@@ -507,7 +507,7 @@ function ssRenderFooter() {
   ` : `
     <h4>Sell With Us</h4>
     <a href="/register.html">Become a Seller</a>
-    <a href="/about.html#own-a-shop">Own a Shop at Six Star Suppliers</a>
+    <a href="/about.html#own-a-shop">Own a Shop</a>
     <a href="/login.html">Seller Login</a>
   `;
 
