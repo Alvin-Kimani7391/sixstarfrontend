@@ -312,7 +312,7 @@ function ssRenderHeader(active = "") {
     <div class="drawer-links">
       ${link("/index.html", "Home", "fa-house")}
       ${link("/product.html", "All Products", "fa-bag-shopping")}
-      ${link("/shop.html", "Shops", "fa-list")}
+      ${link("/shop.html", "Shops", "fa-solid fa-shop")}
       ${link("/wholesale.html", "Wholesale", "fa-boxes-stacked")}
       ${link("/about.html", "About", "fa-circle-info")}
       ${authLinkHtml}
