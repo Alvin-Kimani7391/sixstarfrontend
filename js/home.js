@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", async () => {
-  ssRenderSubcategoryGrid("categoryGrid", 8);
+  ssRenderSubcategoryGrid("categoryGrid", 9);
   ssRenderMegaMenu("megaMenu");
   ssRenderAdSlot("heroAd", "homepage_hero", { interval: 5000, aspect: "21/9" });
   ssRenderAdSlot("bannerAd", "homepage_banner", { interval: 6000, aspect: "5/1" });
