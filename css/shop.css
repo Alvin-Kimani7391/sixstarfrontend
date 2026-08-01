@@ -262,3 +262,31 @@
   .shops-toolbar__filters .chip{ flex:1; justify-content:center; padding:9px 10px; }
   .sort-select{ flex:1; min-width:140px; }
 }
+
+
+
+/* ============================================================
+   SHOP REVIEWS
+   ============================================================ */
+.shop-reviews__header{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:16px; }
+.shop-rating-summary{ display:flex; align-items:center; }
+
+.shop-review-form{
+  background:var(--paper-dim); border:1px solid var(--line); border-radius:var(--radius-s);
+  padding:16px; margin-bottom:22px; display:flex; flex-direction:column; gap:10px; max-width:520px;
+}
+.shop-review-form__stars i{ font-size:20px; color:var(--line); cursor:pointer; margin-right:4px; transition:color .15s; }
+.shop-review-form textarea{
+  border:1px solid var(--line); border-radius:var(--radius-s); padding:10px 12px; font-family:var(--font-body);
+  font-size:13px; min-height:70px; resize:vertical; background:var(--paper);
+}
+
+.shop-review-cta{ font-size:13px; color:var(--ink-soft); margin-bottom:18px; }
+.shop-review-cta a{ color:var(--brand-dark); font-weight:600; }
+
+.shop-review-item{ border-bottom:1px solid var(--line-soft); padding:14px 0; }
+.shop-review-item:last-child{ border-bottom:none; }
+.shop-review-item__head{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.shop-review-item__name{ font-weight:600; font-size:13.5px; color:var(--ink); }
+.shop-review-item__comment{ font-size:13px; color:var(--ink-soft); line-height:1.6; margin-top:6px; }
+.shop-review-item__date{ font-size:11px; color:var(--ink-faint); display:block; margin-top:6px; }

@@ -31,6 +31,7 @@ async function ssInitShopDetail() {
     ssRenderShopPassport(shop);
     document.title = `${shop.shopName} — Six Star Suppliers`;
     ssLoadShopProducts();
+    ssLoadShopReviews();
   } catch (err) {
     console.error("ssInitShopDetail failed:", err);
     ssShowShopNotFound();
@@ -62,6 +63,10 @@ function ssRenderShopPassport(shop) {
       ${shop.description ? `<p class="shop-passport__desc">${shop.description}</p>` : ""}
       <div class="shop-passport__stats">
         <div class="shop-passport__stat"><strong id="shopProductCountStat">—</strong><span>Products</span></div>
+        <div class="shop-passport__stat">
+          <strong>${(shop.ratingsAverage || 0).toFixed(1)} <i class="fa-solid fa-star" style="font-size:.7em;color:var(--sun)"></i></strong>
+          <span>${shop.ratingsCount || 0} review${shop.ratingsCount === 1 ? "" : "s"}</span>
+        </div>
         <div class="shop-passport__stat"><strong>${memberSince}</strong><span>On Six Star since</span></div>
         ${shop.businessHours ? `<div class="shop-passport__stat"><strong style="font-size:.82rem;">${shop.businessHours}</strong><span>Hours</span></div>` : ""}
       </div>
@@ -144,6 +149,111 @@ function ssRenderShopProductsPagination(el, page, pages) {
       ssLoadShopProducts();
       window.scrollTo({ top: document.getElementById("shopProductsToolbar").offsetTop - 100, behavior: "smooth" });
     });
+  });
+}
+
+/* ============================================================
+   SHOP REVIEWS
+   ============================================================ */
+
+function ssStarsHtml(rating, size = 14) {
+  const full = Math.round(rating);
+  let html = `<span class="star-row" style="font-size:${size}px;">`;
+  for (let i = 1; i <= 5; i++) {
+    html += `<i class="fa-solid fa-star" style="color:${i <= full ? "var(--sun)" : "var(--line)"}"></i>`;
+  }
+  html += "</span>";
+  return html;
+}
+
+async function ssLoadShopReviews() {
+  const shop = ssShopDetailState.shop;
+  const listEl = document.getElementById("shopReviewsList");
+  const summaryEl = document.getElementById("shopRatingSummary");
+  listEl.innerHTML = `<p style="color:var(--ink-faint);">Loading reviews…</p>`;
+
+  try {
+    const res = await SS_API.getShopReviews(shop.id || shop._id);
+    const reviews = res.reviews || [];
+    const count = shop.ratingsCount || reviews.length;
+
+    summaryEl.innerHTML = `
+      ${ssStarsHtml(shop.ratingsAverage || 0, 16)}
+      <strong style="margin-left:6px;">${(shop.ratingsAverage || 0).toFixed(1)}</strong>
+      <span style="color:var(--ink-faint);font-size:12.5px;margin-left:4px;">(${count} review${count === 1 ? "" : "s"})</span>
+    `;
+
+    if (!reviews.length) {
+      listEl.innerHTML = `<p style="color:var(--ink-faint);">No reviews yet — be the first to review this shop.</p>`;
+    } else {
+      listEl.innerHTML = reviews.map(r => `
+        <div class="shop-review-item">
+          <div class="shop-review-item__head">
+            <span class="shop-review-item__name">${r.buyer?.name || "Buyer"}</span>
+            ${ssStarsHtml(r.rating, 12)}
+          </div>
+          ${r.comment ? `<p class="shop-review-item__comment">${r.comment}</p>` : ""}
+          <span class="shop-review-item__date">${new Date(r.createdAt).toLocaleDateString()}</span>
+        </div>
+      `).join("");
+    }
+  } catch (err) {
+    console.error("ssLoadShopReviews failed:", err);
+    listEl.innerHTML = `<p style="color:var(--ink-faint);">Couldn't load reviews.</p>`;
+  }
+
+  ssRenderShopReviewForm();
+}
+
+function ssRenderShopReviewForm() {
+  const wrap = document.getElementById("shopReviewFormWrap");
+  const user = typeof SS_AUTH !== "undefined" && SS_AUTH.getUser ? SS_AUTH.getUser() : null;
+
+  if (!user) {
+    wrap.innerHTML = `<p class="shop-review-cta"><a href="/login.html">Log in</a> as a buyer to leave a review.</p>`;
+    return;
+  }
+  if (user.role !== "buyer") { wrap.innerHTML = ""; return; }
+
+  wrap.innerHTML = `
+    <form id="shopReviewForm" class="shop-review-form">
+      <div class="shop-review-form__stars" id="shopReviewStarsInput">
+        ${[1, 2, 3, 4, 5].map(i => `<i class="fa-regular fa-star" data-val="${i}"></i>`).join("")}
+      </div>
+      <textarea id="shopReviewComment" placeholder="Share your experience with this shop (optional)" maxlength="1000"></textarea>
+      <button type="submit" class="btn btn-primary btn-sm">Submit review</button>
+    </form>
+  `;
+
+  let selectedRating = 0;
+  const starEls = wrap.querySelectorAll("#shopReviewStarsInput i");
+  starEls.forEach(star => {
+    star.addEventListener("click", () => {
+      selectedRating = Number(star.dataset.val);
+      starEls.forEach(s => {
+        const active = Number(s.dataset.val) <= selectedRating;
+        s.className = active ? "fa-solid fa-star" : "fa-regular fa-star";
+        s.style.color = active ? "var(--sun)" : "";
+      });
+    });
+  });
+
+  document.getElementById("shopReviewForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!selectedRating) { ssToast?.("Please select a star rating"); return; }
+
+    try {
+      await SS_API.addShopReview(ssShopDetailState.shop.id || ssShopDetailState.shop._id, {
+        rating: selectedRating,
+        comment: document.getElementById("shopReviewComment").value.trim(),
+      });
+      ssToast?.("Review submitted, thank you!");
+      const res = await SS_API.getShopBySlug(ssGetSlugFromUrl());
+      ssShopDetailState.shop = res.shop;
+      ssLoadShopReviews();
+    } catch (err) {
+      ssToast?.(err.message || "Couldn't submit review");
+    }
   });
 }
 

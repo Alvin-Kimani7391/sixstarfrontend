@@ -224,7 +224,7 @@ getShopBySlug(slug) {
     },
 
     // ============================================================
-    // REVIEWS
+    // REVIEWS - PRODUCTS
     // ============================================================
     getProductReviews(productId) {
       return request(`/products/${productId}/reviews`, { requiresAuth: false });
@@ -235,6 +235,19 @@ getShopBySlug(slug) {
     },
     postReview(productId, payload) {
       return request(`/products/${productId}/reviews`, { method: "POST", body: payload, requiresAuth: true });
+    },
+
+    // ============================================================
+    // REVIEWS - SHOPS
+    // ============================================================
+    getShopReviews(shopId) {
+      return request(`/shops/${shopId}/reviews`, { requiresAuth: false });
+    },
+    addShopReview(shopId, payload) {
+      return request(`/shops/${shopId}/reviews`, { method: "POST", body: payload, requiresAuth: true });
+    },
+    deleteShopReview(id) {
+      return request(`/shop-reviews/${id}`, { method: "DELETE", requiresAuth: true });
     },
 
     // ============================================================
