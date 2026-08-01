@@ -608,7 +608,7 @@ img{ max-width:100%; display:block; }
   z-index: 3;
   box-shadow: 0 2px 10px rgba(124, 58, 237, 0.3);
 }
-.p-card.wholesale { border-top: 3px solid var(--pop); }
+
 
 /* ---- Seller line ---- */
 .p-card .seller-info {
@@ -994,4 +994,168 @@ img{ max-width:100%; display:block; }
   color: #ff6b6b !important;
   border-top: 1px solid rgba(255,255,255,0.06);
   margin-top: 8px;
+}
+
+
+
+
+
+/* ============================================================
+   PRODUCT CARD — shared styles for ssProductCard() in ui.js.
+   Wholesale keeps its violet identity (the one deliberate purple
+   accent in the theme). Retail gets an equally professional
+   treatment in brand orange, so neither role reads as an
+   afterthought.
+   ============================================================ */
+
+.p-card { position: relative; }
+
+
+
+/* ---- Role tag — sits on the image, bottom-left, out of the
+   way of the discount/hot badges which live top-left/top-right ---- */
+.p-card__role-tag {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9.5px;
+  font-weight: 800;
+  color: #fff;
+  padding: 4px 10px 4px 9px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  white-space: nowrap;
+}
+.p-card__role-tag i { font-size: 9px; }
+
+.role-tag--wholesale { background: var(--grad-pop); box-shadow: var(--shadow-glow-pop); }
+.role-tag--retail { background: var(--grad-brand-deep); box-shadow: 0 4px 12px rgba(255,90,31,.32); }
+
+/* ---- Seller line — one line under the product name, role-aware ---- */
+.p-card .seller-info {
+  font-size: 10.5px;
+  color: var(--ink-faint);
+  margin-top: 1px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+}
+.p-card .seller-info--wholesale i { color: var(--pop); font-size: 10px; }
+.p-card .seller-info--retail i { color: var(--brand-dark); font-size: 10px; }
+
+/* ---- MOQ-style badge — shared shape/size for both roles.
+   Wholesale: violet, real MOQ number. Retail: orange, always
+   "Single unit" since there's no minimum to speak of. ---- */
+.p-card .wholesale-details {
+  margin-top: 5px;
+  font-size: 11px;
+  color: var(--ink-soft);
+  line-height: 1.6;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+.p-card .moq-badge {
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.p-card .moq-badge--wholesale { color: var(--ink-soft); }
+.p-card .moq-badge--wholesale i { color: var(--pop); }
+.p-card .moq-badge--retail { color: var(--brand-dark); }
+.p-card .moq-badge--retail i { color: var(--brand-dark); }
+
+.p-card .bulk-price {
+  display: inline-block;
+  background: var(--wholesale-bg, #F5F0FF);
+  color: var(--pop);
+  font-weight: 700;
+  padding: 1px 10px;
+  border-radius: 12px;
+  font-size: 10.5px;
+}
+.p-card .free-delivery-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #E8F5E9;
+  color: #2E7D32;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 10px;
+  border-radius: 12px;
+}
+.p-card .free-delivery-tag i { font-size: 9px; }
+.p-card .tier-more { font-size: 10px; color: var(--ink-faint); font-weight: 600; }
+
+/* ---- Out-of-stock overlay on the image ---- */
+.p-card__oos-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--danger, #D64545);
+  z-index: 2;
+}
+.p-card.out-of-stock .p-card__img { position: relative; }
+.p-card.out-of-stock .p-card__name,
+.p-card.out-of-stock .price-tag { opacity: .55; }
+
+.p-card__add:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+
+
+
+/* ================= WHOLESALE SECTION — distinct from Top Selling =================
+   Top Selling stays violet (--pop). Wholesale gets its own identity: a deep
+   indigo/blue gradient so the two rails are never confused at a glance,
+   while still feeling premium/B2B rather than "just another orange rail". */
+.sec-head--wholesale{
+  background:linear-gradient(90deg,#1E3A8A,#2563EB 55%,#3B82F6);
+  color:#fff;
+  border-bottom:none;
+}
+.sec-head--wholesale .see-all{
+  color:#fff;
+  background:rgba(255,255,255,.18);
+  border:1px solid rgba(255,255,255,.3);
+  padding:6px 13px;
+  border-radius:20px;
+}
+.sec-head--wholesale .see-all:hover{ background:#fff; color:#1E3A8A; }
+.sec-head--wholesale h2 i{ color:var(--sun); }
+
+/* ================= CATALOG SECTION — light tint behind the rail =================
+   Everything else on the page sits on var(--bg-page) already, so the
+   Catalog block was blending straight into the page background with
+   nothing to set it apart. This gives it a very light, warm backdrop
+   (distinct from --bg-page) so the section reads as its own zone. */
+.block--catalog{
+  background:#FCFAF6;
+  border-top:1px solid var(--line-soft);
+  border-bottom:1px solid var(--line-soft);
+}
+.block--catalog .rail{
+  background:var(--surface);
+  box-shadow:var(--shadow-soft);
+}
+
+@media(max-width:599px){
+  .block--catalog{ border-left:none; border-right:none; }
 }

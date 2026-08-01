@@ -93,6 +93,13 @@ function ssLogout() {
 // the backend actually sends: price + discount, hot deal, rating,
 // stock state, and — when the seller is a wholesaler — the MOQ, bulk
 // pricing tiers and free-delivery tag, matching wholesale.html.
+// Renders one product card, used everywhere (home rails, product.html
+// grid, category.html grid, recently-viewed, etc). Shows every field
+// the backend actually sends: price + discount, hot deal, rating, and
+// a role tag (Retail / Wholesale) so buyers instantly know what
+// they're looking at. Wholesale gets its MOQ / bulk pricing / free
+// delivery details; retail gets a matching "Single unit" badge in the
+// same style, just orange instead of violet.
 function ssProductCard(p) {
   // Backend field names (Product model): finalPrice, discountPercent,
   // displayPrice (virtual = discounted price), isHotDeal, ratingsAverage,
@@ -111,9 +118,8 @@ function ssProductCard(p) {
   const wholesale = p.sellerRole === "wholesaler";
   const stock = Number.isFinite(p.stock) ? p.stock : Number(p.stock) || 0;
   const outOfStock = stock <= 0;
-  const lowStock = !outOfStock && stock <= 10;
 
-  let wholesaleBlock = "";
+  let sellerBlock = "";
   if (wholesale) {
     const moq = p.minOrderQuantity || 1;
     const tiers = Array.isArray(p.pricingTiers) ? [...p.pricingTiers].sort((a, b) => a.minQty - b.minQty) : [];
@@ -126,18 +132,25 @@ function ssProductCard(p) {
       if (tiers.length > 2) tierDisplay += `<span class="tier-more">+${tiers.length - 2} more</span>`;
     }
 
-    wholesaleBlock = `
-      <div class="seller-info"><i class="fa-regular fa-store"></i> Wholesale</div>
+    sellerBlock = `
+      <div class="seller-info seller-info--wholesale"><i class="fa-solid fa-boxes-stacked"></i> Wholesale seller</div>
       <div class="wholesale-details">
-        <span class="moq-badge"><i class="fa-solid fa-box"></i> Min: ${moq} units</span>
+        <span class="moq-badge moq-badge--wholesale"><i class="fa-solid fa-box"></i> Min: ${moq} units</span>
         ${p.freeDelivery ? `<span class="free-delivery-tag"><i class="fa-solid fa-truck-fast"></i> Free Delivery</span>` : ""}
       </div>
       ${tierDisplay ? `<div class="wholesale-details">${tierDisplay}</div>` : ""}
     `;
+  } else {
+    sellerBlock = `
+      <div class="seller-info seller-info--retail"><i class="fa-solid fa-store"></i> Retail seller</div>
+      <div class="wholesale-details">
+        <span class="moq-badge moq-badge--retail"><i class="fa-solid fa-box"></i> Single unit</span>
+      </div>
+    `;
   }
 
   return `
-    <div class="p-card ${wholesale ? "wholesale" : ""} ${outOfStock ? "out-of-stock" : ""}" data-id="${p.id}">
+    <div class="p-card ${wholesale ? "wholesale" : "retail"} ${outOfStock ? "out-of-stock" : ""}" data-id="${p.id}">
       <div class="p-card__badges">
         ${discount ? `<div class="p-card__discount">-${discount}%</div>` : "<span></span>"}
         ${p.isHotDeal ? `<div class="p-card__hot"><i class="fa-solid fa-fire"></i> Hot</div>` : ""}
@@ -148,7 +161,7 @@ function ssProductCard(p) {
       </div>
       <div class="p-card__body">
         <div class="p-card__name">${p.name}</div>
-        ${wholesaleBlock}
+        ${sellerBlock}
         ${p.ratingsCount ? `<div class="p-card__rating"><i class="fa-solid fa-star"></i> ${(p.ratingsAverage || 0).toFixed(1)} <span>(${p.ratingsCount})</span></div>` : ""}
         ${hasDiscount ? `<div class="p-card__old">${ssFmtPrice(p.finalPrice)}</div>` : ""}
         <div class="p-card__foot">
@@ -157,10 +170,11 @@ function ssProductCard(p) {
             <i class="fa-solid fa-plus"></i>
           </button>
         </div>
-        ${lowStock ? `<div class="p-card__stock-note">Only ${stock} left</div>` : ""}
       </div>
     </div>`;
 }
+
+
 
 // Used by pages that only have the list (no full product object) at hand.
 window.__ssProductCache = window.__ssProductCache || {};
@@ -201,10 +215,13 @@ function ssRenderHeader(active = "") {
     <div class="ticker">
       <div class="ticker__track">
         <span><i class="fa-solid fa-fire"></i> New deals dropped daily</span>
+        <span><i class="fa-solid fa-handshake"></i> Sell with us</span>
+        <span><i class="fa-solid fa-shop"></i> Own a shop at Six Star Suppliers</span>
         <span><i class="fa-solid fa-truck-fast"></i> Fast delivery countrywide</span>
         <span><i class="fa-solid fa-money-bill-wave"></i> Pay via Paybill or on delivery</span>
         <span><i class="fa-solid fa-shield-halved"></i> 1-year warranty on every order</span>
         <span><i class="fa-brands fa-whatsapp"></i> Order in seconds on WhatsApp</span>
+
       </div>
     </div>
 
@@ -475,25 +492,41 @@ function ssRenderFooter() {
   const el = document.getElementById("site-footer");
   if (!el) return;
   const c = window.SS_CONFIG;
+
+  // Dynamic "Sell With Us" column: what it shows depends on who's looking.
+  //   guest / buyer          -> Become a Seller, Own a Shop (learn more), Seller Login
+  //   retailer/wholesaler    -> Seller Dashboard, Manage My Shop, Logout stays in the drawer
+  const { loggedIn, user } = ssAuthState();
+  const isSeller = loggedIn && user && (user.role === "wholesaler" || user.role === "retailer");
+
+  const sellWithUsHtml = isSeller ? `
+    <h4>Sell With Us</h4>
+    <a href="/site/seller-dashboard.html"><i class="fa-solid fa-gauge"></i> Seller Dashboard</a>
+    <a href="/site/seller-dashboard.html#shop"><i class="fa-solid fa-store"></i> Manage My Shop</a>
+    <a href="/about.html#own-a-shop">How shop ownership works</a>
+  ` : `
+    <h4>Sell With Us</h4>
+    <a href="/register.html">Become a Seller</a>
+    <a href="/about.html#own-a-shop">Own a Shop at Six Star Suppliers</a>
+    <a href="/login.html">Seller Login</a>
+  `;
+
   el.innerHTML = `
     <div class="footer-grid">
       <div>
         <h4>Customer Service</h4>
         <a href="/contact.html">Contact Us / Visit Us</a>
-        <a href="/about.html">FAQs</a>
+        <a href="/about.html#faq">FAQs</a>
         <a href="/track-order.html">Track My Order</a>
       </div>
       <div>
         <h4>About Us</h4>
-        <a href="/about.html">Our Story</a>
+        <a href="/about.html#our-story">Our Story</a>
         <a href="/contact.html">Our Depot</a>
         <a href="/product.html">Our Products</a>
       </div>
       <div>
-        <h4>Sell With Us</h4>
-        <a href="/register.html">Become a Retailer</a>
-        <a href="/register.html">Become a Wholesaler</a>
-        <a href="/login.html">Seller Login</a>
+        ${sellWithUsHtml}
       </div>
       <div>
         <h4>Get in Touch</h4>
@@ -776,6 +809,74 @@ function ssRenderCountdown(targetId) {
   tick();
   setInterval(tick, 1000);
 }
+
+
+
+// Flattens the full Parent Category -> Category -> Sub Category tree down to
+// just the leaf-level sub-categories (the actual "children.children" nodes),
+// so the homepage can show real sub-categories instead of broad parent
+// categories. Falls back to an empty array (never throws) if the tree
+// endpoint fails or a branch has no sub-categories yet.
+function ssFlattenSubcategories(tree) {
+  const leaves = [];
+  (tree || []).forEach(parent => {
+    (parent.children || []).forEach(category => {
+      (category.children || []).forEach(sub => {
+        leaves.push(sub);
+      });
+    });
+  });
+  return leaves;
+}
+
+// Renders the homepage "Shop by category" tile grid using real
+// sub-categories (leaf nodes of the category tree), not top-level parent
+// categories. Picks `count` at random on every page load — a fresh mix
+// each time, never a fixed static six. Each tile still routes into
+// product.html pre-filtered to that sub-category, same as before.
+async function ssRenderSubcategoryGrid(targetId, count = 6) {
+  const el = document.getElementById(targetId);
+  if (!el) return;
+
+  el.innerHTML = Array.from({ length: count })
+    .map(() => `<div class="cat-item skel-cat"><div class="cat-thumb skeleton-card"></div></div>`)
+    .join("");
+
+  let tree = [];
+  try {
+    const data = await SS_API.getCategoryTree();
+    tree = Array.isArray(data) ? data : (data.categories || data.tree || []);
+  } catch (_) {
+    tree = [];
+  }
+
+  let subs = ssFlattenSubcategories(tree);
+
+  // Fallback: if the tree has no leaf sub-categories yet (still being
+  // built out), don't leave the section empty — fall back to whatever
+  // flat category list is available so the homepage never shows a gap.
+  if (!subs.length) {
+    subs = await ssLoadCategories();
+  }
+
+  if (!subs.length) {
+    el.innerHTML = "";
+    return;
+  }
+
+  const picks = ssShuffle(subs).slice(0, count);
+
+  el.innerHTML = picks.map(c => {
+    const catRef = c._id || c.id || c.slug;
+    return `
+    <a class="cat-item" href="/product.html?category=${encodeURIComponent(catRef)}">
+      <div class="cat-thumb"><img src="${c.image || 'https://placehold.co/300/F3F4F8/15161A?text=' + encodeURIComponent(c.name)}" alt="${c.name}"></div>
+      <span>${c.name}</span>
+    </a>`;
+  }).join("");
+}
+
+
 
 document.addEventListener("DOMContentLoaded", () => {
   ssRenderHeader(document.body.dataset.page || "");

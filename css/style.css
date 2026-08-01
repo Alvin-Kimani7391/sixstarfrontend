@@ -969,7 +969,7 @@ img{ max-width:100%; display:block; }
   z-index: 3;
   box-shadow: var(--shadow-glow-pop);
 }
-.p-card.wholesale { border-top: 3px solid var(--pop); }
+
 
 /* ---- Seller line ---- */
 .p-card .seller-info {
@@ -1480,4 +1480,208 @@ body.drawer-lock {
     padding: 11px 16px;
     font-size: 13px;
   }
+}
+
+
+
+
+
+
+/* ============================================================
+   PRODUCT CARD — shared styles for ssProductCard() in ui.js.
+   Wholesale keeps its violet identity (the one deliberate purple
+   accent in the theme). Retail gets an equally professional
+   treatment in brand orange, so neither role reads as an
+   afterthought.
+   ============================================================ */
+
+.p-card { position: relative; }
+
+
+
+/* ---- Role tag — sits on the image, bottom-left, out of the
+   way of the discount/hot badges which live top-left/top-right ---- */
+.p-card__role-tag {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9.5px;
+  font-weight: 800;
+  color: #fff;
+  padding: 4px 10px 4px 9px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  white-space: nowrap;
+}
+.p-card__role-tag i { font-size: 9px; }
+
+.role-tag--wholesale { background: var(--grad-pop); box-shadow: var(--shadow-glow-pop); }
+.role-tag--retail { background: var(--grad-brand-deep); box-shadow: 0 4px 12px rgba(255,90,31,.32); }
+
+/* ---- Seller line — one line under the product name, role-aware ---- */
+.p-card .seller-info {
+  font-size: 10.5px;
+  color: var(--ink-faint);
+  margin-top: 1px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+}
+.p-card .seller-info--wholesale i { color: var(--pop); font-size: 10px; }
+.p-card .seller-info--retail i { color: var(--brand-dark); font-size: 10px; }
+
+/* ---- MOQ-style badge — shared shape/size for both roles.
+   Wholesale: violet, real MOQ number. Retail: orange, always
+   "Single unit" since there's no minimum to speak of. ---- */
+.p-card .wholesale-details {
+  margin-top: 5px;
+  font-size: 11px;
+  color: var(--ink-soft);
+  line-height: 1.6;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+.p-card .moq-badge {
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.p-card .moq-badge--wholesale { color: var(--ink-soft); }
+.p-card .moq-badge--wholesale i { color: var(--pop); }
+.p-card .moq-badge--retail { color: var(--brand-dark); }
+.p-card .moq-badge--retail i { color: var(--brand-dark); }
+
+.p-card .bulk-price {
+  display: inline-block;
+  background: var(--wholesale-bg, #F5F0FF);
+  color: var(--pop);
+  font-weight: 700;
+  padding: 1px 10px;
+  border-radius: 12px;
+  font-size: 10.5px;
+}
+.p-card .free-delivery-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #E8F5E9;
+  color: #2E7D32;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 10px;
+  border-radius: 12px;
+}
+.p-card .free-delivery-tag i { font-size: 9px; }
+.p-card .tier-more { font-size: 10px; color: var(--ink-faint); font-weight: 600; }
+
+/* ---- Out-of-stock overlay on the image ---- */
+.p-card__oos-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--danger, #D64545);
+  z-index: 2;
+}
+.p-card.out-of-stock .p-card__img { position: relative; }
+.p-card.out-of-stock .p-card__name,
+.p-card.out-of-stock .price-tag { opacity: .55; }
+
+.p-card__add:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+
+
+
+/* ============================================================
+   ANCHOR OFFSET — so #own-a-shop, #faq etc. don't land hidden
+   under the sticky header when the footer links jump here.
+   ============================================================ */
+.content-block h2[id]{
+  scroll-margin-top: 130px;
+}
+@media(max-width:599px){
+  .content-block h2[id]{ scroll-margin-top: 100px; }
+}
+
+/* ============================================================
+   SHOP OWNERSHIP STEPS — used on about.html's "Own a shop" section
+   ============================================================ */
+.shop-steps{
+  display:grid;
+  gap:14px;
+  margin:20px 0 26px;
+}
+@media(min-width:640px){
+  .shop-steps{ grid-template-columns:repeat(2,1fr); }
+}
+
+.shop-step{
+  display:flex;
+  gap:14px;
+  align-items:flex-start;
+  background:var(--surface, #fff);
+  border:1px solid var(--line);
+  border-radius:var(--radius-md);
+  padding:16px 18px;
+  transition:.2s var(--ease-out, ease);
+}
+.shop-step:hover{
+  border-color:var(--brand);
+  transform:translateY(-2px);
+  box-shadow:var(--shadow-soft);
+}
+.shop-step__num{
+  flex-shrink:0;
+  width:34px;
+  height:34px;
+  border-radius:50%;
+  background:var(--grad-brand-deep, linear-gradient(135deg,var(--brand),var(--brand-dark)));
+  color:#fff;
+  font-family:var(--font-mono);
+  font-weight:800;
+  font-size:14px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.shop-step__body h3{
+  font-family:var(--font-display);
+  font-size:.98rem;
+  font-weight:600;
+  color:var(--ink);
+  margin-bottom:4px;
+}
+.shop-step__body p{
+  font-size:.85rem;
+  color:var(--ink-soft);
+  line-height:1.6;
+  margin:0;
+}
+
+.shop-cta{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+  margin:6px 0 34px;
+}
+@media(max-width:480px){
+  .shop-cta{ flex-direction:column; }
+  .shop-cta .btn{ width:100%; }
 }

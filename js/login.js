@@ -101,7 +101,7 @@ document.getElementById("loginForm").addEventListener("submit", async e => {
 
         case "retailer":
 
-          target = "six-star-suppliers/seller-dashboard.html";
+          target = "/six-star-suppliers/seller-dashboard.html";
 
           break;
 
@@ -109,7 +109,7 @@ document.getElementById("loginForm").addEventListener("submit", async e => {
 
         case "buyer":
 
-          target = "index.html";
+          target = "/index.html";
 
           break;
 
@@ -117,7 +117,7 @@ document.getElementById("loginForm").addEventListener("submit", async e => {
 
         case "admin":
 
-          target = "site/admin-dashboard.html";
+          target = "/site/admin-dashboard.html";
 
           break;
 
@@ -125,7 +125,7 @@ document.getElementById("loginForm").addEventListener("submit", async e => {
 
         default:
 
-          target = "index.html";
+          target = "/index.html";
 
       }
 

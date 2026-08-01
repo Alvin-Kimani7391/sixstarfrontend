@@ -24,16 +24,62 @@
 
   <div class="wrap">
     <div class="content-block">
-      <h2>Our story</h2>
+      <h2 id="our-story">Our story</h2>
       <p>Six Star Suppliers started as a small supply desk moving household goods and electronics to shops and individual buyers around Nairobi. Today, every product on the site passes through an approval step before it's listed — so what you see is what's actually in stock, at a price our team has checked.</p>
 
-      <h2>How ordering works</h2>
+      <h2 id="ordering">How ordering works</h2>
       <p>Browse the catalog, add what you need to your cart, and check out with your delivery details and an M-Pesa payment. Our team verifies each payment against your order before it's confirmed and dispatched — you can follow every step from the Track My Order page.</p>
 
-      <h2>Shipping &amp; returns</h2>
+      <h2 id="shipping-returns">Shipping &amp; returns</h2>
       <p>We deliver countrywide. Delivery timing depends on your location and is confirmed once your order is verified. Every order carries a 1-year warranty; if something arrives faulty or wrong, reach out within 7 days and we'll sort it out.</p>
 
-      <h2>Frequently asked questions</h2>
+      <!-- ===== OWN A SHOP — seller shop feature explainer ===== -->
+      <h2 id="own-a-shop">Own a shop at Six Star Suppliers</h2>
+      <p>Beyond listing individual products, approved sellers can run their own branded storefront inside Six Star Suppliers — a dedicated page with your own name, logo, banner and description, showing every product you've listed in one place.</p>
+
+      <div class="shop-steps">
+        <div class="shop-step">
+          <div class="shop-step__num">1</div>
+          <div class="shop-step__body">
+            <h3>Register as a retailer or wholesaler</h3>
+            <p>Shop ownership is only available to approved sellers — create a free retailer or wholesaler account to get started.</p>
+          </div>
+        </div>
+        <div class="shop-step">
+          <div class="shop-step__num">2</div>
+          <div class="shop-step__body">
+            <h3>Activate your shop in the seller dashboard</h3>
+            <p>Once logged in, head to your seller dashboard and activate your shop — give it a name, category and description. It goes live once our team approves it.</p>
+          </div>
+        </div>
+        <div class="shop-step">
+          <div class="shop-step__num">3</div>
+          <div class="shop-step__body">
+            <h3>Customize it to match your brand</h3>
+            <p>Upload a logo and banner, set your business hours, and every approved product you list is automatically pulled into your storefront.</p>
+          </div>
+        </div>
+        <div class="shop-step">
+          <div class="shop-step__num">4</div>
+          <div class="shop-step__body">
+            <h3>Track performance with shop analytics</h3>
+            <p>See views, orders and ratings for your shop right from the dashboard, so you know what's working and what to restock.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- This block swaps itself based on login/role state — see the inline
+           script at the bottom of the page. Server-safe default (logged out). -->
+      <div class="shop-cta" id="shopCta">
+        <a href="/register.html" class="btn btn-primary" id="shopCtaPrimary">
+          <i class="fa-solid fa-store"></i> Register as a Seller
+        </a>
+        <a href="/login.html" class="btn btn-outline" id="shopCtaSecondary">
+          <i class="fa-solid fa-right-to-bracket"></i> Seller Login
+        </a>
+      </div>
+
+      <h2 id="faq">Frequently asked questions</h2>
       <details class="faq-item">
         <summary>How do I pay?</summary>
         <p style="margin-top:8px;">Pay via our Paybill number and paste the M-Pesa confirmation message at checkout, or arrange payment on delivery where available.</p>
@@ -44,7 +90,11 @@
       </details>
       <details class="faq-item">
         <summary>Can I sell on Six Star Suppliers?</summary>
-        <p style="margin-top:8px;">Yes — register as a retailer or wholesaler. Seller tools for listing products are being added to this site soon; in the meantime, reach out to us on WhatsApp to get set up.</p>
+        <p style="margin-top:8px;">Yes — register as a retailer or wholesaler, then list your products from your seller dashboard. Once approved, you can also activate your own branded shop — see "Own a shop at Six Star Suppliers" above for how that works.</p>
+      </details>
+      <details class="faq-item">
+        <summary>What's the difference between listing products and owning a shop?</summary>
+        <p style="margin-top:8px;">Every approved seller can list products individually on the main catalog. Owning a shop additionally gives you a dedicated storefront page — your own logo, banner and description — where all your products appear together under your brand.</p>
       </details>
       <details class="faq-item">
         <summary>What if my item arrives damaged?</summary>
@@ -63,5 +113,30 @@
 <script src="js/cart.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/ui.js"></script>
+<script>
+  // Swaps the "Own a Shop" CTA based on the visitor's actual auth/role state,
+  // so the About page never tells a logged-in seller to "register" again.
+  document.addEventListener("DOMContentLoaded", () => {
+    const { loggedIn, user } = ssAuthState();
+    const primary = document.getElementById("shopCtaPrimary");
+    const secondary = document.getElementById("shopCtaSecondary");
+    if (!primary || !secondary) return;
+
+    const isSeller = loggedIn && user && (user.role === "wholesaler" || user.role === "retailer");
+
+    if (isSeller) {
+      primary.href = "/seller-dashboard.html";
+      primary.innerHTML = `<i class="fa-solid fa-gauge"></i> Go to Seller Dashboard`;
+      secondary.href = "/seller-dashboard.html#shop";
+      secondary.innerHTML = `<i class="fa-solid fa-store"></i> Manage My Shop`;
+    } else if (loggedIn) {
+      // logged in as a buyer — invite them to add a seller account
+      primary.href = "/register.html";
+      primary.innerHTML = `<i class="fa-solid fa-store"></i> Become a Seller`;
+      secondary.style.display = "none";
+    }
+    // else: leave the logged-out defaults (Register / Seller Login) as-is
+  });
+</script>
 </body>
 </html>

@@ -56,8 +56,8 @@ const SS_AUTH = (() => {
 
 function SS_REDIRECT(user) {
   if (user.role === "retailer" || user.role === "wholesaler") {
-    location.href = "six-star-suppliers/seller-dashboard.html";
+    location.href = "/six-star-suppliers/seller-dashboard.html";
   } else {
-    location.href = "index.html";
+    location.href = "/index.html";
   }
 }
