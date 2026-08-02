@@ -11,6 +11,11 @@
        no MOQ-style delivery math is shown here.
      - 'heavy'  -> the classic wholesale delivery panel (free
        delivery / fixed / per-unit / negotiated) applies as before.
+
+   Also renders a seller info line (name + role chip) and a share
+   button (native Web Share API with image-file attachment where
+   supported, falling back to a styled share popover with
+   WhatsApp / Facebook / X / Telegram / Copy Link).
    ============================================================ */
 (function () {
   const id = new URLSearchParams(location.search).get("id");
@@ -85,6 +90,18 @@
     return { level: "in", label: "In stock", stock };
   }
 
+  /* ---------------- share helpers ---------------- */
+
+  // Canonical, shareable link for THIS product (drops any other query params
+  // the page might have picked up, keeps just ?id=).
+  function buildShareData(p) {
+    const link = `${location.origin}${location.pathname}?id=${p.id}`;
+    const price = ssFmtPrice(basePrice(p));
+    const message = `Check out this product on Six Star Suppliers\n\n${p.name}\n${price}\n${link}`;
+    const images = Array.isArray(p.images) && p.images.length ? p.images : [ssImg(p)];
+    return { link, price, message, image: images[0] };
+  }
+
   /* ---------------- main render ---------------- */
 
   function render(p) {
@@ -121,9 +138,18 @@
             ${wholesale ? `<div class="pd-wholesale-badge"><i class="fa-solid fa-boxes-stacked"></i> Wholesale</div>` : ""}
           </div>
 
-          <h1 class="pd-title">${p.name}</h1>
+          <div class="pd-title-row">
+            <h1 class="pd-title">${p.name}</h1>
+            <button class="pd-share-btn" id="shareBtn" aria-label="Share this product" title="Share this product">
+              <i class="fa-solid fa-share-nodes"></i><span>Share</span>
+            </button>
+          </div>
 
-          
+          <div class="pd-seller-line">
+            <i class="fa-regular fa-store"></i>
+            <span>Sold by ${sellerName}</span>
+            <span class="role-chip">${wholesale ? "Wholesaler" : "Retailer"}</span>
+          </div>
 
           <div class="review-stars" id="pdRatingSummary">
             ${p.ratingsCount
@@ -208,12 +234,37 @@
         <div class="sec-head"><h2>You may also like</h2></div>
         <div class="pd-related-grid" id="pdRelatedGrid"></div>
       </section>
+
+      <div class="pd-share-popover" id="sharePopover" hidden>
+        <div class="pd-share-popover__backdrop" id="shareBackdrop"></div>
+        <div class="pd-share-popover__card">
+          <div class="pd-share-popover__head">
+            <span>Share this product</span>
+            <button id="shareCloseBtn" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <div class="pd-share-preview">
+            <img id="sharePreviewImg" src="" alt="">
+            <div>
+              <div class="pd-share-preview__name" id="sharePreviewName"></div>
+              <div class="pd-share-preview__price" id="sharePreviewPrice"></div>
+            </div>
+          </div>
+          <div class="pd-share-options">
+            <button class="pd-share-opt" data-share="whatsapp"><i class="fa-brands fa-whatsapp"></i><span>WhatsApp</span></button>
+            <button class="pd-share-opt" data-share="facebook"><i class="fa-brands fa-facebook"></i><span>Facebook</span></button>
+            <button class="pd-share-opt" data-share="twitter"><i class="fa-brands fa-x-twitter"></i><span>X</span></button>
+            <button class="pd-share-opt" data-share="telegram"><i class="fa-brands fa-telegram"></i><span>Telegram</span></button>
+            <button class="pd-share-opt" data-share="copy"><i class="fa-solid fa-link"></i><span>Copy link</span></button>
+          </div>
+        </div>
+      </div>
     `;
 
     bindGallery();
     bindQty(p, wholesale, moq, stock);
     bindActions(p, wholesale, moq, stock);
     bindReviewForm(p);
+    bindShare(p);
     if (wholesale) updateWholesaleLive(p, moq, tiers, heavyWholesale);
   }
 
@@ -350,6 +401,105 @@
     buyBtn.addEventListener("click", () => {
       SS_CART.add(p, qty);
       location.href = "cart.html";
+    });
+  }
+
+  /* ---------------- share ---------------- */
+
+  function bindShare(p) {
+    const shareBtn = document.getElementById("shareBtn");
+    const popover = document.getElementById("sharePopover");
+    if (!shareBtn || !popover) return;
+
+    const backdrop = document.getElementById("shareBackdrop");
+    const closeBtn = document.getElementById("shareCloseBtn");
+    const { link, price, message, image } = buildShareData(p);
+
+    const previewImg = document.getElementById("sharePreviewImg");
+    const previewName = document.getElementById("sharePreviewName");
+    const previewPrice = document.getElementById("sharePreviewPrice");
+    if (previewImg) previewImg.src = image;
+    if (previewName) previewName.textContent = p.name;
+    if (previewPrice) previewPrice.textContent = price;
+
+    function openPopover() {
+      popover.hidden = false;
+      requestAnimationFrame(() => popover.classList.add("open"));
+    }
+    function closePopover() {
+      popover.classList.remove("open");
+      setTimeout(() => { popover.hidden = true; }, 220);
+    }
+
+    shareBtn.addEventListener("click", async () => {
+      if (navigator.share) {
+        const shareData = {
+          title: `${p.name} — Six Star Suppliers`,
+          text: `Check out this product on Six Star Suppliers\n\n${p.name}\n${price}`,
+          url: link
+        };
+
+        // Best-effort: attach the actual product image as a file. Only
+        // supported on some mobile browsers (Web Share API Level 2) — if it
+        // fails for any reason we just share text + link instead.
+        try {
+          const resp = await fetch(image);
+          const blob = await resp.blob();
+          const file = new File([blob], `product-${p.id}.jpg`, { type: blob.type || "image/jpeg" });
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            shareData.files = [file];
+          }
+        } catch (_) {
+          // ignore — falls back to text + link share below
+        }
+
+        try {
+          await navigator.share(shareData);
+          return;
+        } catch (err) {
+          if (err && err.name === "AbortError") return; // user cancelled, do nothing
+          // any other failure -> fall through to the popover
+        }
+      }
+      openPopover();
+    });
+
+    closeBtn?.addEventListener("click", closePopover);
+    backdrop?.addEventListener("click", closePopover);
+
+    popover.querySelectorAll(".pd-share-opt").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const kind = btn.dataset.share;
+        const encodedText = encodeURIComponent(`Check out this product on Six Star Suppliers\n\n${p.name}\n${price}`);
+        const encodedLink = encodeURIComponent(link);
+        let url = "";
+
+        switch (kind) {
+          case "whatsapp":
+            url = `https://wa.me/?text=${encodedText}%0A${encodedLink}`;
+            break;
+          case "facebook":
+            url = `https://www.facebook.com/sharer/sharer.php?u=${encodedLink}`;
+            break;
+          case "twitter":
+            url = `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedLink}`;
+            break;
+          case "telegram":
+            url = `https://t.me/share/url?url=${encodedLink}&text=${encodedText}`;
+            break;
+          case "copy":
+            navigator.clipboard.writeText(message)
+              .then(() => {
+                ssToast("Product details copied to clipboard", "fa-copy");
+                closePopover();
+              })
+              .catch(() => ssToast("Couldn't copy — please try again", "fa-triangle-exclamation"));
+            return;
+        }
+
+        window.open(url, "_blank", "noopener,noreferrer");
+        closePopover();
+      });
     });
   }
 

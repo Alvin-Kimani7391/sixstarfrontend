@@ -1254,9 +1254,9 @@ async function submitOrder(event) {
       Your order number:<br>
       <span class="order-number-highlight">${orderRef}</span><br>
       <span style="font-size:12.5px;color:var(--ink-soft);font-weight:600;">Save this — you'll need it to track your order.</span><br><br>
-      Redirecting to tracking...</div>`;
+      Redirecting to tracking in profile...</div>`;
 
-    setTimeout(() => window.location.href = `trackorder.html?orderId=${order._id}`, 2800);
+    setTimeout(() => window.location.href = `profile.html?orderId=${order._id}`, 2800);
   } catch (err) {
     console.error("submitOrder failed:", err);
     msg.innerHTML = `<span style="color:#E23744">❌ ${err.message || "Something went wrong placing your order. Please try again."}</span>`;

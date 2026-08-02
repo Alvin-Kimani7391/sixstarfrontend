@@ -263,3 +263,488 @@
   .pd-related-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .pd-wholesale-panel__head { flex-direction: column; align-items: flex-start; }
 }
+
+
+
+
+
+
+/* ============================================================
+   PRODUCT DETAIL — ADD-ON STYLES
+   Extends style.css. Reuses the existing brand tokens
+   (--pop, --surface, --line, --ink, --radius-*, --shadow-*,
+   --font-display/body/mono) already defined globally, so this
+   file only ADDS the pieces product-detail.html needs and
+   never redefines the base variables.
+   ============================================================ */
+
+/* ---- Badge row: Hot Deal / Wholesale tag above the title ---- */
+.pd-badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.pd-wholesale-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, var(--pop), #5B21B6);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .3px;
+  text-transform: uppercase;
+  padding: 5px 14px;
+  border-radius: 20px;
+  box-shadow: 0 2px 10px rgba(124, 58, 237, 0.3);
+}
+.pd-hotdeal-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #FFF0EC;
+  color: #D9480F;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .3px;
+  text-transform: uppercase;
+  padding: 5px 14px;
+  border-radius: 20px;
+}
+
+/* ---- Title row: product name + share button side by side ---- */
+.pd-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 4px;
+}
+.pd-title-row .pd-title {
+  margin-top: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+/* ---- Seller line ---- */
+.pd-seller-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin: 8px 0 12px;
+}
+.pd-seller-line i { color: var(--pop); }
+.pd-seller-line .role-chip {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  padding: 2px 9px;
+  border-radius: 10px;
+  background: var(--bg-page);
+  border: 1px solid var(--line);
+  color: var(--ink-faint);
+}
+
+/* ---- Rating summary numeric ---- */
+.pd-rating-num {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--ink);
+  margin-right: 4px;
+}
+
+/* ---- Stock row ---- */
+.pd-stock-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  margin: 14px 0;
+}
+.pd-stock-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.pd-stock-dot.in { background: #2E7D32; box-shadow: 0 0 0 3px rgba(46,125,50,0.15); }
+.pd-stock-dot.low { background: #C77700; box-shadow: 0 0 0 3px rgba(199,119,0,0.15); }
+.pd-stock-dot.out { background: var(--danger, #D64545); box-shadow: 0 0 0 3px rgba(214,69,69,0.15); }
+.pd-stock-row.in span { color: #2E7D32; }
+.pd-stock-row.low span { color: #C77700; }
+.pd-stock-row.out span { color: var(--danger, #D64545); }
+
+/* ---- Wholesale panel ---- */
+.pd-wholesale-panel {
+  margin: 18px 0;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--surface);
+}
+.pd-wholesale-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 18px;
+  background: var(--wholesale-bg, #F5F0FF);
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.pd-wholesale-panel__head h3 {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--pop);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pd-moq-chip {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--line);
+  padding: 4px 12px;
+  border-radius: 14px;
+}
+.pd-wholesale-panel__body { padding: 16px 18px; }
+
+.pd-tier-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+.pd-tier-table th {
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  color: var(--ink-faint);
+  font-weight: 700;
+  padding: 0 10px 8px;
+  border-bottom: 1px solid var(--line);
+}
+.pd-tier-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-soft);
+}
+.pd-tier-table tr:last-child td { border-bottom: none; }
+.pd-tier-table tr.active-tier td {
+  background: var(--wholesale-bg, #F5F0FF);
+  color: var(--pop);
+  font-weight: 700;
+}
+.pd-tier-table td.tier-qty { font-family: var(--font-mono); }
+.pd-tier-table td.tier-price { font-family: var(--font-mono); text-align: right; }
+
+.pd-delivery-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  background: var(--bg-page);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+.pd-delivery-info i { color: var(--pop); margin-top: 1px; }
+.pd-delivery-info strong { color: var(--ink); }
+.pd-delivery-info.free { color: #2E7D32; background: #E8F5E9; }
+.pd-delivery-info.free i { color: #2E7D32; }
+
+/* ---- Live unit price note ---- */
+.pd-unit-note {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  margin-top: 8px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.pd-unit-note strong {
+  font-family: var(--font-mono);
+  color: var(--pop);
+}
+.pd-total-line {
+  font-size: 13px;
+  color: var(--ink);
+  margin-top: 4px;
+  font-weight: 600;
+}
+.pd-total-line span {
+  font-family: var(--font-mono);
+  color: var(--pop);
+}
+
+/* ---- Insufficient stock warning ---- */
+.pd-stock-warn {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--danger, #D64545);
+  margin-top: 6px;
+}
+
+/* ---- Related products ---- */
+.pd-related {
+  margin-top: 48px;
+}
+.pd-related .sec-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.pd-related-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 16px;
+}
+.pd-related-grid .p-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.pd-related-grid .p-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-card-hover);
+}
+.pd-related-grid .p-card.wholesale { border-top: 3px solid var(--pop); position: relative; }
+.pd-related-grid .wholesale-tag {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: linear-gradient(135deg, var(--pop), #5B21B6);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 3px 12px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  z-index: 3;
+}
+.pd-related-grid .moq-badge {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  margin-top: 4px;
+  display: block;
+}
+.pd-related-grid .moq-badge i { color: var(--pop); }
+
+@media (max-width: 768px) {
+  .pd-related-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .pd-wholesale-panel__head { flex-direction: column; align-items: flex-start; }
+}
+
+/* ============================================================
+   SHARE — title-row share button + share popover
+   ============================================================ */
+
+.pd-share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform .2s var(--ease-out, ease), box-shadow .2s ease, border-color .2s ease, background .2s ease;
+  margin-top: 4px;
+  white-space: nowrap;
+}
+.pd-share-btn i { font-size: 14px; color: var(--pop); }
+.pd-share-btn:hover {
+  border-color: var(--pop);
+  background: var(--wholesale-bg, #F5F0FF);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px -10px rgba(124, 58, 237, .35);
+}
+.pd-share-btn:active { transform: translateY(0) scale(.96); }
+
+@media (max-width: 599px) {
+  .pd-share-btn span { display: none; }
+  .pd-share-btn {
+    padding: 0;
+    width: 40px;
+    height: 40px;
+    justify-content: center;
+    border-radius: 50%;
+  }
+  .pd-share-btn i { font-size: 16px; }
+}
+
+/* ---- Popover shell: bottom sheet on mobile, centered modal on desktop ---- */
+.pd-share-popover {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.pd-share-popover[hidden] { display: none; }
+
+.pd-share-popover__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(23, 24, 28, .5);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  opacity: 0;
+  transition: opacity .25s ease;
+}
+.pd-share-popover.open .pd-share-popover__backdrop { opacity: 1; }
+
+.pd-share-popover__card {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface);
+  border-radius: 22px 22px 0 0;
+  box-shadow: 0 -18px 50px rgba(23, 24, 28, .25);
+  padding: 18px 18px calc(18px + env(safe-area-inset-bottom, 0));
+  transform: translateY(100%);
+  transition: transform .32s var(--ease-out, ease), opacity .3s ease;
+}
+.pd-share-popover.open .pd-share-popover__card { transform: translateY(0); }
+
+@media (min-width: 640px) {
+  .pd-share-popover { align-items: center; }
+  .pd-share-popover__card {
+    border-radius: var(--radius-lg);
+    transform: translateY(16px) scale(.97);
+    opacity: 0;
+    box-shadow: var(--shadow-card-hover);
+  }
+  .pd-share-popover.open .pd-share-popover__card {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.pd-share-popover__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.pd-share-popover__head span {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+.pd-share-popover__head button {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: var(--bg-page);
+  color: var(--ink-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background .2s ease, color .2s ease;
+  flex-shrink: 0;
+}
+.pd-share-popover__head button:hover { background: var(--line); color: var(--ink); }
+
+.pd-share-preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--bg-page);
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+}
+.pd-share-preview img {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 10px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.pd-share-preview__name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.pd-share-preview__price {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  color: var(--pop);
+  font-size: 13px;
+  margin-top: 3px;
+}
+
+.pd-share-options {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+.pd-share-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 12px 4px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background .2s ease, transform .2s ease;
+}
+.pd-share-opt:hover { background: var(--bg-page); transform: translateY(-2px); }
+.pd-share-opt:active { transform: translateY(0) scale(.94); }
+.pd-share-opt i {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: #fff;
+}
+.pd-share-opt span {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.pd-share-opt[data-share="whatsapp"] i { background: #25D366; }
+.pd-share-opt[data-share="facebook"] i { background: #1877F2; }
+.pd-share-opt[data-share="twitter"] i { background: #000; }
+.pd-share-opt[data-share="telegram"] i { background: #229ED9; }
+.pd-share-opt[data-share="copy"] i { background: var(--ink); }
+
+@media (max-width: 374px) {
+  .pd-share-options { grid-template-columns: repeat(3, 1fr); }
+}
