@@ -1133,42 +1133,71 @@ function applyAutofill(fieldId, noteId, value) {
   return false;
 }
 
-// Matches the exact shape profile.js already relies on successfully:
-//   const { user: u } = await SS_API.getProfile();  ->  u.name, u.phone, u.address
-// getMe() is used only as a fallback in case getProfile() itself fails for some
-// reason (e.g. role-specific route issue) — /auth/me may carry fewer fields.
-async function prefillContactFromProfile(meResponse) {
-  let filledName = false;
-  let filledPhone = false;
+// ---- Response-shape-agnostic autofill ----
+// Different endpoints/backends return the user object in different shapes:
+// { user: {...} }, { data: { user: {...} } }, or the user flat at the top
+// level. This normalizes all of those instead of assuming one exact shape
+// (the previous version assumed `{ user }` and silently filled nothing if
+// that assumption was wrong).
+function normalizeUserShape(res) {
+  if (!res) return null;
+  if (res.user) return res.user;
+  if (res.data && res.data.user) return res.data.user;
+  if (res.data && (res.data.name || res.data.phone || res.data.email)) return res.data;
+  return res;
+}
 
+// Returns the first non-empty value from a list of candidates — used so we
+// don't depend on one exact field name (backends vary: phone vs phoneNumber
+// vs mpesaNumber, etc).
+function firstDefined(...vals) {
+  for (const v of vals) {
+    if (v !== undefined && v !== null && String(v).trim() !== "") return v;
+  }
+  return "";
+}
+
+// /auth/me (meResponse) is guaranteed to have succeeded already — the page
+// wouldn't be visible otherwise — so it's the reliable baseline. /users/profile
+// is fetched as an enhancement and, when available, wins field-by-field since
+// it's typically the more complete/canonical record. Every step logs to the
+// console under the "[checkout]" prefix so a failure can be diagnosed from
+// DevTools instead of just showing up as "nothing filled in".
+async function prefillContactFromProfile(meResponse) {
+  const meUser = normalizeUserShape(meResponse);
+  console.debug("[checkout] getMe() raw ->", meResponse, "normalized ->", meUser);
+
+  let profileUser = null;
   try {
-    const { user: u } = await SS_API.getProfile();
-    console.debug("[checkout] getProfile() ->", u);
-    if (u) {
-      filledName = applyAutofill('name', 'nameAutofillNote', u.name);
-      filledPhone = applyAutofill('phone', 'phoneAutofillNote', u.phone);
-      applyAutofill('deliveryAddress', null, u.address);
-    }
+    const profileRes = await SS_API.getProfile();
+    profileUser = normalizeUserShape(profileRes);
+    console.debug("[checkout] getProfile() raw ->", profileRes, "normalized ->", profileUser);
   } catch (e) {
-    // This used to be swallowed with only a console.warn, which is why a real
-    // failure here (auth/route/CORS issue) looked identical to "there's just no
-    // saved phone number" — you'd see blank fields either way with no signal.
-    console.error("[checkout] getProfile() failed — autofill skipped:", e);
-    showPageError("Couldn't load your saved profile details (name/phone) — please enter them manually below. (" + (e.message || "unknown error") + ")");
+    console.error("[checkout] getProfile() failed — falling back to /auth/me data only:", e);
+    showPageError("Couldn't refresh your saved profile details — using your account info instead. Please double-check your name/phone below. (" + (e.message || "unknown error") + ")");
   }
 
-  // Fallback only for whichever field getProfile() didn't already fill.
-  if (!filledName || !filledPhone) {
-    try {
-      const meUser = meResponse?.user || meResponse;
-      console.debug("[checkout] getMe() ->", meUser);
-      if (meUser) {
-        if (!filledName) applyAutofill('name', 'nameAutofillNote', meUser.name || meUser.fullName);
-        if (!filledPhone) applyAutofill('phone', 'phoneAutofillNote', meUser.phone || meUser.phoneNumber || meUser.mpesaNumber);
-      }
-    } catch (e) {
-      console.warn("[checkout] getMe() fallback prefill failed (non-fatal):", e);
-    }
+  const name = firstDefined(
+    profileUser?.name, profileUser?.fullName,
+    meUser?.name, meUser?.fullName
+  );
+  const phone = firstDefined(
+    profileUser?.phone, profileUser?.phoneNumber, profileUser?.mpesaNumber, profileUser?.mobile,
+    meUser?.phone, meUser?.phoneNumber, meUser?.mpesaNumber, meUser?.mobile
+  );
+  const address = firstDefined(
+    profileUser?.address, profileUser?.deliveryAddress,
+    meUser?.address, meUser?.deliveryAddress
+  );
+
+  console.debug("[checkout] merged autofill values ->", { name, phone, address });
+
+  const filledName = applyAutofill('name', 'nameAutofillNote', name);
+  const filledPhone = applyAutofill('phone', 'phoneAutofillNote', phone);
+  applyAutofill('deliveryAddress', null, address);
+
+  if (!filledName && !filledPhone) {
+    console.warn("[checkout] No saved name/phone found on either /auth/me or /users/profile responses — check the raw response shapes logged above.");
   }
 }
 
@@ -1254,9 +1283,11 @@ async function submitOrder(event) {
       Your order number:<br>
       <span class="order-number-highlight">${orderRef}</span><br>
       <span style="font-size:12.5px;color:var(--ink-soft);font-weight:600;">Save this — you'll need it to track your order.</span><br><br>
-      Redirecting to tracking in profile...</div>`;
+      Redirecting to your orders...</div>`;
 
-    setTimeout(() => window.location.href = `profile.html?orderId=${order._id}`, 2800);
+    // Deep-link straight into the Orders tab of the profile page, with the
+    // specific order expanded and scrolled into view (handled in profile.js).
+    setTimeout(() => window.location.href = `profile.html?tab=orders&orderId=${order._id}`, 2800);
   } catch (err) {
     console.error("submitOrder failed:", err);
     msg.innerHTML = `<span style="color:#E23744">❌ ${err.message || "Something went wrong placing your order. Please try again."}</span>`;
