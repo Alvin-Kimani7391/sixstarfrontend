@@ -11,8 +11,17 @@
 <link rel="stylesheet" href="css/style.css">
 <style>
 /* ============================================================
-   CHECKOUT PAGE - SIX STAR SUPPLIERS (unified cart + pay,
-   dynamic simple/heavy wholesale delivery)
+   CHECKOUT PAGE - SIX STAR SUPPLIERS
+   Location (region/town/custom-location) is ALWAYS captured for
+   every order — including pure "heavy" wholesale carts — because
+   the seller/rider needs a delivery destination regardless of who
+   is charging for the delivery leg. Only the FEE LOGIC differs:
+     - standard-delivery items (retail + 'simple' wholesale) add the
+       regional Transport fee to the total.
+     - 'heavy' wholesale items NEVER add the Transport fee — they
+       add their own seller-set delivery charge (free / fixed /
+       quantity-based / negotiated) instead, shown as a separate
+       line so the buyer isn't double-charged or confused.
    ============================================================ */
 
 .checkout-stepper {
@@ -93,6 +102,10 @@
   display: inline-block; background: rgba(37,99,235,0.12); color: #2563eb; font-size: 9px; font-weight: 800;
   padding: 2px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px; margin-left: 6px; vertical-align: 2px;
 }
+.own-delivery-badge {
+  display: inline-block; background: rgba(124,58,237,0.14); color: var(--pop); font-size: 9px; font-weight: 800;
+  padding: 2px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px; margin-left: 6px; vertical-align: 2px;
+}
 .wholesale-info { background: #F5F0FF; border-radius: var(--radius-sm); padding: 10px 12px; margin-top: 8px; border-left: 3px solid var(--pop); }
 .wholesale-info .info-row { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--ink-soft); padding: 2px 0; }
 .wholesale-info .info-row strong { color: var(--ink); }
@@ -105,7 +118,12 @@
 .standard-delivery-note {
   font-size: 11px; color: #2563eb; margin-top: 8px; font-weight: 600;
   background: rgba(37,99,235,0.06); padding: 8px 10px; border-radius: 8px; border-left: 3px solid #2563eb;
-  display: flex; align-items: center; gap: 6px;
+  display: flex; align-items: flex-start; gap: 6px; line-height: 1.5;
+}
+.heavy-delivery-note {
+  font-size: 11px; color: var(--pop); margin-top: 8px; font-weight: 600;
+  background: rgba(124,58,237,0.06); padding: 8px 10px; border-radius: 8px; border-left: 3px solid var(--pop);
+  display: flex; align-items: flex-start; gap: 6px; line-height: 1.5;
 }
 
 /* ---- Dynamic attribute/variant picker ---- */
@@ -151,9 +169,22 @@ input.field-error, select.field-error, textarea.field-error { border-color: var(
   display: flex; align-items: center; gap: 5px;
 }
 
+/* ---- Delivery mode explainer banner (sits above region/town) ---- */
+.delivery-mode-note {
+  display: none; margin-top: 14px; padding: 12px 14px; border-radius: 12px;
+  font-size: 12.5px; line-height: 1.6; gap: 10px; align-items: flex-start;
+}
+.delivery-mode-note i { margin-top: 1px; flex-shrink: 0; }
+.delivery-mode-note.mode-mixed { background: rgba(242,169,59,.08); border: 1px solid rgba(242,169,59,.22); color: var(--ink-soft); }
+.delivery-mode-note.mode-mixed i { color: var(--marigold-deep); }
+.delivery-mode-note.mode-heavy-only { background: rgba(124,58,237,.06); border: 1px solid rgba(124,58,237,.2); color: var(--ink-soft); }
+.delivery-mode-note.mode-heavy-only i { color: var(--pop); }
+.delivery-mode-note strong { color: var(--ink); }
+
 #delivery-preview { margin-top: 14px; padding: 15px; border-radius: 14px; background: linear-gradient(135deg,rgba(242,169,59,.07),rgba(242,169,59,.07)); border: 1px solid rgba(242,169,59,.18); display: none; animation: fadeIn .35s ease; }
 .delivery-row { display: flex; justify-content: space-between; align-items: center; margin: 6px 0; font-size: 13px; gap: 10px; }
 .delivery-row strong { color: var(--ink-soft); font-weight: 600; }
+.delivery-row span.muted { color: var(--ink-faint); font-weight: 600; font-style: italic; }
 @keyframes fadeIn { from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;} }
 
 .custom-location-btn { width: 100%; padding: 13px; border: 1.5px dashed var(--line); border-radius: 14px; cursor: pointer; background: var(--bg-page); color: var(--ink-soft); font-weight: 700; font-size: 13.5px; transition: .2s ease; margin-top: 14px; }
@@ -170,6 +201,7 @@ input.field-error, select.field-error, textarea.field-error { border-color: var(
 .summary { padding: 18px; border-radius: var(--radius-lg); background: linear-gradient(135deg,rgba(242,169,59,.05),rgba(242,169,59,.05)); border: 1px solid rgba(242,169,59,.15); }
 .summary p { font-size: 13.5px; color: var(--ink-soft); margin: 6px 0; display: flex; justify-content: space-between; gap: 10px; }
 .summary p span:last-child { text-align: right; }
+.summary p small.row-hint { display: block; font-size: 10.5px; color: var(--ink-faint); font-weight: 500; text-align: right; }
 .summary .terms-row { font-size: 11.5px; color: var(--pop); font-style: italic; text-align: right; margin-top: -2px; }
 .summary hr { border: none; border-top: 1px dashed var(--line); margin: 10px 0; }
 .summary h3 { font-size: 18px; color: var(--ink); margin-top: 10px; display: flex; justify-content: space-between; }
@@ -280,6 +312,9 @@ button.main:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-s
           </div>
         </div>
 
+        <!-- Explains, in plain language, which fee applies once region/town is picked -->
+        <div class="delivery-mode-note" id="deliveryModeNote"></div>
+
         <div class="input-group" id="regionGroup">
           <label>County/Region</label>
           <select id="regionSelect"><option value="">Select Region</option></select>
@@ -315,7 +350,9 @@ button.main:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-s
         <div class="summary">
           <p>Items Total <span>Ksh <span id="item-price">0</span></span></p>
           <p id="transport-row">Standard Transport <span>Ksh <span id="transport-fee">0</span></span></p>
-          <p id="wholesale-fee-row" style="display:none;">Wholesale Delivery <span>Ksh <span id="wholesale-fee">0</span></span></p>
+          <p id="wholesale-fee-row" style="display:none;">
+            Wholesale Delivery <span>Ksh <span id="wholesale-fee">0</span></span>
+          </p>
           <div id="terms-row" class="terms-row" style="display:none;"></div>
           <hr>
           <h3>Total <span>Ksh <span id="total-price">0</span></span></h3>
@@ -420,17 +457,18 @@ function showPageError(message) {
    on load, so price / stock / MOQ / pricing tiers / delivery terms
    are always accurate, never trusted from localStorage.
 
-   DELIVERY MODEL (ported from pay.html, now driven by live data):
-   - Every retail item = "standard delivery": rides the regional
-     County/Town Transport fee below.
-   - Wholesale items carry a seller-set deliveryType:
-       'simple' -> ALSO standard delivery (rides the Transport fee,
-                   shown with a "Standard Delivery" badge) — treated
-                   exactly like a retail item for shipping purposes.
-       'heavy'  -> uses the seller's own delivery terms: free,
-                   fixed, quantity-based, or negotiated directly
-                   with the seller (which then requires an exact
-                   delivery address so they can quote it).
+   DELIVERY MODEL:
+   - Region/Town/Custom-location capture is ALWAYS shown for any
+     non-empty cart — every order needs a delivery destination,
+     whether the shipping leg is billed at our standard regional
+     rate or at a wholesaler's own rate.
+   - Retail items and 'simple' wholesale items = "standard delivery":
+     their fee is the regional Transport fee (Town selection).
+   - 'heavy' wholesale items keep their own delivery terms (free /
+     fixed / quantity-based / negotiated). Their fee is added
+     separately as "Wholesale Delivery" — the Transport fee is
+     NEVER charged again for them, even though the same Town
+     selector is used to record where they should be delivered.
    ============================================================ */
 let enriched = []; // one entry per cart line, after enrichment against backend
 
@@ -449,7 +487,7 @@ const DELIVERY_DATA = {
 // -------- delivery classification (single source of truth) --------
 function isWholesaleLine(e) { return e.isWholesale; }
 function isHeavyWholesale(e) { return e.isWholesale && e.deliveryType === "heavy"; }
-// "Standard delivery" = rides the regional Transport fee, same as retail.
+// "Standard delivery" = billed at the regional Transport fee, same as retail.
 // True for every retail line, AND for wholesale lines the seller flagged 'simple'.
 function isStandardDelivery(e) { return !isHeavyWholesale(e); }
 function isNegotiatedDelivery(e) {
@@ -493,7 +531,7 @@ async function enrichLine(line) {
 
   const stockAvailable = requiresVariant ? (selectedVariant ? selectedVariant.stock : null) : product.stock;
 
-  // deliveryType: 'heavy' (own delivery terms) or 'simple' (rides standard
+  // deliveryType: 'heavy' (own delivery terms) or 'simple' (billed at standard
   // regional transport, like retail). Only meaningful for wholesale items.
   const deliveryType = product.deliveryType || "heavy";
 
@@ -581,7 +619,9 @@ function renderCheckoutItems() {
           ${product.pricingTiers && product.pricingTiers.length > 0 ? `<div class="wholesale-tiers"><span style="font-weight:600;">Bulk Pricing:</span> ${tiersHtml}</div>` : ""}
           ${deliveryRows}
         </div>
-        ${!heavy ? `<div class="standard-delivery-note"><i class="fa-solid fa-truck-fast"></i> This item ships via standard regional delivery — covered by the Transport fee below.</div>` : ""}`;
+        ${!heavy
+          ? `<div class="standard-delivery-note"><i class="fa-solid fa-truck-fast"></i><span>This item ships via standard regional delivery — covered by the Transport fee in your Order Summary.</span></div>`
+          : `<div class="heavy-delivery-note"><i class="fa-solid fa-location-dot"></i><span>We still collect your Region/Town below so the seller can arrange delivery — but this item is billed at the wholesale delivery fee shown, <strong>not</strong> the standard Transport fee.</span></div>`}`;
     }
 
     // Dynamic variant/attribute picker, built from real ProductVariant combinations
@@ -612,7 +652,7 @@ function renderCheckoutItems() {
           <div class="cart-left">
             <img src="${img}" onerror="this.src='images/placeholder.png'">
             <div class="cart-details">
-              <h4>${product.name} ${isWholesale ? '<span class="wholesale-badge">Wholesale</span>' : ""} ${isWholesale && !heavy ? '<span class="standard-delivery-badge">Standard Delivery</span>' : ""}</h4>
+              <h4>${product.name} ${isWholesale ? '<span class="wholesale-badge">Wholesale</span>' : ""} ${isWholesale && !heavy ? '<span class="standard-delivery-badge">Standard Delivery</span>' : ""} ${heavy ? '<span class="own-delivery-badge">Seller Delivery</span>' : ""}</h4>
               <div class="price-line">Ksh ${itemTotal.toLocaleString()} <small>(Ksh ${unitPrice.toLocaleString()} × ${qty})</small></div>
               ${wholesaleInfo}
               ${variantPicker}
@@ -709,7 +749,8 @@ function renderWholesaleDeliveryCard() {
   }).join("");
 }
 
-// -------- retail / standard-delivery region & town transport --------
+// -------- region & town — ALWAYS captured for buyer location, used to bill
+// the regional Transport fee only for standard-delivery lines --------
 const regionSelect = document.getElementById("regionSelect");
 const townSelect = document.getElementById("townSelect");
 Object.keys(DELIVERY_DATA).forEach((region) => {
@@ -758,14 +799,24 @@ function updateTotal() {
   const hasHeavyWholesale = live.some((e) => isHeavyWholesale(e));
   const hasNegotiatedItem = live.some((e) => isNegotiatedDelivery(e));
 
-  // Region/town selector + preview only matter when something needs standard
-  // (regional) transport; a cart made up entirely of 'heavy' wholesale items
-  // does not need it at all.
+  // Region/Town/Custom-location is shown for ANY non-empty cart — every order
+  // needs a delivery destination, heavy-wholesale-only carts included.
   document.getElementById("contactCard").style.display = live.length ? "block" : "none";
-  document.getElementById("regionGroup").style.display = hasStandardItem ? "block" : "none";
-  document.getElementById("townGroup").style.display = hasStandardItem ? "block" : "none";
-  document.getElementById("customLocationBtn").style.display = hasStandardItem ? "block" : "none";
-  document.getElementById("transport-row").style.display = hasStandardItem ? "flex" : "none";
+
+  // Plain-language note about which fee applies, shown right above the
+  // region/town fields so it's read before the buyer picks a location.
+  const modeNote = document.getElementById("deliveryModeNote");
+  if (hasHeavyWholesale && hasStandardItem) {
+    modeNote.style.display = "flex";
+    modeNote.className = "delivery-mode-note mode-mixed";
+    modeNote.innerHTML = `<i class="fa-solid fa-circle-info"></i><span><strong>Two delivery charges apply here.</strong> Your Region/Town below sets the delivery destination for everything in this order. The standard Transport fee is billed for your regular item(s); your wholesale item(s) are billed separately at the seller's own delivery rate — both are itemised in your Order Summary.</span>`;
+  } else if (hasHeavyWholesale && !hasStandardItem) {
+    modeNote.style.display = "flex";
+    modeNote.className = "delivery-mode-note mode-heavy-only";
+    modeNote.innerHTML = `<i class="fa-solid fa-circle-info"></i><span><strong>This is a wholesale order.</strong> Please still select your Region/Town below so the seller knows where to deliver — but you will only be charged the wholesale delivery fee shown in your Order Summary, not our standard Transport rate.</span>`;
+  } else {
+    modeNote.style.display = "none";
+  }
 
   const itemsTotal = live.reduce((sum, e) => sum + e.unitPrice * e.qty, 0);
   const transport = hasStandardItem ? (Number(townSelect.value) || 0) : 0;
@@ -778,6 +829,11 @@ function updateTotal() {
     wholesaleFee += fee;
     terms.push(`${e.product.name}: ${label}`);
   });
+
+  // Standard Transport row: only meaningful (and only added to the total)
+  // when at least one standard-delivery item is in the cart.
+  const transportRow = document.getElementById("transport-row");
+  transportRow.style.display = hasStandardItem ? "flex" : "none";
 
   const wholesaleFeeRow = document.getElementById("wholesale-fee-row");
   wholesaleFeeRow.style.display = hasHeavyWholesale ? "flex" : "none";
@@ -816,7 +872,7 @@ function updateTotal() {
 
   const selected = townSelect.options[townSelect.selectedIndex];
   const preview = document.getElementById("delivery-preview");
-  if (hasStandardItem && selected && selected.dataset.town) {
+  if (selected && selected.dataset.town && live.length) {
     preview.style.display = "block";
     const dispatchDate = getNextSaturday();
     const deliveryDays = Number(selected.dataset.days || 2);
@@ -828,7 +884,7 @@ function updateTotal() {
         <div style="font-size:13px;color:var(--marigold);font-weight:800;"><i class="fa-solid fa-truck-fast"></i> SIX STAR EXPRESS</div>
       </div>
       <div class="delivery-row"><strong>Destination</strong><span>${selected.dataset.town}</span></div>
-      <div class="delivery-row"><strong>Transport Fee</strong><span>Ksh ${transport}</span></div>
+      <div class="delivery-row"><strong>Transport Fee</strong>${hasStandardItem ? `<span>Ksh ${transport}</span>` : `<span class="muted">Not charged — wholesale delivery applies</span>`}</div>
       <div class="delivery-row"><strong>Dispatch Date</strong><span>Saturday, ${formatDate(dispatchDate)}</span></div>
       <div class="delivery-row"><strong>Expected Delivery</strong><span style="color:var(--marigold);font-weight:700;">${formatDate(startDelivery)} - ${formatDate(endDelivery)}</span></div>
       ${hasHeavyWholesale && terms.length ? `
@@ -842,10 +898,7 @@ function updateTotal() {
     setStep(3);
   } else {
     preview.style.display = "none";
-    // No standard-delivery item to preview — still advance the stepper once
-    // the required delivery address (for negotiated heavy items) is filled.
-    const addressEl = document.getElementById("deliveryAddress");
-    setStep(hasStandardItem ? 2 : (!hasNegotiatedItem || addressEl.value.trim().length >= 8 ? 3 : 2));
+    setStep(2);
   }
 }
 
@@ -875,7 +928,7 @@ function sendCustomLocationOrder() {
     if (e.error) return;
     const itemTotal = e.unitPrice * e.qty;
     total += itemTotal;
-    message += `${i + 1}. ${e.product.name}${e.isWholesale ? ` [WHOLESALE${isHeavyWholesale(e) ? "" : " - STANDARD DELIVERY"}]` : ""}\n${e.selectedVariant ? `Option: ${e.selectedVariant.combination.map(c=>c.value).join(" / ")}` : ""}\nQty: ${e.qty}\nKsh ${itemTotal.toLocaleString()}\n\n`;
+    message += `${i + 1}. ${e.product.name}${e.isWholesale ? ` [WHOLESALE${isHeavyWholesale(e) ? " - SELLER DELIVERY" : " - STANDARD DELIVERY"}]` : ""}\n${e.selectedVariant ? `Option: ${e.selectedVariant.combination.map(c=>c.value).join(" / ")}` : ""}\nQty: ${e.qty}\nKsh ${itemTotal.toLocaleString()}\n\n`;
   });
   message += `━━━━━━━━━━━━━━━\n💰 TOTAL: Ksh ${total.toLocaleString()}\n━━━━━━━━━━━━━━━\n\nPlease confirm if delivery to this location is possible. ✅`;
   window.open(`https://wa.me/254794327798?text=${encodeURIComponent(message)}`, "_blank");
@@ -886,8 +939,10 @@ function showPayment() {
   if (missingVariant) { alert(`Please select ${missingVariant.variantDefs.map(d=>d.name).join(" & ")} for "${missingVariant.product.name}".`); return; }
 
   const live = enriched.filter((e) => !e.error);
-  const hasStandardItem = live.some((e) => isStandardDelivery(e));
-  if (hasStandardItem && !townSelect.value) {
+
+  // Region/Town is now required for EVERY order — it's the buyer's delivery
+  // location regardless of which fee logic applies to the items in the cart.
+  if (live.length && !townSelect.value) {
     alert("Please select a delivery town/area first.");
     markFieldError(townSelect);
     townSelect.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -1010,18 +1065,22 @@ async function submitOrder(event) {
   const locationText = townSelect.selectedIndex > 0 ? townSelect.options[townSelect.selectedIndex].text : "";
   const agentCode = document.getElementById("agentSelect").value;
   const deliveryAddress = document.getElementById("deliveryAddress").value.trim();
-  const transportFee = Number(townSelect.value) || 0;
 
   const live = enriched.filter((e) => !e.error);
   const hasStandardItem = live.some((e) => isStandardDelivery(e));
   const needsNegotiatedAddress = live.some((e) => isNegotiatedDelivery(e));
+
+  // The Transport fee is only actually billed (and sent to the backend) when
+  // at least one standard-delivery item needs it — heavy wholesale items are
+  // billed through their own deliveryCharge server-side, not this figure.
+  const transportFee = hasStandardItem ? (Number(townSelect.value) || 0) : 0;
 
   if (!name || !phone || !mpesaMessage) {
     msg.innerHTML = "<span style='color:#E23744'>Please fill all required fields, including your M-Pesa message</span>";
     if (btn) btn.disabled = false;
     return;
   }
-  if (hasStandardItem && !townSelect.value) {
+  if (live.length && !townSelect.value) {
     msg.innerHTML = "<span style='color:#E23744'>Please select your delivery town/area</span>";
     if (btn) btn.disabled = false;
     return;
@@ -1054,7 +1113,8 @@ async function submitOrder(event) {
   }
 
   // Combine the selected town with the free-text landmark/address so the
-  // seller/rider gets both.
+  // seller/rider gets both — this is the buyer's delivery location and is
+  // sent for EVERY order, including heavy-wholesale-only carts.
   const combinedAddress = [locationText, deliveryAddress].filter(Boolean).join(" — ");
 
   const payload = {
@@ -1072,6 +1132,8 @@ async function submitOrder(event) {
     },
     mpesaMessage,
     agentCode: agentCode || undefined,
+    // Standard Transport fee only — the backend prices each heavy wholesale
+    // line's own delivery charge independently from its stored deliveryCharge.
     transportFee,
   };
 

@@ -517,7 +517,7 @@ function ssRenderFooter() {
         <h4>Customer Service</h4>
         <a href="/contact.html">Contact Us / Visit Us</a>
         <a href="/about.html#faq">FAQs</a>
-        <a href="/track-order.html">Track My Order</a>
+        <a href="/profile.html">Track My Order</a>
       </div>
       <div>
         <h4>About Us</h4>
