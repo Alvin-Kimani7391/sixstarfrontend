@@ -1,6 +1,18 @@
 /* ============================================================
    PROFILE PAGE — details, orders (polling for live-ish status),
    cancel order, recently viewed products.
+
+   New in this version:
+   - Deep-linking: profile.html?tab=orders&orderId=XYZ (used by the
+     post-payment redirect on pay.html) jumps straight to the
+     Orders tab, expands that order's detail panel, and scrolls to
+     it with a brief highlight.
+   - Expandable order cards: a "View details" toggle reveals an
+     itemized breakdown (items, variant, qty × unit price), a full
+     price breakdown (subtotal / transport / wholesale delivery /
+     notes / total), shipping details, and payment info (status,
+     M-Pesa code, verified/placed/updated timestamps). Expanded
+     state is preserved across the 20s silent poll refresh.
    ============================================================ */
 (function () {
   const user = SS_AUTH.requireRole(['buyer', 'retailer', 'wholesaler']); // any logged-in role
@@ -19,6 +31,17 @@
   let pollTimer = null;
   let pendingCancelId = null;
 
+  // Order ids whose detail panel is currently expanded — kept across silent
+  // poll refreshes so the list re-rendering every 20s doesn't collapse
+  // whatever the buyer had open.
+  const expandedOrderIds = new Set();
+
+  // Deep-link params from the URL (set by pay.html's post-payment redirect:
+  // profile.html?tab=orders&orderId=...)
+  const urlParams = new URLSearchParams(location.search);
+  const deepLinkTab = urlParams.get('tab');
+  const deepLinkOrderId = urlParams.get('orderId');
+
   function toast(msg) {
     const el = document.getElementById('toast');
     if (!el) return;
@@ -33,28 +56,51 @@
   function money(n) {
     return 'KSh ' + Number(n || 0).toLocaleString('en-KE', { maximumFractionDigits: 0 });
   }
+  function dateTime(d) {
+    return d ? new Date(d).toLocaleString('en-KE', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+  }
   function initials(name) {
     return (name || '?').trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
   }
 
   /* ---------- tabs ---------- */
   const tabs = document.querySelectorAll('.acct-tab[data-tab]');
-  tabs.forEach((btn) => {
-    btn.addEventListener('click', () => {
-      tabs.forEach((b) => b.classList.remove('active'));
-      btn.classList.add('active');
-      document.querySelectorAll('.acct-panel').forEach((p) => p.classList.remove('active'));
-      document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
 
-      if (btn.dataset.tab === 'orders') {
-        loadOrders();
-        startPolling();
-      } else {
-        stopPolling();
-      }
-      if (btn.dataset.tab === 'viewed') loadRecentlyViewed();
-    });
+  function activateTab(tabName) {
+    const target = document.getElementById('panel-' + tabName);
+    if (!target) return; // unknown tab name (e.g. bad query param) — ignore
+
+    tabs.forEach((b) => b.classList.toggle('active', b.dataset.tab === tabName));
+    document.querySelectorAll('.acct-panel').forEach((p) => p.classList.toggle('active', p.id === 'panel-' + tabName));
+
+    if (tabName === 'orders') {
+      // If we're deep-linking to a specific order, mark it expanded BEFORE
+      // rendering so it opens already-expanded instead of flashing shut->open.
+      if (deepLinkOrderId) expandedOrderIds.add(deepLinkOrderId);
+      loadOrders().then(() => {
+        if (deepLinkOrderId) scrollToOrder(deepLinkOrderId);
+      });
+      startPolling();
+    } else {
+      stopPolling();
+    }
+    if (tabName === 'viewed') loadRecentlyViewed();
+  }
+
+  tabs.forEach((btn) => {
+    btn.addEventListener('click', () => activateTab(btn.dataset.tab));
   });
+
+  function scrollToOrder(id) {
+    // Wait a frame for the just-rendered list to be in the DOM.
+    requestAnimationFrame(() => {
+      const card = document.querySelector(`.order-card[data-order-id="${id}"]`);
+      if (!card) return;
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      card.classList.add('order-card--highlight');
+      setTimeout(() => card.classList.remove('order-card--highlight'), 2600);
+    });
+  }
 
   document.getElementById('logoutBtn').addEventListener('click', async () => {
     if (!confirm('Are you sure you want to log out?')) return;
@@ -149,7 +195,7 @@
     }
   });
 
-  /* ---------- orders ---------- */
+  /* ---------- orders: progress stages ---------- */
   function stepIndex(orderStatus) {
     const i = ORDER_STEPS.findIndex((s) => s.key === orderStatus);
     return i === -1 ? 0 : i;
@@ -170,6 +216,87 @@
     </div>`;
   }
 
+  /* ---------- orders: expandable detail panel ---------- */
+  function calcItemsSubtotal(o) {
+    return (o.items || []).reduce((sum, it) => sum + (Number(it.priceAtPurchase) || 0) * (Number(it.quantity) || 0), 0);
+  }
+
+  function orderDetailHTML(o) {
+    const items = o.items || [];
+    const subtotal = calcItemsSubtotal(o);
+    const dd = o.deliveryDetails || {};
+    const transportFee = dd.transportFee || 0;
+    const wholesaleFee = dd.wholesaleDeliveryFee || 0;
+    const notes = dd.notes || [];
+    const addr = o.shippingAddress || {};
+
+    return `
+      <div class="order-detail-section">
+        <h4><i class="fa-solid fa-list"></i> Items (${items.length})</h4>
+        <div class="detail-items">
+          ${items.map((it) => `
+            <div class="detail-item-row">
+              <img src="${esc(it.image || '')}" alt="${esc(it.name || '')}" onerror="this.style.visibility='hidden'" />
+              <div class="detail-item-info">
+                <div class="detail-item-name">${esc(it.name)}${it.sellerRole === 'wholesaler' ? `<span class="mini-chip wholesale">Wholesale</span>` : ''}</div>
+                ${it.variantLabel ? `<div class="detail-item-variant">${esc(it.variantLabel)}</div>` : ''}
+                <div class="detail-item-qty">${it.quantity} × ${money(it.priceAtPurchase)}</div>
+              </div>
+              <div class="detail-item-total">${money((Number(it.priceAtPurchase) || 0) * (Number(it.quantity) || 0))}</div>
+            </div>
+          `).join('') || `<p class="form-hint">No item details available.</p>`}
+        </div>
+      </div>
+
+      <div class="order-detail-section">
+        <h4><i class="fa-solid fa-receipt"></i> Price breakdown</h4>
+        <div class="detail-price-row"><span>Items subtotal</span><span>${money(subtotal)}</span></div>
+        ${transportFee > 0 ? `<div class="detail-price-row"><span>Transport fee</span><span>${money(transportFee)}</span></div>` : ''}
+        ${wholesaleFee > 0 ? `<div class="detail-price-row"><span>Wholesale delivery</span><span>${money(wholesaleFee)}</span></div>` : ''}
+        ${notes.length ? `<div class="detail-notes"><i class="fa-solid fa-circle-info"></i><span>${notes.map(esc).join(' · ')}</span></div>` : ''}
+        <div class="detail-price-row total"><span>Total paid</span><span>${money(o.totalAmount)}</span></div>
+      </div>
+
+      <div class="order-detail-section">
+        <h4><i class="fa-solid fa-truck"></i> Delivery details</h4>
+        <div class="detail-kv"><span>Recipient</span><span>${esc(addr.fullName || '—')}</span></div>
+        <div class="detail-kv"><span>Phone</span><span>${esc(addr.phone || '—')}</span></div>
+        <div class="detail-kv"><span>Town / Area</span><span>${esc(addr.city || '—')}</span></div>
+        <div class="detail-kv"><span>Address / Landmark</span><span>${esc(addr.address || addr.notes || '—')}</span></div>
+      </div>
+
+      <div class="order-detail-section">
+        <h4><i class="fa-solid fa-money-bill-wave"></i> Payment</h4>
+        <div class="detail-kv"><span>Status</span><span class="order-status-pill ${esc(o.paymentStatus)}">${esc((o.paymentStatus || '').replace(/_/g, ' '))}</span></div>
+        ${o.mpesaCode ? `<div class="detail-kv"><span>M-Pesa code</span><span class="mono">${esc(o.mpesaCode)}</span></div>` : ''}
+        ${o.verifiedAt ? `<div class="detail-kv"><span>Verified on</span><span>${dateTime(o.verifiedAt)}</span></div>` : ''}
+        <div class="detail-kv"><span>Placed on</span><span>${dateTime(o.createdAt)}</span></div>
+        <div class="detail-kv"><span>Last updated</span><span>${dateTime(o.updatedAt)}</span></div>
+      </div>
+    `;
+  }
+
+  function toggleOrderDetail(id) {
+    const panel = document.getElementById('detail-' + id);
+    const btn = document.querySelector(`[data-toggle-detail="${id}"]`);
+    if (!panel) return;
+
+    const willOpen = panel.hasAttribute('hidden');
+    if (willOpen) {
+      panel.removeAttribute('hidden');
+      expandedOrderIds.add(id);
+    } else {
+      panel.setAttribute('hidden', '');
+      expandedOrderIds.delete(id);
+    }
+
+    if (btn) {
+      btn.classList.toggle('open', willOpen);
+      const label = btn.querySelector('span');
+      if (label) label.textContent = willOpen ? 'Hide details' : 'View details';
+    }
+  }
+
   function orderCardHTML(o) {
     const items = o.items || [];
     // Cancellable while it's still processing and hasn't been confirmed+moved on
@@ -177,13 +304,14 @@
     const canCancel = o.orderStatus === 'processing'
       && !(o.paymentStatus === 'confirmed' && o.orderStatus !== 'processing');
     const orderRef = o.orderNumber ? o.orderNumber : ('#' + esc(o._id?.slice(-8).toUpperCase()));
+    const isOpen = expandedOrderIds.has(o._id);
 
     return `
       <div class="order-card" data-order-id="${o._id}">
         <div class="order-card__head">
           <div>
             <div class="order-id">${orderRef}</div>
-            <div class="order-date">${o.createdAt ? new Date(o.createdAt).toLocaleString('en-KE', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</div>
+            <div class="order-date">${dateTime(o.createdAt)}</div>
           </div>
           <span class="order-status-pill ${esc(o.orderStatus)}">${esc(o.orderStatus)}</span>
         </div>
@@ -198,11 +326,17 @@
         <div class="order-foot">
           <div class="order-total">${money(o.totalAmount)}</div>
           <div class="order-actions">
+            <button class="btn-details-toggle ${isOpen ? 'open' : ''}" data-toggle-detail="${o._id}">
+              <span>${isOpen ? 'Hide details' : 'View details'}</span> <i class="fa-solid fa-chevron-down"></i>
+            </button>
             <a href="track.html?orderId=${encodeURIComponent(o._id)}" class="btn btn-outline btn-sm">Track</a>
             <button class="btn-cancel-order" data-cancel="${o._id}" ${canCancel ? '' : 'disabled'}>
               ${canCancel ? 'Cancel order' : 'Not cancellable'}
             </button>
           </div>
+        </div>
+        <div class="order-detail" id="detail-${o._id}" ${isOpen ? '' : 'hidden'}>
+          ${orderDetailHTML(o)}
         </div>
       </div>`;
   }
@@ -221,6 +355,9 @@
       list.innerHTML = orders.map(orderCardHTML).join('');
       list.querySelectorAll('[data-cancel]:not([disabled])').forEach((btn) => {
         btn.addEventListener('click', () => openCancelConfirm(btn.dataset.cancel));
+      });
+      list.querySelectorAll('[data-toggle-detail]').forEach((btn) => {
+        btn.addEventListener('click', () => toggleOrderDetail(btn.dataset.toggleDetail));
       });
     } catch (err) {
       if (!silent) list.innerHTML = `<div class="empty-mini"><i class="fa-solid fa-triangle-exclamation"></i>${esc(err.message || 'Could not load your orders.')}</div>`;
@@ -312,4 +449,14 @@
 
   /* ---------- init ---------- */
   loadProfile();
+
+  // Deep-link support: profile.html?tab=orders&orderId=XYZ (used by pay.html's
+  // post-payment redirect) jumps straight to that tab and, for orders, expands
+  // + scrolls to the specific order.
+  if (deepLinkTab && document.getElementById('panel-' + deepLinkTab)) {
+    activateTab(deepLinkTab);
+  } else if (deepLinkOrderId) {
+    // orderId given without an explicit tab — orders is the only sensible target.
+    activateTab('orders');
+  }
 })();
