@@ -145,11 +145,7 @@
             </button>
           </div>
 
-          <div class="pd-seller-line">
-            <i class="fa-regular fa-store"></i>
-            <span>Sold by ${sellerName}</span>
-            <span class="role-chip">${wholesale ? "Wholesaler" : "Retailer"}</span>
-          </div>
+          
 
           <div class="review-stars" id="pdRatingSummary">
             ${p.ratingsCount
