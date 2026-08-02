@@ -37,7 +37,7 @@ const SS_AUTH = (() => {
     }
 
     if (!roles.includes(user.role)) {
-      location.href = "index.html";
+      location.href = "/index.html";
       return null;
     }
 

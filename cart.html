@@ -11,7 +11,8 @@
 <link rel="stylesheet" href="css/style.css">
 <style>
 /* ============================================================
-   CHECKOUT PAGE - SIX STAR SUPPLIERS (unified cart + pay)
+   CHECKOUT PAGE - SIX STAR SUPPLIERS (unified cart + pay,
+   dynamic simple/heavy wholesale delivery)
    ============================================================ */
 
 .checkout-stepper {
@@ -27,13 +28,13 @@
 }
 .step-node.done .step-circle { background: linear-gradient(135deg,var(--price),#0d8c43); border-color: transparent; color: #fff; }
 .step-node.current .step-circle { background: linear-gradient(135deg,var(--marigold),var(--marigold-deep)); border-color: transparent; color: var(--navy-deep); box-shadow: 0 0 0 4px rgba(242,169,59,.15); }
-.step-label { font-size: 10.5px; font-weight: 700; color: var(--ink-faint); text-align: center; }
+.step-label { font-size: 10.5px; font-weight: 700; color: var(--ink-faint); text-align: center; letter-spacing: .2px; }
 .step-node.current .step-label, .step-node.done .step-label { color: var(--ink); }
 .step-line { flex: 1; height: 2px; background: var(--line); margin-top: -20px; max-width: 60px; transition: .3s ease; }
 .step-line.done { background: var(--price); }
 
 .checkout-wrap {
-  max-width: 980px; margin: 0 auto; padding: 8px 16px 0;
+  max-width: 980px; margin: 0 auto; padding: 8px 16px 40px;
   display: grid; grid-template-columns: 1fr 340px; gap: 22px; align-items: start;
 }
 @media(max-width: 860px) { .checkout-wrap { grid-template-columns: 1fr; } }
@@ -53,21 +54,32 @@
   padding: 20px; margin-bottom: 16px; animation: cardIn .4s ease both;
 }
 @keyframes cardIn { from{ opacity:0; transform:translateY(10px);} to{ opacity:1; transform:none;} }
-.section-card h3 { font-size: 15px; color: var(--ink); margin-bottom: 14px; display: flex; align-items: center; gap: 9px; }
-.section-card h3 i { color: var(--marigold); font-size: 14px; }
+.section-card h3 {
+  font-size: 15px; color: var(--ink); margin-bottom: 14px; display: flex; align-items: center; gap: 10px;
+  padding-bottom: 12px; border-bottom: 1px solid var(--line);
+}
+.section-card h3 .h-icon {
+  width: 28px; height: 28px; border-radius: 9px; display: flex; align-items: center; justify-content: center;
+  background: rgba(242,169,59,.12); color: var(--marigold-deep); font-size: 13px; flex-shrink: 0;
+}
+.section-card h3 .h-count {
+  margin-left: auto; font-size: 11px; font-weight: 800; color: var(--ink-faint);
+  background: var(--bg-page); border: 1px solid var(--line); padding: 2px 9px; border-radius: 20px;
+}
 
 .cart-item-wrapper { margin-bottom: 12px; }
 .cart-item-wrapper:last-child { margin-bottom: 0; }
 .premium-cart {
   display: flex; justify-content: space-between; align-items: flex-start; gap: 14px;
   padding: 15px; background: var(--white); border-radius: var(--radius-md);
-  border: 1px solid var(--line); transition: background 0.25s ease, border 0.2s ease;
+  border: 1px solid var(--line); transition: border .2s ease, box-shadow .2s ease;
 }
-.premium-cart.line-stale { border-color: rgba(184,68,46,.4); }
+.premium-cart:hover { box-shadow: 0 4px 14px rgba(20,20,20,.05); }
+.premium-cart.line-stale { border-color: rgba(184,68,46,.4); background: rgba(184,68,46,.02); }
 .cart-left { display: flex; gap: 13px; flex: 1; min-width: 0; }
-.cart-left img { width: 72px; height: 72px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--line); flex-shrink: 0; }
+.cart-left img { width: 72px; height: 72px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--line); flex-shrink: 0; background: var(--bg-page); }
 .cart-details { flex: 1; min-width: 0; }
-.cart-details h4 { font-size: 13.5px; font-weight: 700; color: var(--ink); margin: 0 0 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cart-details h4 { font-size: 13.5px; font-weight: 700; color: var(--ink); margin: 0 0 4px; line-height: 1.4; }
 .price-line { margin: 2px 0 10px; color: var(--price); font-family: var(--font-mono); font-weight: 800; font-size: 14px; }
 .price-line small { color: var(--ink-faint); font-weight: 600; font-size: 11px; margin-left: 6px; }
 .mini-config { margin-top: 8px; }
@@ -75,19 +87,28 @@
 
 .wholesale-badge {
   display: inline-block; background: var(--pop); color: #fff; font-size: 9px; font-weight: 800;
-  padding: 2px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px; margin-left: 6px;
+  padding: 2px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px; margin-left: 6px; vertical-align: 2px;
+}
+.standard-delivery-badge {
+  display: inline-block; background: rgba(37,99,235,0.12); color: #2563eb; font-size: 9px; font-weight: 800;
+  padding: 2px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px; margin-left: 6px; vertical-align: 2px;
 }
 .wholesale-info { background: #F5F0FF; border-radius: var(--radius-sm); padding: 10px 12px; margin-top: 8px; border-left: 3px solid var(--pop); }
-.wholesale-info .info-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-soft); padding: 2px 0; }
+.wholesale-info .info-row { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--ink-soft); padding: 2px 0; }
 .wholesale-info .info-row strong { color: var(--ink); }
-.wholesale-info .info-row .highlight { color: var(--pop); font-weight: 700; }
+.wholesale-info .info-row .highlight { color: var(--pop); font-weight: 700; text-align: right; }
 .wholesale-tiers { margin-top: 6px; font-size: 11px; color: var(--ink-soft); }
 .wholesale-tiers span { display: inline-block; background: rgba(124, 58, 237, 0.1); padding: 2px 8px; border-radius: 4px; margin: 2px 4px 2px 0; color: var(--pop); font-weight: 600; }
 .wholesale-tiers span.tier-active { background: var(--pop); color: #fff; }
 .moq-warning { font-size: 11px; color: var(--brick); margin-top: 4px; font-weight: 600; }
 .stock-warning { font-size: 11px; color: var(--brick); margin-top: 4px; font-weight: 700; }
+.standard-delivery-note {
+  font-size: 11px; color: #2563eb; margin-top: 8px; font-weight: 600;
+  background: rgba(37,99,235,0.06); padding: 8px 10px; border-radius: 8px; border-left: 3px solid #2563eb;
+  display: flex; align-items: center; gap: 6px;
+}
 
-/* ---- Dynamic attribute/variant picker (replaces hardcoded color/size lists) ---- */
+/* ---- Dynamic attribute/variant picker ---- */
 .attr-group { margin-bottom: 10px; }
 .attr-options { display: flex; flex-wrap: wrap; gap: 8px; }
 .attr-btn {
@@ -111,43 +132,60 @@
 .input-group { margin-top: 13px; }
 .input-group:first-child { margin-top: 0; }
 .input-group label { display: block; font-weight: 700; font-size: 12.5px; color: var(--ink-soft); margin-bottom: 6px; }
+.input-group label .req-tag { color: var(--brick); font-weight: 800; }
+.input-group label .opt-tag { color: var(--ink-faint); font-weight: 600; text-transform: none; letter-spacing: 0; }
+.input-group small.hint { display: block; margin-top: 5px; font-size: 11px; color: var(--ink-faint); line-height: 1.5; }
 input, select, textarea {
   width: 100%; padding: 12px 14px; border-radius: var(--radius-sm);
   border: 1.5px solid var(--line); background: var(--bg-page); color: var(--ink);
   outline: none; font-family: var(--font-body); font-size: 14px; transition: .2s ease; resize: vertical;
 }
 input:focus, select:focus, textarea:focus { border-color: var(--marigold); box-shadow: 0 0 0 3px rgba(242,169,59,.13); }
+input.field-error, select.field-error, textarea.field-error { border-color: var(--brick); box-shadow: 0 0 0 3px rgba(184,68,46,.12); }
+
+.contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+@media (max-width: 520px) { .contact-grid { grid-template-columns: 1fr; } }
+
+.autofill-note {
+  font-size: 10.5px; color: var(--price); font-weight: 700; margin-top: 5px;
+  display: flex; align-items: center; gap: 5px;
+}
 
 #delivery-preview { margin-top: 14px; padding: 15px; border-radius: 14px; background: linear-gradient(135deg,rgba(242,169,59,.07),rgba(242,169,59,.07)); border: 1px solid rgba(242,169,59,.18); display: none; animation: fadeIn .35s ease; }
-.delivery-row { display: flex; justify-content: space-between; align-items: center; margin: 6px 0; font-size: 13px; }
+.delivery-row { display: flex; justify-content: space-between; align-items: center; margin: 6px 0; font-size: 13px; gap: 10px; }
 .delivery-row strong { color: var(--ink-soft); font-weight: 600; }
 @keyframes fadeIn { from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;} }
 
 .custom-location-btn { width: 100%; padding: 13px; border: 1.5px dashed var(--line); border-radius: 14px; cursor: pointer; background: var(--bg-page); color: var(--ink-soft); font-weight: 700; font-size: 13.5px; transition: .2s ease; margin-top: 14px; }
 .custom-location-btn:hover { border-color: var(--marigold); color: var(--marigold); }
 
-.wholesale-delivery-card { background: #F5F0FF; border: 1px solid rgba(124,58,237,.18); border-radius: var(--radius-md); padding: 14px; margin-top: 6px; }
+.wholesale-delivery-card { background: #F5F0FF; border: 1px solid rgba(124,58,237,.18); border-radius: var(--radius-md); padding: 14px; margin-bottom: 10px; }
+.wholesale-delivery-card:last-child { margin-bottom: 0; }
 .wholesale-delivery-card h4 { font-size: 12.5px; color: var(--pop); font-weight: 800; margin-bottom: 8px; display:flex; align-items:center; gap:6px; }
-.wd-row { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--ink-soft); padding: 3px 0; }
-.wd-row .amt { font-weight: 700; color: var(--ink); }
+.wd-row { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--ink-soft); padding: 3px 0; gap: 10px; }
+.wd-row .amt { font-weight: 700; color: var(--ink); text-align: right; }
 .wd-row .amt.negotiated { color: var(--pop); }
 
 .summary-sidebar { position: sticky; top: 78px; }
 .summary { padding: 18px; border-radius: var(--radius-lg); background: linear-gradient(135deg,rgba(242,169,59,.05),rgba(242,169,59,.05)); border: 1px solid rgba(242,169,59,.15); }
-.summary p { font-size: 13.5px; color: var(--ink-soft); margin: 6px 0; display: flex; justify-content: space-between; }
+.summary p { font-size: 13.5px; color: var(--ink-soft); margin: 6px 0; display: flex; justify-content: space-between; gap: 10px; }
+.summary p span:last-child { text-align: right; }
+.summary .terms-row { font-size: 11.5px; color: var(--pop); font-style: italic; text-align: right; margin-top: -2px; }
+.summary hr { border: none; border-top: 1px dashed var(--line); margin: 10px 0; }
 .summary h3 { font-size: 18px; color: var(--ink); margin-top: 10px; display: flex; justify-content: space-between; }
 .summary h3 span { font-family: var(--font-mono); color: var(--marigold); }
 
 button.main { width: 100%; padding: 15px; margin-top: 14px; border: none; border-radius: 14px; background: linear-gradient(135deg, var(--marigold), var(--marigold-deep)); color: var(--navy-deep); font-weight: 800; font-size: 14.5px; cursor: pointer; box-shadow: 0 10px 24px rgba(242,169,59,.28); transition: .2s ease; }
-button.main:hover { transform: translateY(-2px); }
+button.main:hover:not(:disabled) { transform: translateY(-2px); }
 button.main i { margin-right: 8px; }
-button.main:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+button.main:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
 
 .payment-modal { display: none; margin-top: 16px; padding: 18px; border-radius: var(--radius-lg); background: var(--white); border: 1px solid var(--line); animation: fadeIn .3s ease; }
 .payment-modal h4 { font-size: 14px; color: var(--ink); margin-bottom: 8px; }
 .payment-modal p { font-size: 13.5px; color: var(--ink-soft); margin: 4px 0; }
 .payment-modal > button:first-of-type { background: var(--bg-page); color: var(--ink-soft); border: 1.5px solid var(--line); padding: 8px 14px; border-radius: 10px; cursor: pointer; font-size: 12.5px; margin-bottom: 10px; font-weight: 700; }
 .payment-modal > button:last-of-type { width: 100%; padding: 14px; margin-top: 10px; border: none; border-radius: 12px; background: linear-gradient(135deg, var(--price), #0d8c43); color: #fff; font-weight: 800; cursor: pointer; box-shadow: 0 8px 20px rgba(18,161,80,.25); }
+.payment-modal > button:last-of-type:disabled { opacity: .55; cursor: not-allowed; }
 .success { text-align: center; color: var(--price); font-weight: 700; line-height: 1.6; }
 .order-number-highlight { display: inline-block; margin: 6px 0; padding: 8px 18px; background: rgba(18,161,80,.1); border: 1.5px dashed var(--price); border-radius: 12px; font-family: var(--font-mono); font-size: 20px; font-weight: 800; letter-spacing: 1px; color: var(--price); }
 #msg { margin-top: 14px; text-align: center; font-size: 13.5px; }
@@ -169,8 +207,15 @@ button.main:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 .section-loading { text-align: center; padding: 30px; color: var(--ink-soft); font-size: 13.5px; }
 .section-loading i { display: block; font-size: 20px; margin-bottom: 8px; color: var(--marigold); }
 
+.page-error-banner {
+  display: none; max-width: 980px; margin: 14px auto 0; padding: 12px 16px;
+  border-radius: var(--radius-sm); background: rgba(184,68,46,.08);
+  border: 1px solid rgba(184,68,46,.25); color: var(--brick); font-size: 13px;
+  font-weight: 600; text-align: center;
+}
+
 @media (max-width: 600px) {
-  .checkout-wrap { padding: 8px 12px 0; }
+  .checkout-wrap { padding: 8px 12px 32px; }
   .section-card { padding: 16px; }
   .premium-cart { flex-direction: column; }
   .cart-actions { width: 100%; flex-direction: row; justify-content: space-between; align-items: center; }
@@ -194,6 +239,8 @@ button.main:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
     <div class="step-node" data-step="3"><div class="step-circle">3</div><div class="step-label">Payment</div></div>
   </div>
 
+  <div class="page-error-banner" id="pageErrorBanner"></div>
+
   <div class="auth-gate" id="authGate" style="display:none;">
     <i class="fa-solid fa-lock"></i>
     <h3>Please log in to checkout</h3>
@@ -208,42 +255,69 @@ button.main:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
       <a href="product.html" class="back-shopping"><i class="fa-solid fa-arrow-left"></i> Back to Shopping</a>
 
       <div class="section-card">
-        <h3><i class="fa-solid fa-bag-shopping"></i> Your Items</h3>
+        <h3><span class="h-icon"><i class="fa-solid fa-bag-shopping"></i></span> Your Items <span class="h-count" id="itemCount">0</span></h3>
         <div id="checkout-items"><div class="section-loading"><i class="fa-solid fa-spinner fa-spin"></i>Loading your cart…</div></div>
       </div>
 
       <div class="section-card" id="wholesaleDeliveryCard" style="display:none;">
-        <h3><i class="fa-solid fa-truck-ramp-box"></i> Wholesale Delivery</h3>
+        <h3><span class="h-icon"><i class="fa-solid fa-truck-ramp-box"></i></span> Wholesale Delivery Terms</h3>
         <div id="wholesale-delivery-list"></div>
       </div>
 
-      <div class="section-card" id="retailDetailsCard" style="display:none;">
-        <h3><i class="fa-solid fa-user"></i> Contact & Delivery</h3>
-        <div class="input-group"><label>Full Name</label><input type="text" id="name" placeholder="John Doe"></div>
-        <div class="input-group"><label>M-Pesa Number</label><input type="text" id="phone" placeholder="0712345678"></div>
-        <div class="input-group"><label>County/Region</label><select id="regionSelect"><option value="">Select Region</option></select></div>
-        <div class="input-group"><label>Town / Area</label><select id="townSelect" onchange="updateTotal()"><option value="">Select Town</option></select></div>
-        <div id="delivery-preview"></div>
-        <button type="button" class="custom-location-btn" onclick="openCustomLocationModal()"><i class="fa-solid fa-location-dot"></i> My Location Is Not Listed</button>
-        <div class="input-group"><label>Select Agent (Optional) — earns them commission on your order</label><select id="agentSelect"><option value="">No Agent</option></select></div>
-      </div>
+      <div class="section-card" id="contactCard" style="display:none;">
+        <h3><span class="h-icon"><i class="fa-solid fa-user"></i></span> Contact &amp; Delivery</h3>
 
-      <div class="section-card" id="contactOnlyCard" style="display:none;">
-        <h3><i class="fa-solid fa-user"></i> Contact</h3>
-        <div class="input-group"><label>Full Name</label><input type="text" id="name2" placeholder="John Doe"></div>
-        <div class="input-group"><label>M-Pesa Number</label><input type="text" id="phone2" placeholder="0712345678"></div>
-        <div class="input-group"><label>Delivery Address / Landmark</label><input type="text" id="wholesaleAddress" placeholder="e.g. Nairobi CBD, near..."></div>
-        <div class="input-group"><label>Select Agent (Optional) — earns them commission on your order</label><select id="agentSelect2"><option value="">No Agent</option></select></div>
+        <div class="contact-grid">
+          <div class="input-group">
+            <label>Full Name</label>
+            <input type="text" id="name" placeholder="John Doe">
+            <div class="autofill-note" id="nameAutofillNote" style="display:none;"><i class="fa-solid fa-circle-check"></i> From your profile — edit if needed</div>
+          </div>
+          <div class="input-group">
+            <label>M-Pesa Number</label>
+            <input type="text" id="phone" placeholder="0712345678">
+            <div class="autofill-note" id="phoneAutofillNote" style="display:none;"><i class="fa-solid fa-circle-check"></i> From your profile — edit if needed</div>
+          </div>
+        </div>
+
+        <div class="input-group" id="regionGroup">
+          <label>County/Region</label>
+          <select id="regionSelect"><option value="">Select Region</option></select>
+        </div>
+        <div class="input-group" id="townGroup">
+          <label>Town / Area</label>
+          <select id="townSelect" onchange="updateTotal()"><option value="">Select Town</option></select>
+        </div>
+
+        <div id="delivery-preview"></div>
+
+        <button type="button" class="custom-location-btn" id="customLocationBtn" onclick="openCustomLocationModal()">
+          <i class="fa-solid fa-location-dot"></i> My Location Is Not Listed
+        </button>
+
+        <div class="input-group" id="deliveryAddressGroup">
+          <label id="deliveryAddressLabel">Delivery Address / Landmark <span class="opt-tag">(optional — helps couriers find you)</span></label>
+          <textarea id="deliveryAddress" rows="2" placeholder="e.g. Greenfield Estate, Block C, near the blue gate..."></textarea>
+          <small class="hint" id="deliveryAddressHint">This is sent to your seller/rider along with your town, so please include a landmark or building name.</small>
+          <div class="autofill-note" id="deliveryAddressAutofillNote" style="display:none;"><i class="fa-solid fa-circle-check"></i> From your profile — edit if needed</div>
+        </div>
+
+        <div class="input-group">
+          <label>Select Agent (Optional) — earns them commission on your order</label>
+          <select id="agentSelect"><option value="">No Agent</option></select>
+        </div>
       </div>
     </div>
 
     <div class="summary-sidebar">
       <div class="section-card">
-        <h3><i class="fa-solid fa-receipt"></i> Order Summary</h3>
+        <h3><span class="h-icon"><i class="fa-solid fa-receipt"></i></span> Order Summary</h3>
         <div class="summary">
           <p>Items Total <span>Ksh <span id="item-price">0</span></span></p>
-          <p id="transport-row">Transport <span>Ksh <span id="transport-fee">0</span></span></p>
+          <p id="transport-row">Standard Transport <span>Ksh <span id="transport-fee">0</span></span></p>
           <p id="wholesale-fee-row" style="display:none;">Wholesale Delivery <span>Ksh <span id="wholesale-fee">0</span></span></p>
+          <div id="terms-row" class="terms-row" style="display:none;"></div>
+          <hr>
           <h3>Total <span>Ksh <span id="total-price">0</span></span></h3>
         </div>
         <button class="main" id="proceedBtn" onclick="showPayment()"><i class="fa-solid fa-credit-card"></i>Proceed to Pay</button>
@@ -288,8 +362,7 @@ button.main:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 /* ============================================================
    CART MODULE (inline — same localStorage contract as js/cart.js,
    so product pages that still include js/cart.js and call
-   SS_CART.add(...) keep working; this page just doesn't need a
-   second <script> tag for it).
+   SS_CART.add(...) keep working)
    ============================================================ */
 const SS_CART = (() => {
   const STORAGE_KEY = "ss_cart";
@@ -335,10 +408,29 @@ const SS_CART = (() => {
   return { getAll, setQty, setVariant, remove, clear, count, updateBadge, resolveUnitPrice };
 })();
 
+function showPageError(message) {
+  const banner = document.getElementById("pageErrorBanner");
+  if (!banner) return;
+  banner.textContent = message;
+  banner.style.display = "block";
+}
+
 /* ============================================================
    CHECKOUT LOGIC — every line is re-fetched fresh from the backend
    on load, so price / stock / MOQ / pricing tiers / delivery terms
    are always accurate, never trusted from localStorage.
+
+   DELIVERY MODEL (ported from pay.html, now driven by live data):
+   - Every retail item = "standard delivery": rides the regional
+     County/Town Transport fee below.
+   - Wholesale items carry a seller-set deliveryType:
+       'simple' -> ALSO standard delivery (rides the Transport fee,
+                   shown with a "Standard Delivery" badge) — treated
+                   exactly like a retail item for shipping purposes.
+       'heavy'  -> uses the seller's own delivery terms: free,
+                   fixed, quantity-based, or negotiated directly
+                   with the seller (which then requires an exact
+                   delivery address so they can quote it).
    ============================================================ */
 let enriched = []; // one entry per cart line, after enrichment against backend
 
@@ -353,6 +445,16 @@ const DELIVERY_DATA = {
   RiftValley: [{ town: "Naivasha", fee: 250, deliveryDays: 2 }, { town: "Nakuru", fee: 300, deliveryDays: 2 }],
   Coast: [{ town: "Mombasa", fee: 300, deliveryDays: 4 }, { town: "Kilifi", fee: 350, deliveryDays: 4 }, { town: "Malindi", fee: 350, deliveryDays: 5 }]
 };
+
+// -------- delivery classification (single source of truth) --------
+function isWholesaleLine(e) { return e.isWholesale; }
+function isHeavyWholesale(e) { return e.isWholesale && e.deliveryType === "heavy"; }
+// "Standard delivery" = rides the regional Transport fee, same as retail.
+// True for every retail line, AND for wholesale lines the seller flagged 'simple'.
+function isStandardDelivery(e) { return !isHeavyWholesale(e); }
+function isNegotiatedDelivery(e) {
+  return isHeavyWholesale(e) && !e.product.freeDelivery && e.product.deliveryCharge && e.product.deliveryCharge.chargeType === "negotiated";
+}
 
 // -------- enrichment: pull fresh product + variant + category-attribute data --------
 async function enrichLine(line) {
@@ -373,11 +475,9 @@ async function enrichLine(line) {
   const variants = Array.isArray(product.variants) ? product.variants : [];
   const requiresVariant = variantDefs.length > 0;
 
-  // Resolve currently selected variant (if any) against fresh variant list
   let selectedVariant = null;
   if (line.variantId) selectedVariant = variants.find((v) => v._id === line.variantId) || null;
 
-  // Selected attribute values, derived from the currently selected variant
   const selectedAttrs = {};
   if (selectedVariant) {
     selectedVariant.combination.forEach((c) => { selectedAttrs[c.attribute] = c.value; });
@@ -393,9 +493,13 @@ async function enrichLine(line) {
 
   const stockAvailable = requiresVariant ? (selectedVariant ? selectedVariant.stock : null) : product.stock;
 
+  // deliveryType: 'heavy' (own delivery terms) or 'simple' (rides standard
+  // regional transport, like retail). Only meaningful for wholesale items.
+  const deliveryType = product.deliveryType || "heavy";
+
   return {
     line, product, variantDefs, variants, requiresVariant,
-    selectedVariant, selectedAttrs, isWholesale, minQty, qty,
+    selectedVariant, selectedAttrs, isWholesale, deliveryType, minQty, qty,
     unitPrice, stockAvailable, error: null,
   };
 }
@@ -421,6 +525,7 @@ async function loadCheckout() {
 function renderCheckoutItems() {
   const container = document.getElementById("checkout-items");
   container.innerHTML = "";
+  document.getElementById("itemCount").textContent = enriched.length;
 
   enriched.forEach((e, i) => {
     if (e.error) {
@@ -437,6 +542,7 @@ function renderCheckoutItems() {
     }
 
     const { product, requiresVariant, variantDefs, variants, selectedVariant, selectedAttrs, isWholesale, minQty, qty, unitPrice, stockAvailable } = e;
+    const heavy = isHeavyWholesale(e);
     const img = Array.isArray(product.images) && product.images.length ? product.images[0] : "";
     const itemTotal = unitPrice * qty;
     const canDecrease = qty > minQty;
@@ -453,15 +559,29 @@ function renderCheckoutItems() {
           return `<span class="${active ? 'tier-active' : ''}">${t.minQty}+ = Ksh ${t.price.toLocaleString()}</span>`;
         }).join("");
       }
+
+      // Delivery-terms rows only make sense for 'heavy' wholesale items —
+      // 'simple' wholesale items ship like retail, so no free/fixed/negotiated
+      // panel is shown for them; a standard-delivery note appears instead.
+      const deliveryRows = heavy ? `
+          ${product.freeDelivery ? `
+            <div class="info-row"><span>Delivery</span><span class="highlight"><i class="fa-solid fa-check-circle"></i> Free Delivery</span></div>
+          ` : product.deliveryCharge && product.deliveryCharge.chargeType === "fixed" && product.deliveryCharge.amount > 0 ? `
+            <div class="info-row"><span>Delivery Charge</span><span class="highlight">Ksh ${product.deliveryCharge.amount.toLocaleString()}</span></div>
+          ` : product.deliveryCharge && product.deliveryCharge.chargeType === "quantity_based" ? `
+            <div class="info-row"><span>Delivery Charge</span><span class="highlight">Ksh ${product.deliveryCharge.perUnitAmount.toLocaleString()} × ${qty} unit(s)</span></div>
+          ` : product.deliveryCharge && product.deliveryCharge.chargeType === "negotiated" && !product.freeDelivery ? `
+            <div class="info-row" style="font-size:11px;"><span>Delivery Terms</span><span>${product.deliveryCharge.notes || "To be agreed with seller"}</span></div>
+          ` : ""}
+        ` : "";
+
       wholesaleInfo = `
         <div class="wholesale-info">
           <div class="info-row"><span>Minimum Order</span><span><strong>${minQty} units</strong></span></div>
           ${product.pricingTiers && product.pricingTiers.length > 0 ? `<div class="wholesale-tiers"><span style="font-weight:600;">Bulk Pricing:</span> ${tiersHtml}</div>` : ""}
-          ${product.freeDelivery ? `<div class="info-row"><span>Delivery</span><span class="highlight"><i class="fa-solid fa-check-circle"></i> Free Delivery</span></div>`
-            : product.deliveryCharge && product.deliveryCharge.chargeType === "fixed" && product.deliveryCharge.amount > 0 ? `<div class="info-row"><span>Delivery Charge</span><span class="highlight">Ksh ${product.deliveryCharge.amount.toLocaleString()}</span></div>`
-            : product.deliveryCharge && product.deliveryCharge.chargeType === "quantity_based" ? `<div class="info-row"><span>Delivery</span><span class="highlight">Ksh ${product.deliveryCharge.perUnitAmount.toLocaleString()} / unit</span></div>`
-            : product.deliveryCharge && product.deliveryCharge.chargeType === "negotiated" ? `<div class="info-row" style="font-size:11px;"><span>Delivery Terms</span><span>${product.deliveryCharge.notes || "Negotiated with seller"}</span></div>` : ""}
-        </div>`;
+          ${deliveryRows}
+        </div>
+        ${!heavy ? `<div class="standard-delivery-note"><i class="fa-solid fa-truck-fast"></i> This item ships via standard regional delivery — covered by the Transport fee below.</div>` : ""}`;
     }
 
     // Dynamic variant/attribute picker, built from real ProductVariant combinations
@@ -475,7 +595,6 @@ function renderCheckoutItems() {
             <div class="mini-label">${def.name}</div>
             <div class="attr-options">
               ${values.map((val) => {
-                // is this value still reachable given other already-selected attrs?
                 const wouldMatch = variants.some((v) => {
                   const combo = { ...selectedAttrs, [def._id]: val };
                   return v.combination.every((c) => combo[c.attribute] === undefined || combo[c.attribute] === c.value) && v.stock > 0;
@@ -491,9 +610,9 @@ function renderCheckoutItems() {
       <div class="cart-item-wrapper">
         <div class="premium-cart ${(!requiresVariant || selectedVariant) && !outOfStock ? "" : "line-stale"}">
           <div class="cart-left">
-            <img src="${img}">
+            <img src="${img}" onerror="this.src='images/placeholder.png'">
             <div class="cart-details">
-              <h4>${product.name} ${isWholesale ? '<span class="wholesale-badge">Wholesale</span>' : ""}</h4>
+              <h4>${product.name} ${isWholesale ? '<span class="wholesale-badge">Wholesale</span>' : ""} ${isWholesale && !heavy ? '<span class="standard-delivery-badge">Standard Delivery</span>' : ""}</h4>
               <div class="price-line">Ksh ${itemTotal.toLocaleString()} <small>(Ksh ${unitPrice.toLocaleString()} × ${qty})</small></div>
               ${wholesaleInfo}
               ${variantPicker}
@@ -560,13 +679,13 @@ function removeLine(i) {
   loadCheckout();
 }
 
-// -------- wholesale delivery breakdown (independent of retail transport) --------
+// -------- wholesale delivery breakdown — 'heavy' lines only --------
 function computeWholesaleDeliveryForLine(e) {
-  if (!e.isWholesale) return { fee: 0, label: "" };
+  if (!isHeavyWholesale(e)) return { fee: 0, label: "" };
   const p = e.product;
   if (p.freeDelivery) return { fee: 0, label: "Free delivery" };
   const dc = p.deliveryCharge || {};
-  if (dc.chargeType === "fixed") return { fee: Number(dc.amount) || 0, label: "Fixed" };
+  if (dc.chargeType === "fixed") return { fee: Number(dc.amount) || 0, label: "Fixed charge" };
   if (dc.chargeType === "quantity_based") return { fee: (Number(dc.perUnitAmount) || 0) * e.qty, label: `Ksh ${dc.perUnitAmount}/unit × ${e.qty}` };
   return { fee: 0, label: dc.notes || "Negotiated with seller — contact them directly" };
 }
@@ -574,23 +693,23 @@ function computeWholesaleDeliveryForLine(e) {
 function renderWholesaleDeliveryCard() {
   const card = document.getElementById("wholesaleDeliveryCard");
   const list = document.getElementById("wholesale-delivery-list");
-  const wholesaleLines = enriched.filter((e) => !e.error && e.isWholesale);
+  const heavyLines = enriched.filter((e) => !e.error && isHeavyWholesale(e));
 
-  if (wholesaleLines.length === 0) { card.style.display = "none"; return; }
+  if (heavyLines.length === 0) { card.style.display = "none"; return; }
   card.style.display = "block";
-  list.innerHTML = wholesaleLines.map((e) => {
+  list.innerHTML = heavyLines.map((e) => {
     const { fee, label } = computeWholesaleDeliveryForLine(e);
-    const negotiated = e.product.deliveryCharge?.chargeType === "negotiated" && !e.product.freeDelivery;
+    const negotiated = isNegotiatedDelivery(e);
     return `
       <div class="wholesale-delivery-card">
         <h4><i class="fa-solid fa-store"></i> ${e.product.name}</h4>
         <div class="wd-row"><span>Terms</span><span class="amt ${negotiated ? "negotiated" : ""}">${label}</span></div>
-        ${!negotiated ? `<div class="wd-row"><span>Delivery Fee</span><span class="amt">Ksh ${fee.toLocaleString()}</span></div>` : ""}
+        ${!negotiated ? `<div class="wd-row"><span>Delivery Fee</span><span class="amt">Ksh ${fee.toLocaleString()}</span></div>` : `<div class="wd-row"><span>Delivery Fee</span><span class="amt negotiated">Agreed with seller</span></div>`}
       </div>`;
   }).join("");
 }
 
-// -------- retail region/town transport (unchanged mechanic, retail lines only) --------
+// -------- retail / standard-delivery region & town transport --------
 const regionSelect = document.getElementById("regionSelect");
 const townSelect = document.getElementById("townSelect");
 Object.keys(DELIVERY_DATA).forEach((region) => {
@@ -607,6 +726,7 @@ regionSelect.addEventListener("change", () => {
     opt.textContent = `${place.town} - Ksh ${place.fee}`;
     townSelect.appendChild(opt);
   });
+  updateTotal();
 });
 
 function getNextSaturday() {
@@ -629,33 +749,74 @@ function getCountdown() {
   };
 }
 
+function clearFieldError(el) { if (el) el.classList.remove("field-error"); }
+function markFieldError(el) { if (el) el.classList.add("field-error"); }
+
 function updateTotal() {
-  const hasRetail = enriched.some((e) => !e.error && !e.isWholesale);
-  const hasWholesale = enriched.some((e) => !e.error && e.isWholesale);
+  const live = enriched.filter((e) => !e.error);
+  const hasStandardItem = live.some((e) => isStandardDelivery(e));   // retail OR 'simple' wholesale
+  const hasHeavyWholesale = live.some((e) => isHeavyWholesale(e));
+  const hasNegotiatedItem = live.some((e) => isNegotiatedDelivery(e));
 
-  document.getElementById("retailDetailsCard").style.display = hasRetail ? "block" : "none";
-  document.getElementById("contactOnlyCard").style.display = !hasRetail && hasWholesale ? "block" : "none";
-  document.getElementById("transport-row").style.display = hasRetail ? "flex" : "none";
+  // Region/town selector + preview only matter when something needs standard
+  // (regional) transport; a cart made up entirely of 'heavy' wholesale items
+  // does not need it at all.
+  document.getElementById("contactCard").style.display = live.length ? "block" : "none";
+  document.getElementById("regionGroup").style.display = hasStandardItem ? "block" : "none";
+  document.getElementById("townGroup").style.display = hasStandardItem ? "block" : "none";
+  document.getElementById("customLocationBtn").style.display = hasStandardItem ? "block" : "none";
+  document.getElementById("transport-row").style.display = hasStandardItem ? "flex" : "none";
 
-  const itemsTotal = enriched.reduce((sum, e) => sum + (e.error ? 0 : e.unitPrice * e.qty), 0);
-  const transport = hasRetail ? (Number(townSelect.value) || 0) : 0;
-  const wholesaleFee = enriched.reduce((sum, e) => sum + (e.error || !e.isWholesale ? 0 : computeWholesaleDeliveryForLine(e).fee), 0);
+  const itemsTotal = live.reduce((sum, e) => sum + e.unitPrice * e.qty, 0);
+  const transport = hasStandardItem ? (Number(townSelect.value) || 0) : 0;
 
-  document.getElementById("wholesale-fee-row").style.display = hasWholesale && wholesaleFee > 0 ? "flex" : "none";
+  let wholesaleFee = 0;
+  const terms = [];
+  live.forEach((e) => {
+    if (!isHeavyWholesale(e)) return;
+    const { fee, label } = computeWholesaleDeliveryForLine(e);
+    wholesaleFee += fee;
+    terms.push(`${e.product.name}: ${label}`);
+  });
+
+  const wholesaleFeeRow = document.getElementById("wholesale-fee-row");
+  wholesaleFeeRow.style.display = hasHeavyWholesale ? "flex" : "none";
   document.getElementById("wholesale-fee").innerText = wholesaleFee.toLocaleString();
+
+  const termsRow = document.getElementById("terms-row");
+  if (hasHeavyWholesale && terms.length) {
+    termsRow.style.display = "block";
+    termsRow.textContent = terms.join(" · ");
+  } else {
+    termsRow.style.display = "none";
+  }
 
   const total = itemsTotal + transport + wholesaleFee;
   document.getElementById("item-price").innerText = itemsTotal.toLocaleString();
   document.getElementById("transport-fee").innerText = transport.toLocaleString();
   document.getElementById("total-price").innerText = total.toLocaleString();
 
-  // Proceed button disabled until every line has a variant selected (where required) and is in stock
+  // Delivery address: required whenever a 'heavy' wholesale item needs its
+  // delivery negotiated directly with the seller (no fixed courier route to
+  // send the town/fee through) — otherwise it stays a helpful-but-optional field.
+  const addressLabel = document.getElementById("deliveryAddressLabel");
+  const addressHint = document.getElementById("deliveryAddressHint");
+  if (hasNegotiatedItem) {
+    addressLabel.innerHTML = 'Delivery Address / Landmark <span class="req-tag">*required</span>';
+    addressHint.textContent = "One or more items need delivery arranged directly with the seller — they need your exact address/landmark to give you a delivery quote.";
+  } else {
+    addressLabel.innerHTML = 'Delivery Address / Landmark <span class="opt-tag">(optional — helps couriers find you)</span>';
+    addressHint.textContent = "This is sent to your seller/rider along with your town, so please include a landmark or building name.";
+  }
+
+  // Proceed button disabled until every line has a variant selected (where
+  // required) and is in stock.
   const blocked = enriched.some((e) => e.error || (e.requiresVariant && !e.selectedVariant) || (e.stockAvailable != null && e.stockAvailable <= 0));
   document.getElementById("proceedBtn").disabled = enriched.length === 0 || blocked;
 
   const selected = townSelect.options[townSelect.selectedIndex];
   const preview = document.getElementById("delivery-preview");
-  if (hasRetail && selected && selected.dataset.town) {
+  if (hasStandardItem && selected && selected.dataset.town) {
     preview.style.display = "block";
     const dispatchDate = getNextSaturday();
     const deliveryDays = Number(selected.dataset.days || 2);
@@ -670,6 +831,10 @@ function updateTotal() {
       <div class="delivery-row"><strong>Transport Fee</strong><span>Ksh ${transport}</span></div>
       <div class="delivery-row"><strong>Dispatch Date</strong><span>Saturday, ${formatDate(dispatchDate)}</span></div>
       <div class="delivery-row"><strong>Expected Delivery</strong><span style="color:var(--marigold);font-weight:700;">${formatDate(startDelivery)} - ${formatDate(endDelivery)}</span></div>
+      ${hasHeavyWholesale && terms.length ? `
+        <div class="delivery-row" style="border-top:1px solid var(--line);padding-top:8px;margin-top:8px;">
+          <strong>Wholesale Delivery Terms</strong><span style="color:var(--pop);font-weight:700;text-align:right;">${terms.join(', ')}</span>
+        </div>` : ""}
       <div style="margin-top:14px;padding:12px;border-radius:var(--radius-sm);background:rgba(18,161,80,.08);border:1px solid rgba(18,161,80,.2);">
         <div style="font-size:13px;font-weight:800;color:var(--price);margin-bottom:6px;">Order within the next ${countdown.days}d ${countdown.hours}hrs ${countdown.mins}mins</div>
         <div style="font-size:12px;color:var(--ink-soft);line-height:1.5;">to be included in this Saturday's dispatch.</div>
@@ -677,7 +842,10 @@ function updateTotal() {
     setStep(3);
   } else {
     preview.style.display = "none";
-    setStep(hasRetail ? 2 : (hasWholesale ? 3 : 2));
+    // No standard-delivery item to preview — still advance the stepper once
+    // the required delivery address (for negotiated heavy items) is filled.
+    const addressEl = document.getElementById("deliveryAddress");
+    setStep(hasStandardItem ? 2 : (!hasNegotiatedItem || addressEl.value.trim().length >= 8 ? 3 : 2));
   }
 }
 
@@ -698,8 +866,8 @@ function sendCustomLocationOrder() {
   const customLocation = document.getElementById("customLocationInput").value.trim();
   if (!customLocation) { alert("Please enter your location"); return; }
   if (enriched.length === 0) { alert("Your cart is empty"); return; }
-  const name = document.getElementById("name")?.value.trim() || document.getElementById("name2")?.value.trim();
-  const phone = document.getElementById("phone")?.value.trim() || document.getElementById("phone2")?.value.trim();
+  const name = document.getElementById("name").value.trim();
+  const phone = document.getElementById("phone").value.trim();
   if (!name || !phone) { alert("Please fill in Name and Phone first."); return; }
   let message = `🛍️ *CUSTOM DELIVERY REQUEST*\n\n👤 Name: ${name}\n📞 Phone: ${phone}\n\n📍 Requested Location: ${customLocation}\n\n━━━━━━━━━━━━━━━\n🧾 *ORDER DETAILS*\n━━━━━━━━━━━━━━━\n`;
   let total = 0;
@@ -707,7 +875,7 @@ function sendCustomLocationOrder() {
     if (e.error) return;
     const itemTotal = e.unitPrice * e.qty;
     total += itemTotal;
-    message += `${i + 1}. ${e.product.name}${e.isWholesale ? " [WHOLESALE]" : ""}\n${e.selectedVariant ? `Option: ${e.selectedVariant.combination.map(c=>c.value).join(" / ")}` : ""}\nQty: ${e.qty}\nKsh ${itemTotal.toLocaleString()}\n\n`;
+    message += `${i + 1}. ${e.product.name}${e.isWholesale ? ` [WHOLESALE${isHeavyWholesale(e) ? "" : " - STANDARD DELIVERY"}]` : ""}\n${e.selectedVariant ? `Option: ${e.selectedVariant.combination.map(c=>c.value).join(" / ")}` : ""}\nQty: ${e.qty}\nKsh ${itemTotal.toLocaleString()}\n\n`;
   });
   message += `━━━━━━━━━━━━━━━\n💰 TOTAL: Ksh ${total.toLocaleString()}\n━━━━━━━━━━━━━━━\n\nPlease confirm if delivery to this location is possible. ✅`;
   window.open(`https://wa.me/254794327798?text=${encodeURIComponent(message)}`, "_blank");
@@ -717,26 +885,117 @@ function showPayment() {
   const missingVariant = enriched.find((e) => !e.error && e.requiresVariant && !e.selectedVariant);
   if (missingVariant) { alert(`Please select ${missingVariant.variantDefs.map(d=>d.name).join(" & ")} for "${missingVariant.product.name}".`); return; }
 
-  const hasRetail = enriched.some((e) => !e.error && !e.isWholesale);
-  if (hasRetail && !townSelect.value) { alert("Please select a delivery town/area first."); return; }
+  const live = enriched.filter((e) => !e.error);
+  const hasStandardItem = live.some((e) => isStandardDelivery(e));
+  if (hasStandardItem && !townSelect.value) {
+    alert("Please select a delivery town/area first.");
+    markFieldError(townSelect);
+    townSelect.scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  }
+  clearFieldError(townSelect);
+
+  const addressEl = document.getElementById("deliveryAddress");
+  const needsNegotiatedAddress = live.some((e) => isNegotiatedDelivery(e));
+  if (needsNegotiatedAddress && addressEl.value.trim().length < 8) {
+    alert("One or more wholesale items in your cart need direct delivery arrangement with the seller. Please provide your delivery address/landmark so they can reach you.");
+    markFieldError(addressEl);
+    addressEl.scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  }
+  clearFieldError(addressEl);
 
   document.getElementById("payment-step").style.display = "block";
   document.getElementById("payment-step").scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 async function loadAgentsDropdown() {
+  const select = document.getElementById("agentSelect");
   try {
     const { agents } = await SS_API.getAgents();
-    ["agentSelect", "agentSelect2"].forEach((id) => {
-      const select = document.getElementById(id);
-      if (!select) return;
-      agents.forEach((a) => {
-        const opt = document.createElement("option");
-        opt.value = a.code; opt.textContent = `${a.name} — ${a.code}`;
-        select.appendChild(opt);
-      });
+    (agents || []).forEach((a) => {
+      const opt = document.createElement("option");
+      opt.value = a.code; opt.textContent = `${a.name} — ${a.code}`;
+      select.appendChild(opt);
     });
-  } catch (e) { console.error("Agents load error", e); }
+  } catch (e) {
+    console.error("Agents load error", e);
+    // Non-fatal — agent selection is optional, checkout should still work.
+  }
+}
+
+/* ============================================================
+   PROFILE AUTOFILL — Name, M-Pesa Number, Delivery Address.
+   Fields stay fully editable.
+   ============================================================ */
+function applyAutofill(fieldId, noteId, value) {
+  if (!value) return false;
+  const el = document.getElementById(fieldId);
+  if (el && !el.value) {
+    el.value = value;
+    if (noteId) {
+      const note = document.getElementById(noteId);
+      if (note) note.style.display = "flex";
+    }
+    return true;
+  }
+  return false;
+}
+
+// Different endpoints/backends return the user object in different shapes:
+// { user: {...} }, { data: { user: {...} } }, or the user flat at the top
+// level. This normalizes all of those instead of assuming one exact shape.
+function normalizeUserShape(res) {
+  if (!res) return null;
+  if (res.user) return res.user;
+  if (res.data && res.data.user) return res.data.user;
+  if (res.data && (res.data.name || res.data.phone || res.data.email)) return res.data;
+  return res;
+}
+
+// Returns the first non-empty value from a list of candidates — used so we
+// don't depend on one exact field name (backends vary: phone vs phoneNumber
+// vs mpesaNumber, etc).
+function firstDefined(...vals) {
+  for (const v of vals) {
+    if (v !== undefined && v !== null && String(v).trim() !== "") return v;
+  }
+  return "";
+}
+
+// meResponse (/auth/me) is guaranteed to have succeeded already — the page
+// wouldn't be visible otherwise — so it's the reliable baseline. /users/profile
+// is fetched as an enhancement and, when available, wins field-by-field since
+// it's typically the more complete/canonical record. Every step logs to the
+// console under the "[checkout]" prefix so a failure can be diagnosed from
+// DevTools instead of just showing up as "nothing filled in".
+async function prefillContactFromProfile(meResponse) {
+  const meUser = normalizeUserShape(meResponse);
+  console.debug("[checkout] getMe() raw ->", meResponse, "normalized ->", meUser);
+
+  let profileUser = null;
+  try {
+    const profileRes = await SS_API.getProfile();
+    profileUser = normalizeUserShape(profileRes);
+    console.debug("[checkout] getProfile() raw ->", profileRes, "normalized ->", profileUser);
+  } catch (e) {
+    console.error("[checkout] getProfile() failed — falling back to /auth/me data only:", e);
+    showPageError("Couldn't refresh your saved profile details — using your account info instead. Please double-check your name/phone below. (" + (e.message || "unknown error") + ")");
+  }
+
+  const name = firstDefined(profileUser?.name, profileUser?.fullName, meUser?.name, meUser?.fullName);
+  const phone = firstDefined(profileUser?.phone, profileUser?.phoneNumber, profileUser?.mpesaNumber, profileUser?.mobile, meUser?.phone, meUser?.phoneNumber, meUser?.mpesaNumber, meUser?.mobile);
+  const address = firstDefined(profileUser?.address, profileUser?.deliveryAddress, meUser?.address, meUser?.deliveryAddress);
+
+  console.debug("[checkout] merged autofill values ->", { name, phone, address });
+
+  const filledName = applyAutofill("name", "nameAutofillNote", name);
+  const filledPhone = applyAutofill("phone", "phoneAutofillNote", phone);
+  applyAutofill("deliveryAddress", "deliveryAddressAutofillNote", address);
+
+  if (!filledName && !filledPhone) {
+    console.warn("[checkout] No saved name/phone found on either /auth/me or /users/profile responses — check the raw response shapes logged above.");
+  }
 }
 
 async function submitOrder(event) {
@@ -745,17 +1004,30 @@ async function submitOrder(event) {
   if (btn) btn.disabled = true;
   msg.innerHTML = "Processing your order... ⏳";
 
-  const hasRetail = enriched.some((e) => !e.error && !e.isWholesale);
-  const name = (hasRetail ? document.getElementById("name").value : document.getElementById("name2").value).trim();
-  const phone = (hasRetail ? document.getElementById("phone").value : document.getElementById("phone2").value).trim();
+  const name = document.getElementById("name").value.trim();
+  const phone = document.getElementById("phone").value.trim();
   const mpesaMessage = document.getElementById("mpesa-message").value.trim();
-  const locationEl = document.getElementById("townSelect");
-  const locationText = hasRetail && locationEl.selectedIndex > 0 ? locationEl.options[locationEl.selectedIndex].text : document.getElementById("wholesaleAddress")?.value.trim();
-  const agentCode = (document.getElementById("agentSelect")?.value) || (document.getElementById("agentSelect2")?.value) || "";
-  const transportFee = hasRetail ? (Number(locationEl.value) || 0) : 0;
+  const locationText = townSelect.selectedIndex > 0 ? townSelect.options[townSelect.selectedIndex].text : "";
+  const agentCode = document.getElementById("agentSelect").value;
+  const deliveryAddress = document.getElementById("deliveryAddress").value.trim();
+  const transportFee = Number(townSelect.value) || 0;
 
-  if (!name || !phone || !mpesaMessage || (hasRetail && !locationEl.value) || (!hasRetail && !locationText)) {
-    msg.innerHTML = "<span style='color:#E23744'>Please fill all required fields, including your delivery details and M-Pesa message</span>";
+  const live = enriched.filter((e) => !e.error);
+  const hasStandardItem = live.some((e) => isStandardDelivery(e));
+  const needsNegotiatedAddress = live.some((e) => isNegotiatedDelivery(e));
+
+  if (!name || !phone || !mpesaMessage) {
+    msg.innerHTML = "<span style='color:#E23744'>Please fill all required fields, including your M-Pesa message</span>";
+    if (btn) btn.disabled = false;
+    return;
+  }
+  if (hasStandardItem && !townSelect.value) {
+    msg.innerHTML = "<span style='color:#E23744'>Please select your delivery town/area</span>";
+    if (btn) btn.disabled = false;
+    return;
+  }
+  if (needsNegotiatedAddress && deliveryAddress.length < 8) {
+    msg.innerHTML = "<span style='color:#E23744'>Please provide a delivery address/landmark so the seller can arrange delivery</span>";
     if (btn) btn.disabled = false;
     return;
   }
@@ -769,25 +1041,35 @@ async function submitOrder(event) {
     if (btn) btn.disabled = false;
     return;
   }
-  if (enriched.length === 0) {
+  if (live.length === 0) {
     msg.innerHTML = "<span style='color:#E23744'>Your cart is empty</span>";
     if (btn) btn.disabled = false;
     return;
   }
-  const missingVariant = enriched.find((e) => !e.error && e.requiresVariant && !e.selectedVariant);
+  const missingVariant = live.find((e) => e.requiresVariant && !e.selectedVariant);
   if (missingVariant) {
     msg.innerHTML = `<span style='color:#E23744'>Please select ${missingVariant.variantDefs.map(d=>d.name).join(" & ")} for "${missingVariant.product.name}"</span>`;
     if (btn) btn.disabled = false;
     return;
   }
 
+  // Combine the selected town with the free-text landmark/address so the
+  // seller/rider gets both.
+  const combinedAddress = [locationText, deliveryAddress].filter(Boolean).join(" — ");
+
   const payload = {
-    items: enriched.filter((e) => !e.error).map((e) => ({
+    items: live.map((e) => ({
       productId: e.product._id,
       variantId: e.selectedVariant ? e.selectedVariant._id : undefined,
       quantity: e.qty,
     })),
-    shippingAddress: { fullName: name, phone, address: locationText, city: locationText, notes: "" },
+    shippingAddress: {
+      fullName: name,
+      phone,
+      address: combinedAddress || locationText || deliveryAddress || "",
+      city: locationText,
+      notes: deliveryAddress,
+    },
     mpesaMessage,
     agentCode: agentCode || undefined,
     transportFee,
@@ -803,10 +1085,13 @@ async function submitOrder(event) {
       Your order number:<br>
       <span class="order-number-highlight">${orderRef}</span><br>
       <span style="font-size:12.5px;color:var(--ink-soft);font-weight:600;">Save this — you'll need it to track your order.</span><br><br>
-      Redirecting to tracking...</div>`;
-    setTimeout(() => (window.location.href = `trackorder.html?orderId=${order._id}`), 2800);
+      Redirecting to your orders...</div>`;
+    // Deep-link straight into the Orders tab of the profile page, with the
+    // specific order expanded and scrolled into view (handled in profile.js).
+    setTimeout(() => (window.location.href = `profile.html?tab=orders&orderId=${order._id}`), 2800);
   } catch (err) {
-    msg.innerHTML = `<span style="color:#E23744">❌ ${err.message}</span>`;
+    console.error("submitOrder failed:", err);
+    msg.innerHTML = `<span style="color:#E23744">❌ ${err.message || "Something went wrong placing your order. Please try again."}</span>`;
     if (btn) btn.disabled = false;
   }
 }
@@ -815,21 +1100,30 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("checkoutWrap").style.display = "none";
   document.getElementById("stepper").style.display = "none";
 
+  let meResponse;
   try {
-    await SS_API.getMe();
+    meResponse = await SS_API.getMe();
   } catch (e) {
     document.getElementById("authGate").style.display = "block";
+    ssHideLoader();
     return;
   }
 
   document.getElementById("checkoutWrap").style.display = "grid";
   document.getElementById("stepper").style.display = "flex";
 
-  await loadCheckout();
-  loadAgentsDropdown();
-  SS_CART.updateBadge();
-  setInterval(() => { if (townSelect.value) updateTotal(); }, 60000);
-  ssHideLoader();
+  try {
+    await Promise.all([loadCheckout(), prefillContactFromProfile(meResponse)]);
+    loadAgentsDropdown();
+    SS_CART.updateBadge();
+    document.getElementById("deliveryAddress").addEventListener("input", () => { clearFieldError(document.getElementById("deliveryAddress")); updateTotal(); });
+    setInterval(() => { if (townSelect.value || enriched.length) updateTotal(); }, 60000);
+  } catch (e) {
+    console.error("Checkout init error:", e);
+    showPageError("Something went wrong loading checkout. Please refresh the page — if this keeps happening, contact support.");
+  } finally {
+    ssHideLoader();
+  }
 });
 </script>
 </body>
