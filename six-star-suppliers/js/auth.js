@@ -138,7 +138,7 @@ if (response.user) {
       );
 
 
-      location.href = "index.html";
+      location.href = "/index.html";
 
 
       return null;

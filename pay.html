@@ -124,6 +124,18 @@
   letter-spacing: 0.5px;
   margin-left: 6px;
 }
+.standard-delivery-badge {
+  display: inline-block;
+  background: rgba(37,99,235,0.12);
+  color: #2563eb;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2px 10px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: 6px;
+}
 .wholesale-info {
   background: #F5F0FF;
   border-radius: var(--radius-sm);
@@ -164,6 +176,16 @@
   color: var(--brick);
   margin-top: 4px;
   font-weight: 600;
+}
+.standard-delivery-note {
+  font-size: 11px;
+  color: #2563eb;
+  margin-top: 8px;
+  font-weight: 600;
+  background: rgba(37,99,235,0.06);
+  padding: 8px 10px;
+  border-radius: 8px;
+  border-left: 3px solid #2563eb;
 }
 
 .color-options, .size-options, .premium-color-options { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
@@ -219,6 +241,9 @@
 .input-group { margin-top: 13px; }
 .input-group:first-child { margin-top: 0; }
 .input-group label { display: block; font-weight: 700; font-size: 12.5px; color: var(--ink-soft); margin-bottom: 6px; }
+.input-group label .req-tag { color: var(--brick); font-weight: 800; }
+.input-group label .opt-tag { color: var(--ink-faint); font-weight: 600; text-transform: none; letter-spacing: 0; }
+.input-group small.hint { display: block; margin-top: 5px; font-size: 11px; color: var(--ink-faint); }
 input, select, textarea {
   width: 100%; padding: 12px 14px; border-radius: var(--radius-sm);
   border: 1.5px solid var(--line); background: var(--bg-page); color: var(--ink);
@@ -226,6 +251,11 @@ input, select, textarea {
   resize: vertical;
 }
 input:focus, select:focus, textarea:focus { border-color: var(--marigold); box-shadow: 0 0 0 3px rgba(242,169,59,.13); }
+input.field-error, select.field-error, textarea.field-error { border-color: var(--brick); box-shadow: 0 0 0 3px rgba(184,68,46,.12); }
+.autofill-note {
+  font-size: 10.5px; color: var(--price); font-weight: 700; margin-top: 5px;
+  display: flex; align-items: center; gap: 5px;
+}
 
 #delivery-preview {
   margin-top: 14px; padding: 15px; border-radius: 14px;
@@ -341,6 +371,14 @@ button.main:disabled { opacity: 0.5; cursor: not-allowed; }
   font-style: italic;
 }
 
+/* ---- Global error banner ---- */
+.page-error-banner {
+  display: none; max-width: 980px; margin: 14px auto 0; padding: 12px 16px;
+  border-radius: var(--radius-sm); background: rgba(184,68,46,.08);
+  border: 1px solid rgba(184,68,46,.25); color: var(--brick); font-size: 13px;
+  font-weight: 600; text-align: center;
+}
+
 /* ---- Responsive ---- */
 @media (max-width: 600px) {
   .checkout-wrap { padding: 8px 12px 0; }
@@ -377,6 +415,8 @@ button.main:disabled { opacity: 0.5; cursor: not-allowed; }
     </div>
   </div>
 
+  <div class="page-error-banner" id="pageErrorBanner"></div>
+
   <!-- ===== AUTH GATE ===== -->
   <div class="auth-gate" id="authGate" style="display:none;">
     <i class="fa-solid fa-lock"></i>
@@ -405,11 +445,13 @@ button.main:disabled { opacity: 0.5; cursor: not-allowed; }
         <div class="input-group">
           <label>Full Name</label>
           <input type="text" id="name" placeholder="John Doe">
+          <div class="autofill-note" id="nameAutofillNote" style="display:none;"><i class="fa-solid fa-circle-check"></i> Filled from your profile — edit if needed</div>
         </div>
 
         <div class="input-group">
           <label>M-Pesa Number</label>
           <input type="text" id="phone" placeholder="0712345678">
+          <div class="autofill-note" id="phoneAutofillNote" style="display:none;"><i class="fa-solid fa-circle-check"></i> Filled from your profile — edit if needed</div>
         </div>
 
         <div class="input-group">
@@ -427,6 +469,12 @@ button.main:disabled { opacity: 0.5; cursor: not-allowed; }
         <button type="button" class="custom-location-btn" onclick="openCustomLocationModal()">
           <i class="fa-solid fa-location-dot"></i> My Location Is Not Listed
         </button>
+
+        <div class="input-group" id="deliveryAddressGroup">
+          <label id="deliveryAddressLabel">Delivery Address / Landmark <span class="opt-tag">(optional — helps couriers find you)</span></label>
+          <textarea id="deliveryAddress" rows="2" placeholder="e.g. Greenfield Estate, Block C, near the blue gate..."></textarea>
+          <small class="hint" id="deliveryAddressHint">This is sent to your seller/rider along with your town, so please include a landmark or building name.</small>
+        </div>
 
         <div class="input-group">
           <label>Select Agent (Optional) — earns them commission on your order</label>
@@ -450,7 +498,7 @@ button.main:disabled { opacity: 0.5; cursor: not-allowed; }
           <h3>Total <span>Ksh <span id="total-price">0</span></span></h3>
         </div>
 
-        <button class="main" onclick="showPayment()"><i class="fa-solid fa-credit-card"></i>Proceed to Pay</button>
+        <button class="main" id="proceedBtn" onclick="showPayment()"><i class="fa-solid fa-credit-card"></i>Proceed to Pay</button>
 
         <div id="payment-step" class="payment-modal">
           <button onclick="document.getElementById('payment-step').style.display='none'">Close</button>
@@ -505,7 +553,7 @@ button.main:disabled { opacity: 0.5; cursor: not-allowed; }
 let cart = [];
 let productDetailsCache = {};
 
-// ===== DELIVERY DATA (for regular products) =====
+// ===== DELIVERY DATA (for regular/standard-delivery products) =====
 const DELIVERY_DATA = {
   Nairobi: [{ town: "CBD", fee: 0, deliveryDays: 1 }, { town: "Westlands", fee: 50, deliveryDays: 1 }, { town: "Karen", fee: 50, deliveryDays: 1 }, { town: "Kasarani", fee: 80, deliveryDays: 1 }, { town: "Embakasi", fee: 80, deliveryDays: 1 }, { town: "Rongai", fee: 100, deliveryDays: 1 }],
   Kiambu: [{ town: "Thika Road", fee: 100, deliveryDays: 1 }, { town: "Kiambu Town", fee: 50, deliveryDays: 1 }],
@@ -517,6 +565,13 @@ const DELIVERY_DATA = {
   RiftValley: [{ town: "Naivasha", fee: 250, deliveryDays: 2 }, { town: "Nakuru", fee: 300, deliveryDays: 2 }],
   Coast: [{ town: "Mombasa", fee: 300, deliveryDays: 4 }, { town: "Kilifi", fee: 350, deliveryDays: 4 }, { town: "Malindi", fee: 350, deliveryDays: 5 }]
 };
+
+function showPageError(message) {
+  const banner = document.getElementById("pageErrorBanner");
+  if (!banner) return;
+  banner.textContent = message;
+  banner.style.display = "block";
+}
 
 function cleanProduct(item) {
   return {
@@ -531,6 +586,9 @@ function cleanProduct(item) {
     minOrderQuantity: item.minOrderQuantity || 1,
     pricingTiers: item.pricingTiers || [],
     sellerRole: item.sellerRole || 'retailer',
+    // 'heavy' = uses the seller's own delivery terms below (free/fixed/quantity_based/negotiated)
+    // 'simple' = ships like a normal retail item using the regional Transport fee at checkout
+    deliveryType: item.deliveryType || 'heavy',
     freeDelivery: item.freeDelivery || false,
     deliveryCharge: item.deliveryCharge || { chargeType: 'fixed', amount: 0, perUnitAmount: 0, notes: '' }
   };
@@ -541,7 +599,9 @@ function loadCartFromStorage() {
     cart = SS_CART.getAll().map(cleanProduct);
     fetchProductDetails();
   } catch (e) {
+    console.error("Failed to load cart from storage:", e);
     cart = [];
+    loadCheckout();
   }
 }
 
@@ -556,12 +616,18 @@ async function fetchProductDetails() {
         cart[i].minOrderQuantity = product.minOrderQuantity || 1;
         cart[i].pricingTiers = product.pricingTiers || [];
         cart[i].sellerRole = product.sellerRole || 'retailer';
+        // THE FIX: this field was never being fetched before, which is why every
+        // wholesale product was treated as "heavy" (own delivery terms) even when
+        // the seller marked it 'simple' (should just use standard transport).
+        cart[i].deliveryType = product.deliveryType || 'heavy';
         cart[i].freeDelivery = product.freeDelivery || false;
         cart[i].deliveryCharge = product.deliveryCharge || { chargeType: 'fixed', amount: 0, perUnitAmount: 0, notes: '' };
         cart[i].displayPrice = product.displayPrice;
         cart[i].finalPrice = product.finalPrice;
+        cart[i].stock = product.stock;
       } catch (e) {
-        console.warn('Failed to fetch product details for', item.id);
+        console.warn('Failed to fetch product details for', item.id, e);
+        showPageError("Some item details couldn't be refreshed. Prices/availability shown may be out of date — please double check before paying.");
       }
     }
   }
@@ -569,29 +635,29 @@ async function fetchProductDetails() {
 }
 
 function saveCart() {
-  const plain = cart.map(({ id, name, price, image, qty, selectedColor, selectedSize, selectedShoeSize, selectedFit }) => 
+  const plain = cart.map(({ id, name, price, image, qty, selectedColor, selectedSize, selectedShoeSize, selectedFit }) =>
     ({ id, name, price, image, qty, selectedColor, selectedSize, selectedShoeSize, selectedFit })
   );
   localStorage.setItem("ss_cart", JSON.stringify(plain));
   SS_CART.updateBadge();
 }
 
-function increaseQty(i) { 
+function increaseQty(i) {
   const item = cart[i];
   const maxStock = item.stock || 999;
   if (item.qty < maxStock) {
-    item.qty++; 
-    saveCart(); 
-    loadCheckout(); 
+    item.qty++;
+    saveCart();
+    loadCheckout();
   }
 }
-function decreaseQty(i) { 
+function decreaseQty(i) {
   const item = cart[i];
   const minQty = item.sellerRole === 'wholesaler' ? (item.minOrderQuantity || 1) : 1;
-  if (item.qty > minQty) { 
-    cart[i].qty--; 
-    saveCart(); 
-    loadCheckout(); 
+  if (item.qty > minQty) {
+    cart[i].qty--;
+    saveCart();
+    loadCheckout();
   }
 }
 function removeFromCart(i) { cart.splice(i, 1); saveCart(); loadCheckout(); }
@@ -608,6 +674,16 @@ function getEffectivePrice(item) {
     return effectivePrice;
   }
   return item.displayPrice || item.price;
+}
+
+// ---- Delivery classification helpers (single source of truth, used everywhere below) ----
+function isWholesaleItem(item) { return item.sellerRole === 'wholesaler'; }
+function isHeavyWholesale(item) { return isWholesaleItem(item) && item.deliveryType === 'heavy'; }
+// "Standard delivery" = rides the regular County/Town transport fee, same as retail:
+// true for every retail item, AND for wholesale items the seller flagged as 'simple' (light).
+function isStandardDelivery(item) { return !isHeavyWholesale(item); }
+function isNegotiatedDelivery(item) {
+  return isHeavyWholesale(item) && !item.freeDelivery && item.deliveryCharge && item.deliveryCharge.chargeType === 'negotiated';
 }
 
 function selectColor(index, color) { cart[index].selectedColor = color; loadCheckout(); }
@@ -641,7 +717,8 @@ function loadCheckout() {
     const category = item.category ? item.category.toLowerCase() : "";
     const isClothing = category === "clothing";
     const isShoes = category === "shoes" || category === "shoe" || category === "sneakers";
-    const isWholesale = item.sellerRole === 'wholesaler';
+    const isWholesale = isWholesaleItem(item);
+    const isHeavy = isHeavyWholesale(item);
     const effectivePrice = getEffectivePrice(item);
     const itemTotal = effectivePrice * item.qty;
     const minQty = isWholesale ? (item.minOrderQuantity || 1) : 1;
@@ -652,10 +729,37 @@ function loadCheckout() {
       let tiersHtml = "";
       if (item.pricingTiers && item.pricingTiers.length > 0) {
         const sorted = [...item.pricingTiers].sort((a, b) => a.minQty - b.minQty);
-        tiersHtml = sorted.map(t => 
+        tiersHtml = sorted.map(t =>
           `<span>${t.minQty}+ = Ksh ${t.price.toLocaleString()}</span>`
         ).join('');
       }
+      // Delivery-terms rows only make sense for 'heavy' wholesale items. 'Simple'
+      // wholesale items ship like retail — no free/fixed/negotiated panel to show.
+      const deliveryRows = isHeavy ? `
+          ${item.freeDelivery ? `
+            <div class="info-row">
+              <span>Delivery</span>
+              <span class="highlight"><i class="fa-solid fa-check-circle"></i> Free Delivery</span>
+            </div>
+          ` : item.deliveryCharge && item.deliveryCharge.chargeType === 'fixed' && item.deliveryCharge.amount > 0 ? `
+            <div class="info-row">
+              <span>Delivery Charge</span>
+              <span class="highlight">Ksh ${item.deliveryCharge.amount.toLocaleString()}</span>
+            </div>
+          ` : item.deliveryCharge && item.deliveryCharge.chargeType === 'quantity_based' ? `
+            <div class="info-row">
+              <span>Delivery Charge</span>
+              <span class="highlight">Ksh ${item.deliveryCharge.perUnitAmount.toLocaleString()} × ${item.qty} unit(s)</span>
+            </div>
+          ` : ''}
+          ${item.deliveryCharge && item.deliveryCharge.chargeType === 'negotiated' && !item.freeDelivery ? `
+            <div class="info-row" style="font-size:11px;color:var(--ink-soft);">
+              <span>Delivery Terms</span>
+              <span>${item.deliveryCharge.notes || 'To be agreed with seller'}</span>
+            </div>
+          ` : ''}
+        ` : '';
+
       wholesaleInfo = `
         <div class="wholesale-info">
           <div class="info-row">
@@ -667,24 +771,9 @@ function loadCheckout() {
               <span style="font-weight:600;">Bulk Pricing:</span> ${tiersHtml}
             </div>
           ` : ''}
-          ${item.freeDelivery ? `
-            <div class="info-row">
-              <span>Delivery</span>
-              <span class="highlight"><i class="fa-solid fa-check-circle"></i> Free Delivery</span>
-            </div>
-          ` : item.deliveryCharge && item.deliveryCharge.amount > 0 ? `
-            <div class="info-row">
-              <span>Delivery Charge</span>
-              <span class="highlight">Ksh ${item.deliveryCharge.amount.toLocaleString()}</span>
-            </div>
-          ` : ''}
-          ${item.deliveryCharge && item.deliveryCharge.chargeType === 'negotiated' && item.deliveryCharge.notes ? `
-            <div class="info-row" style="font-size:11px;color:var(--ink-soft);">
-              <span>Delivery Terms</span>
-              <span>${item.deliveryCharge.notes}</span>
-            </div>
-          ` : ''}
+          ${deliveryRows}
         </div>
+        ${!isHeavy ? `<div class="standard-delivery-note"><i class="fa-solid fa-truck-fast"></i> This item ships via standard regional delivery — covered by the Transport fee below.</div>` : ''}
       `;
     }
 
@@ -734,9 +823,9 @@ function loadCheckout() {
       <div class="cart-item-wrapper">
         <div class="premium-cart">
           <div class="cart-left">
-            <img src="${img}">
+            <img src="${img}" onerror="this.src='images/placeholder.png'">
             <div class="cart-details">
-              <h4>${displayName} ${isWholesale ? '<span class="wholesale-badge">Wholesale</span>' : ''}</h4>
+              <h4>${displayName} ${isWholesale ? `<span class="wholesale-badge">Wholesale</span>` : ''} ${isWholesale && !isHeavy ? `<span class="standard-delivery-badge">Standard Delivery</span>` : ''}</h4>
               <div class="price-line">Ksh ${itemTotal.toLocaleString()}</div>
               ${wholesaleInfo}
               ${extraConfig}
@@ -779,6 +868,7 @@ regionSelect.addEventListener("change", () => {
     opt.textContent = `${place.town} - Ksh ${place.fee}`;
     townSelect.appendChild(opt);
   });
+  updateTotal();
 });
 
 function getNextSaturday() {
@@ -805,16 +895,19 @@ function getCountdown() {
 }
 
 function calculateWholesaleDelivery(item) {
+  // Only 'heavy' wholesale items use their own delivery terms. 'Simple' wholesale
+  // items and all retail items are handled entirely by the regional Transport fee
+  // in updateTotal(), so this always returns 0 for them.
+  if (!isHeavyWholesale(item)) return 0;
   if (item.freeDelivery) return 0;
-  if (!item.deliveryCharge) return 0;
-  
   const charge = item.deliveryCharge;
+  if (!charge) return 0;
   if (charge.chargeType === 'fixed') {
     return charge.amount || 0;
   } else if (charge.chargeType === 'quantity_based') {
     return (charge.perUnitAmount || 0) * item.qty;
   } else if (charge.chargeType === 'negotiated') {
-    return 0;
+    return 0; // agreed directly with the seller, no fixed figure to add here
   }
   return 0;
 }
@@ -823,86 +916,105 @@ function updateTotal() {
   const transport = Number(townSelect.value) || 0;
   let itemsTotal = 0;
   let wholesaleDeliveryTotal = 0;
-  let hasWholesale = false;
+  let hasStandardItem = false;   // retail item OR 'simple' wholesale item -> needs the regional Transport fee
+  let hasHeavyWholesale = false; // 'heavy' wholesale item -> uses its own delivery terms
+  let hasNegotiatedItem = false;
   let deliveryTerms = [];
 
   cart.forEach(item => {
     const effectivePrice = getEffectivePrice(item);
     itemsTotal += effectivePrice * item.qty;
-    if (item.sellerRole === 'wholesaler') {
-      hasWholesale = true;
+
+    if (isHeavyWholesale(item)) {
+      hasHeavyWholesale = true;
       const wDelivery = calculateWholesaleDelivery(item);
       wholesaleDeliveryTotal += wDelivery;
       if (item.freeDelivery) {
-        deliveryTerms.push('Free Delivery');
+        deliveryTerms.push(`${item.name}: Free Delivery`);
       } else if (item.deliveryCharge && item.deliveryCharge.chargeType === 'negotiated') {
-        deliveryTerms.push(item.deliveryCharge.notes || 'Negotiated');
+        hasNegotiatedItem = true;
+        deliveryTerms.push(`${item.name}: ${item.deliveryCharge.notes || 'Negotiated with seller'}`);
       }
+    } else {
+      // retail item, or a wholesale item explicitly marked 'simple' by the seller
+      hasStandardItem = true;
     }
   });
 
-  let totalTransport = transport;
-  if (hasWholesale && wholesaleDeliveryTotal > 0) {
-    if (cart.some(item => item.sellerRole !== 'wholesaler')) {
-      totalTransport = transport + wholesaleDeliveryTotal;
-    } else {
-      totalTransport = wholesaleDeliveryTotal;
-    }
-  } else if (hasWholesale && wholesaleDeliveryTotal === 0) {
-    totalTransport = transport;
-  }
-
+  let totalTransport = wholesaleDeliveryTotal + (hasStandardItem ? transport : 0);
   const total = itemsTotal + totalTransport;
+
   document.getElementById("item-price").innerText = itemsTotal.toLocaleString();
   document.getElementById("transport-fee").innerText = totalTransport.toLocaleString();
   document.getElementById("total-price").innerText = total.toLocaleString();
 
   const detailEl = document.getElementById("wholesale-delivery-detail");
   const termsDisplay = document.getElementById("delivery-terms-display");
-  if (hasWholesale && deliveryTerms.length > 0) {
+  if (hasHeavyWholesale && deliveryTerms.length > 0) {
     detailEl.style.display = 'block';
     termsDisplay.textContent = deliveryTerms.join(', ');
-  } else if (hasWholesale) {
+  } else if (hasHeavyWholesale) {
     detailEl.style.display = 'block';
-    termsDisplay.textContent = 'Standard delivery applies';
+    termsDisplay.textContent = 'Standard delivery terms applied';
   } else {
     detailEl.style.display = 'none';
   }
 
+  // Delivery address field: required when any item needs the seller to negotiate/
+  // arrange delivery directly (no fixed courier route to send the location through).
+  const addressLabel = document.getElementById('deliveryAddressLabel');
+  const addressHint = document.getElementById('deliveryAddressHint');
+  if (hasNegotiatedItem) {
+    addressLabel.innerHTML = 'Delivery Address / Landmark <span class="req-tag">*required</span>';
+    addressHint.textContent = "This item's delivery is arranged directly with the seller — they need your exact address/landmark to give you a delivery quote.";
+  } else {
+    addressLabel.innerHTML = 'Delivery Address / Landmark <span class="opt-tag">(optional — helps couriers find you)</span>';
+    addressHint.textContent = "This is sent to your seller/rider along with your town, so please include a landmark or building name.";
+  }
+
   const selected = townSelect.options[townSelect.selectedIndex];
   const preview = document.getElementById("delivery-preview");
-  if (selected && selected.dataset.town) {
-    preview.style.display = "block";
-    const dispatchDate = getNextSaturday();
-    const deliveryDays = Number(selected.dataset.days || 2);
-    const startDelivery = new Date(dispatchDate);
-    const endDelivery = new Date(dispatchDate);
-    startDelivery.setDate(startDelivery.getDate() + deliveryDays);
-    endDelivery.setDate(endDelivery.getDate() + deliveryDays + 1);
-    const countdown = getCountdown();
-    preview.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <div style="font-size:13px;color:var(--marigold);font-weight:800;"><i class="fa-solid fa-truck-fast"></i> SIX STAR EXPRESS</div>
-      </div>
-      <div class="delivery-row"><strong>Destination</strong><span>${selected.dataset.town}</span></div>
-      <div class="delivery-row"><strong>Transport Fee</strong><span>Ksh ${totalTransport}</span></div>
-      <div class="delivery-row"><strong>Dispatch Date</strong><span>Saturday, ${formatDate(dispatchDate)}</span></div>
-      <div class="delivery-row"><strong>Expected Delivery</strong><span style="color:var(--marigold);font-weight:700;">${formatDate(startDelivery)} - ${formatDate(endDelivery)}</span></div>
-      ${hasWholesale && deliveryTerms.length > 0 ? `
-        <div class="delivery-row" style="border-top:1px solid var(--line);padding-top:8px;margin-top:8px;">
-          <strong>Wholesale Delivery Terms</strong>
-          <span style="color:var(--pop);font-weight:700;">${deliveryTerms.join(', ')}</span>
+
+  if (hasStandardItem) {
+    if (selected && selected.dataset.town) {
+      preview.style.display = "block";
+      const dispatchDate = getNextSaturday();
+      const deliveryDays = Number(selected.dataset.days || 2);
+      const startDelivery = new Date(dispatchDate);
+      const endDelivery = new Date(dispatchDate);
+      startDelivery.setDate(startDelivery.getDate() + deliveryDays);
+      endDelivery.setDate(endDelivery.getDate() + deliveryDays + 1);
+      const countdown = getCountdown();
+      preview.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div style="font-size:13px;color:var(--marigold);font-weight:800;"><i class="fa-solid fa-truck-fast"></i> SIX STAR EXPRESS</div>
         </div>
-      ` : ''}
-      <div style="margin-top:14px;padding:12px;border-radius:var(--radius-sm);background:rgba(18,161,80,.08);border:1px solid rgba(18,161,80,.2);">
-        <div style="font-size:13px;font-weight:800;color:var(--price);margin-bottom:6px;">Order within the next ${countdown.days}d ${countdown.hours}hrs ${countdown.mins}mins</div>
-        <div style="font-size:12px;color:var(--ink-soft);line-height:1.5;">to be included in this Saturday's dispatch.</div>
-      </div>
-    `;
-    setStep(3);
+        <div class="delivery-row"><strong>Destination</strong><span>${selected.dataset.town}</span></div>
+        <div class="delivery-row"><strong>Transport Fee</strong><span>Ksh ${totalTransport}</span></div>
+        <div class="delivery-row"><strong>Dispatch Date</strong><span>Saturday, ${formatDate(dispatchDate)}</span></div>
+        <div class="delivery-row"><strong>Expected Delivery</strong><span style="color:var(--marigold);font-weight:700;">${formatDate(startDelivery)} - ${formatDate(endDelivery)}</span></div>
+        ${hasHeavyWholesale && deliveryTerms.length > 0 ? `
+          <div class="delivery-row" style="border-top:1px solid var(--line);padding-top:8px;margin-top:8px;">
+            <strong>Wholesale Delivery Terms</strong>
+            <span style="color:var(--pop);font-weight:700;">${deliveryTerms.join(', ')}</span>
+          </div>
+        ` : ''}
+        <div style="margin-top:14px;padding:12px;border-radius:var(--radius-sm);background:rgba(18,161,80,.08);border:1px solid rgba(18,161,80,.2);">
+          <div style="font-size:13px;font-weight:800;color:var(--price);margin-bottom:6px;">Order within the next ${countdown.days}d ${countdown.hours}hrs ${countdown.mins}mins</div>
+          <div style="font-size:12px;color:var(--ink-soft);line-height:1.5;">to be included in this Saturday's dispatch.</div>
+        </div>
+      `;
+      setStep(3);
+    } else {
+      preview.style.display = "none";
+      setStep(2);
+    }
   } else {
+    // Cart is entirely 'heavy' wholesale items — town/region isn't required to
+    // compute a fee, but we still want a step-3-ready feel once contact info + a
+    // delivery address (required above) are present.
     preview.style.display = "none";
-    setStep(2);
+    setStep(document.getElementById('deliveryAddress').value.trim() ? 3 : 2);
   }
 }
 
@@ -943,6 +1055,9 @@ function sendCustomLocationOrder() {
   window.open(`https://wa.me/${sellerPhone}?text=${encodeURIComponent(message)}`, "_blank");
 }
 
+function clearFieldError(el) { if (el) el.classList.remove('field-error'); }
+function markFieldError(el) { if (el) el.classList.add('field-error'); }
+
 function showPayment() {
   const configMissing = cart.find(item => {
     const cat = item.category ? item.category.toLowerCase() : "";
@@ -951,6 +1066,7 @@ function showPayment() {
     return false;
   });
   if (configMissing) { alert("Please complete product customization before checkout."); return; }
+
   const moqViolation = cart.find(item => {
     if (item.sellerRole === 'wholesaler') {
       const minQty = item.minOrderQuantity || 1;
@@ -958,11 +1074,30 @@ function showPayment() {
     }
     return false;
   });
-  if (moqViolation) { 
-    alert(`"${moqViolation.name}" requires a minimum order of ${moqViolation.minOrderQuantity} units.`); 
-    return; 
+  if (moqViolation) {
+    alert(`"${moqViolation.name}" requires a minimum order of ${moqViolation.minOrderQuantity} units.`);
+    return;
   }
-  if (!townSelect.value) { alert("Please select a delivery town/area first."); return; }
+
+  const needsTown = cart.some(item => isStandardDelivery(item));
+  if (needsTown && !townSelect.value) {
+    alert("Please select a delivery town/area first.");
+    markFieldError(townSelect);
+    townSelect.scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  }
+  clearFieldError(townSelect);
+
+  const addressEl = document.getElementById('deliveryAddress');
+  const needsNegotiatedAddress = cart.some(item => isNegotiatedDelivery(item));
+  if (needsNegotiatedAddress && addressEl.value.trim().length < 8) {
+    alert("One or more wholesale items in your cart need direct delivery arrangement with the seller. Please provide your delivery address/landmark so they can reach you.");
+    markFieldError(addressEl);
+    addressEl.scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  }
+  clearFieldError(addressEl);
+
   document.getElementById("payment-step").style.display = "block";
   document.getElementById("payment-step").scrollIntoView({ behavior: "smooth", block: "center" });
 }
@@ -971,7 +1106,7 @@ async function loadAgentsDropdown() {
   const select = document.getElementById("agentSelect");
   try {
     const { agents } = await SS_API.getAgents();
-    agents.forEach(a => {
+    (agents || []).forEach(a => {
       const opt = document.createElement("option");
       opt.value = a.code;
       opt.textContent = `${a.name} — ${a.code}`;
@@ -979,6 +1114,61 @@ async function loadAgentsDropdown() {
     });
   } catch (e) {
     console.error("Agents load error", e);
+    // Non-fatal — agent selection is optional, checkout should still work.
+  }
+}
+
+// ---- Profile autofill (Name + M-Pesa Number), fields stay fully editable ----
+function applyAutofill(fieldId, noteId, value) {
+  if (!value) return false;
+  const el = document.getElementById(fieldId);
+  if (el && !el.value) {
+    el.value = value;
+    if (noteId) {
+      const note = document.getElementById(noteId);
+      if (note) note.style.display = "flex";
+    }
+    return true;
+  }
+  return false;
+}
+
+// Matches the exact shape profile.js already relies on successfully:
+//   const { user: u } = await SS_API.getProfile();  ->  u.name, u.phone, u.address
+// getMe() is used only as a fallback in case getProfile() itself fails for some
+// reason (e.g. role-specific route issue) — /auth/me may carry fewer fields.
+async function prefillContactFromProfile(meResponse) {
+  let filledName = false;
+  let filledPhone = false;
+
+  try {
+    const { user: u } = await SS_API.getProfile();
+    console.debug("[checkout] getProfile() ->", u);
+    if (u) {
+      filledName = applyAutofill('name', 'nameAutofillNote', u.name);
+      filledPhone = applyAutofill('phone', 'phoneAutofillNote', u.phone);
+      applyAutofill('deliveryAddress', null, u.address);
+    }
+  } catch (e) {
+    // This used to be swallowed with only a console.warn, which is why a real
+    // failure here (auth/route/CORS issue) looked identical to "there's just no
+    // saved phone number" — you'd see blank fields either way with no signal.
+    console.error("[checkout] getProfile() failed — autofill skipped:", e);
+    showPageError("Couldn't load your saved profile details (name/phone) — please enter them manually below. (" + (e.message || "unknown error") + ")");
+  }
+
+  // Fallback only for whichever field getProfile() didn't already fill.
+  if (!filledName || !filledPhone) {
+    try {
+      const meUser = meResponse?.user || meResponse;
+      console.debug("[checkout] getMe() ->", meUser);
+      if (meUser) {
+        if (!filledName) applyAutofill('name', 'nameAutofillNote', meUser.name || meUser.fullName);
+        if (!filledPhone) applyAutofill('phone', 'phoneAutofillNote', meUser.phone || meUser.phoneNumber || meUser.mpesaNumber);
+      }
+    } catch (e) {
+      console.warn("[checkout] getMe() fallback prefill failed (non-fatal):", e);
+    }
   }
 }
 
@@ -994,9 +1184,24 @@ async function submitOrder(event) {
   const locationEl = document.getElementById("townSelect");
   const locationText = locationEl.selectedIndex > 0 ? locationEl.options[locationEl.selectedIndex].text : "";
   const agentCode = document.getElementById("agentSelect").value;
+  const deliveryAddress = document.getElementById("deliveryAddress").value.trim();
+  const transportFee = Number(locationEl.value) || 0;
 
-  if (!name || !phone || !mpesaMessage || !locationEl.value) {
-    msg.innerHTML = "<span style='color:#E23744'>Please fill all fields including location and M-Pesa message</span>";
+  const needsTown = cart.some(item => isStandardDelivery(item));
+  const needsNegotiatedAddress = cart.some(item => isNegotiatedDelivery(item));
+
+  if (!name || !phone || !mpesaMessage) {
+    msg.innerHTML = "<span style='color:#E23744'>Please fill all required fields, including your M-Pesa message</span>";
+    if (btn) btn.disabled = false;
+    return;
+  }
+  if (needsTown && !locationEl.value) {
+    msg.innerHTML = "<span style='color:#E23744'>Please select your delivery town/area</span>";
+    if (btn) btn.disabled = false;
+    return;
+  }
+  if (needsNegotiatedAddress && deliveryAddress.length < 8) {
+    msg.innerHTML = "<span style='color:#E23744'>Please provide a delivery address/landmark so the seller can arrange delivery</span>";
     if (btn) btn.disabled = false;
     return;
   }
@@ -1016,17 +1221,24 @@ async function submitOrder(event) {
     return;
   }
 
+  // Combine the selected town with the free-text landmark/address so the seller/
+  // rider gets both — this is what was missing before for negotiated-delivery items.
+  const combinedAddress = [locationText, deliveryAddress].filter(Boolean).join(" — ");
+
   const payload = {
     items: cart.map(i => ({ productId: i.id, quantity: i.qty })),
     shippingAddress: {
       fullName: name,
       phone: phone,
-      address: locationText,
+      address: combinedAddress || locationText || deliveryAddress || "",
       city: locationText,
-      notes: ""
+      notes: deliveryAddress
     },
     mpesaMessage,
-    agentCode: agentCode || undefined
+    agentCode: agentCode || undefined,
+    // THE FIX: this was never being sent before, so the backend always computed
+    // the regional transport fee as 0 regardless of what was shown at checkout.
+    transportFee
   };
 
   try {
@@ -1046,7 +1258,8 @@ async function submitOrder(event) {
 
     setTimeout(() => window.location.href = `trackorder.html?orderId=${order._id}`, 2800);
   } catch (err) {
-    msg.innerHTML = `<span style="color:#E23744">❌ ${err.message}</span>`;
+    console.error("submitOrder failed:", err);
+    msg.innerHTML = `<span style="color:#E23744">❌ ${err.message || "Something went wrong placing your order. Please try again."}</span>`;
     if (btn) btn.disabled = false;
   }
 }
@@ -1058,21 +1271,34 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("checkoutWrap").style.display = "none";
   document.getElementById("stepper").style.display = "none";
 
+  let meResponse;
   try {
-    await SS_API.getMe();
+    meResponse = await SS_API.getMe();
   } catch (e) {
     document.getElementById("authGate").style.display = "block";
+    ssHideLoader();
     return;
   }
 
   document.getElementById("checkoutWrap").style.display = "grid";
   document.getElementById("stepper").style.display = "flex";
 
-  loadCartFromStorage();
-  loadAgentsDropdown();
-  SS_CART.updateBadge();
-  setInterval(() => { if (townSelect.value) updateTotal(); }, 60000);
-  ssHideLoader();
+  try {
+    loadCartFromStorage();
+    loadAgentsDropdown();
+    // Awaited (was previously fire-and-forget) so autofill is guaranteed to have
+    // run — and any error surfaced via showPageError() above — before the loader
+    // hides, instead of racing silently in the background.
+    await prefillContactFromProfile(meResponse);
+    SS_CART.updateBadge();
+    document.getElementById("deliveryAddress").addEventListener("input", () => { clearFieldError(document.getElementById("deliveryAddress")); updateTotal(); });
+    setInterval(() => { if (townSelect.value || cart.length) updateTotal(); }, 60000);
+  } catch (e) {
+    console.error("Checkout init error:", e);
+    showPageError("Something went wrong loading checkout. Please refresh the page — if this keeps happening, contact support.");
+  } finally {
+    ssHideLoader();
+  }
 });
 </script>
 </body>
