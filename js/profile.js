@@ -329,7 +329,7 @@
             <button class="btn-details-toggle ${isOpen ? 'open' : ''}" data-toggle-detail="${o._id}">
               <span>${isOpen ? 'Hide details' : 'View details'}</span> <i class="fa-solid fa-chevron-down"></i>
             </button>
-            <a href="track.html?orderId=${encodeURIComponent(o._id)}" class="btn btn-outline btn-sm">Track</a>
+           
             <button class="btn-cancel-order" data-cancel="${o._id}" ${canCancel ? '' : 'disabled'}>
               ${canCancel ? 'Cancel order' : 'Not cancellable'}
             </button>
