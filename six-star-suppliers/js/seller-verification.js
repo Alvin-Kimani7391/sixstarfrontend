@@ -27,6 +27,9 @@
     statusScreen: document.getElementById("statusScreen"),
     otpGate: document.getElementById("otpGate"),
     otpGateEmail: document.getElementById("otpGateEmail"),
+    otpSendStage: document.getElementById("otpSendStage"),
+    otpSendBtn: document.getElementById("otpSendBtn"),
+    otpSendError: document.getElementById("otpSendError"),
     otpForm: document.getElementById("otpForm"),
     otpInputRow: document.getElementById("otpInputRow"),
     otpError: document.getElementById("otpError"),
@@ -34,6 +37,7 @@
     otpResendBtn: document.getElementById("otpResendBtn"),
     otpCooldown: document.getElementById("otpCooldown"),
     wizardWrap: document.getElementById("wizardWrap"),
+    wizardStepCounter: document.getElementById("wizardStepCounter"),
     wizardSteps: document.getElementById("wizardSteps"),
     formError: document.getElementById("formError"),
     verifyForm: document.getElementById("verifyForm"),
@@ -68,6 +72,16 @@
 
   let legalDocs = [];
   let legalAcceptedLocal = new Set();
+
+  // ---- OTP resend-cooldown state, declared once, up top, before anything
+  //      can possibly reference it. This is what fixes the
+  //      "Cannot access 'resendCooldownTimer' before initialization" crash —
+  //      that error happens when code reads a `let`/`const` before its
+  //      declaration line has run in that scope. Keeping a single
+  //      declaration here (nothing else in this file re-declares these
+  //      names) guarantees they're always initialized before use. ----
+  let resendCooldownTimer = null;
+  let resendCooldownEndsAt = null;
 
   const STEP_META = {
     tier: { label: "Path", icon: "fa-route" },
@@ -174,14 +188,12 @@
   }
 
   // ============================================================
-  // EMAIL OTP GATE
+  // EMAIL OTP GATE — button-first send, then a 6-digit form.
   // ============================================================
-  let resendCooldownTimer = null;
-
   function startOtpGate(email) {
     els.otpGate.style.display = "block";
     els.otpGateEmail.textContent = email || "your email";
-    sendOtp(true);
+    // No auto-send on page load — the seller presses "Send verification code".
 
     const digitInputs = Array.from(els.otpInputRow.querySelectorAll("[data-otp-digit]"));
     digitInputs.forEach((input, idx) => {
@@ -216,7 +228,11 @@
       els.otpSubmitBtn.textContent = "Verifying…";
       try {
         await SS_API.verifyEmailOtp(code);
-        ssToast("Email verified!", "fa-circle-check");
+        if (resendCooldownTimer) clearInterval(resendCooldownTimer);
+        ssToast("Email verified! Let's finish your onboarding.", "fa-circle-check");
+        // Reload so the page re-fetches getMyVerification, sees emailVerified === true,
+        // and drops straight into the document wizard (identity, business, tax, etc.)
+        // instead of skipping onboarding entirely.
         location.reload();
       } catch (err) {
         showOtpError(err.message || "Incorrect code. Please try again.");
@@ -227,38 +243,79 @@
       }
     });
 
+    els.otpSendBtn.addEventListener("click", () => sendOtp(true));
     els.otpResendBtn.addEventListener("click", () => sendOtp(false));
   }
 
   async function sendOtp(isInitial) {
+    const btn = isInitial ? els.otpSendBtn : els.otpResendBtn;
+    const originalLabel = btn.innerHTML;
+
+    clearOtpSendError();
     clearOtpError();
+    btn.disabled = true;
+    btn.innerHTML = isInitial
+      ? '<i class="fa-solid fa-spinner fa-spin"></i> Sending…'
+      : "Sending…";
+
     try {
       const res = await SS_API.sendEmailOtp();
+
       if (res.alreadyVerified) {
         location.reload();
         return;
       }
-      if (!isInitial) ssToast("Code resent — check your inbox", "fa-paper-plane");
-      startResendCooldown(60);
+
+      if (isInitial) {
+        els.otpSendStage.style.display = "none";
+        els.otpForm.style.display = "block";
+        digitInputs0Focus();
+      } else {
+        btn.innerHTML = originalLabel;
+        ssToast("Code resent — check your inbox", "fa-paper-plane");
+      }
+
+      startResendCooldown(res.expiresInSeconds && res.expiresInSeconds > 0 ? 60 : 60);
     } catch (err) {
-      showOtpError(err.message || "Couldn't send the code. Try again shortly.");
+      const msg = err.message || "Couldn't send the code. Try again shortly.";
+      btn.innerHTML = originalLabel;
+      btn.disabled = false;
+      if (isInitial) showOtpSendError(msg);
+      else showOtpError(msg);
     }
   }
 
+  function digitInputs0Focus() {
+    const first = els.otpInputRow.querySelector("[data-otp-digit]");
+    if (first) first.focus();
+  }
+
+  // Timestamp-based countdown (not a plain decrementing counter) so it can't
+  // drift if the tab is backgrounded/throttled, and ticks every 250ms for a
+  // visibly live mm:ss display.
   function startResendCooldown(seconds) {
-    let remaining = seconds;
+    resendCooldownEndsAt = Date.now() + seconds * 1000;
     els.otpResendBtn.disabled = true;
+
     if (resendCooldownTimer) clearInterval(resendCooldownTimer);
+
     const tick = () => {
-      els.otpCooldown.textContent = remaining > 0 ? `(${remaining}s)` : "";
-      if (remaining <= 0) {
+      const remainingMs = resendCooldownEndsAt - Date.now();
+      if (remainingMs <= 0) {
         clearInterval(resendCooldownTimer);
+        resendCooldownTimer = null;
+        els.otpCooldown.textContent = "";
         els.otpResendBtn.disabled = false;
+        return;
       }
-      remaining--;
+      const remaining = Math.ceil(remainingMs / 1000);
+      const mm = String(Math.floor(remaining / 60)).padStart(2, "0");
+      const ss = String(remaining % 60).padStart(2, "0");
+      els.otpCooldown.textContent = `(${mm}:${ss})`;
     };
+
     tick();
-    resendCooldownTimer = setInterval(tick, 1000);
+    resendCooldownTimer = setInterval(tick, 250);
   }
 
   function showOtpError(msg) {
@@ -267,6 +324,13 @@
   }
   function clearOtpError() {
     els.otpError.classList.remove("show");
+  }
+  function showOtpSendError(msg) {
+    els.otpSendError.textContent = msg;
+    els.otpSendError.classList.add("show");
+  }
+  function clearOtpSendError() {
+    els.otpSendError.classList.remove("show");
   }
 
   function prefillFromRecord(v) {
@@ -522,6 +586,10 @@
     if (currentStepIdx > steps.length - 1) currentStepIdx = steps.length - 1;
     if (currentStepIdx < 0) currentStepIdx = 0;
 
+    if (els.wizardStepCounter) {
+      els.wizardStepCounter.textContent = `Step ${currentStepIdx + 1} of ${steps.length}`;
+    }
+
     els.wizardSteps.innerHTML = steps
       .map((key, i) => {
         const meta = STEP_META[key];
@@ -658,10 +726,10 @@
     const err = validateStep(steps[currentStepIdx]);
     if (err) { showError(err); return; }
     clearError();
-    if (currentStepIdx < steps.length - 1) { currentStepIdx++; renderWizard(); }
+    if (currentStepIdx < steps.length - 1) { currentStepIdx++; renderWizard(); window.scrollTo({ top: 0, behavior: "smooth" }); }
   }
   function handleBack() {
-    if (currentStepIdx > 0) { currentStepIdx--; renderWizard(); clearError(); }
+    if (currentStepIdx > 0) { currentStepIdx--; renderWizard(); clearError(); window.scrollTo({ top: 0, behavior: "smooth" }); }
   }
 
   els.wizardNextBtn.addEventListener("click", handleNext);
