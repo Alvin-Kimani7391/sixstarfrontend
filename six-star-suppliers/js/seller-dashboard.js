@@ -81,11 +81,22 @@
   console.log("SELLER DASHBOARD SCRIPT STARTED");
 
   const user = await SS_AUTH.requireRole(["wholesaler", "retailer"]);
+if (!user) { console.log("Authentication failed"); return; }
 
-  if (!user) {
-    console.log("Authentication failed");
+// ---------- verification gate ----------
+try {
+  const verifRes = await SS_API.getMyVerification();
+  const verification = verifRes.verification;
+  if (!verification || verification.status !== "approved") {
+    const statusParam = verification ? verification.status : "not_submitted";
+    location.href = `seller-verification.html?status=${statusParam}`;
     return;
   }
+} catch (err) {
+  console.error("Verification check failed:", err);
+  location.href = "seller-verification.html?status=not_submitted";
+  return;
+}
 
   console.log("User authenticated:", user.email, "Role:", user.role);
 

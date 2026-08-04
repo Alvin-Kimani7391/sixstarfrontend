@@ -22,14 +22,6 @@
   }
   .row-toggle-btn:hover { opacity: 0.7; }
   .order-detail-row td, .agent-detail-row td { background: rgba(0,0,0,0.02); }
-  .order-detail-panel { padding: 16px; }
-  .order-detail-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 16px;
-    font-size: 0.85rem;
-  }
-  .order-detail-grid > div { line-height: 1.5; }
 
   /* attribute management styling */
   .attr-type-badge {
@@ -85,7 +77,7 @@
   .options-field { display: none; }
   .options-field.show { display: block; }
 
-  /* NEW: shop management styling */
+  /* shop management styling */
   .pill-pending_approval { background: rgba(230,168,44,0.15); color: #a86a0f; }
   .pill-approved { background: rgba(46,160,90,0.15); color: #1e7c43; }
   .shop-review-grid {
@@ -147,6 +139,8 @@
       <button data-tab="categories"><i class="fa-solid fa-tags"></i> Categories</button>
       <button data-tab="attributes"><i class="fa-solid fa-sliders"></i> Attributes</button>
       <button data-tab="shops"><i class="fa-solid fa-store"></i> Shops</button>
+      <button data-tab="verification"><i class="fa-solid fa-id-card-clip"></i> Seller Verification</button>
+      <button data-tab="legal"><i class="fa-solid fa-file-contract"></i> Legal Documents</button>
       <button data-tab="ads"><i class="fa-solid fa-rectangle-ad"></i> Ads</button>
       <button data-tab="orders"><i class="fa-solid fa-receipt"></i> Orders &amp; Payments</button>
       <button data-tab="users"><i class="fa-solid fa-users"></i> Users</button>
@@ -172,7 +166,7 @@
         <div class="dash-card">
           <div class="dash-card__head"><h3>Welcome</h3></div>
           <div style="padding:18px;">
-            <p class="text-muted">Use the sidebar to review pending products and set final prices, manage the category tree and its attributes, review and approve seller shops, manage ad banners, verify M-Pesa payments, manage sales agents, and suspend or reactivate any wholesaler, retailer, or buyer account.</p>
+            <p class="text-muted">Use the sidebar to review pending products and set final prices, manage the category tree and its attributes, review and approve seller shops and seller verification, manage legal documents, manage ad banners, verify M-Pesa payments, manage sales agents, and suspend or reactivate any wholesaler, retailer, or buyer account.</p>
           </div>
         </div>
       </div>
@@ -256,7 +250,7 @@
         </div>
       </div>
 
-      <!-- ===== SHOPS (NEW) ===== -->
+      <!-- ===== SHOPS ===== -->
       <div class="tab-panel" id="panel-shops">
         <div class="dash-card">
           <div class="dash-card__head">
@@ -279,6 +273,49 @@
                 <tr><th>Logo</th><th>Shop</th><th>Seller</th><th>Category</th><th>Status</th><th>Badges</th><th>Actions</th></tr>
               </thead>
               <tbody id="shopsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== SELLER VERIFICATION ===== -->
+      <div class="tab-panel" id="panel-verification">
+        <div class="dash-card">
+          <div class="dash-card__head">
+            <h3>Seller Verification</h3>
+            <div class="dash-toolbar">
+              <input type="text" id="verifSearchInput" placeholder="Search by seller name...">
+              <select id="verifStatusSelect">
+                <option value="pending">Pending review</option>
+                <option value="">All statuses</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+                <option value="not_submitted">Not submitted</option>
+              </select>
+            </div>
+          </div>
+          <p class="text-muted" style="padding:0 18px;">Sellers must be approved here before they can list products. Retailers can use the basic ID+KRA tier; wholesalers are always on the business tier. Click any row to review every onboarding detail — identity, tax, business, store branding, categories, pickup location, payout and socials — and to open that seller's order history.</p>
+          <div class="table-scroll">
+            <table class="dtable">
+              <thead><tr><th>Seller</th><th>Store</th><th>Role</th><th>Tier</th><th>Status</th><th>Submitted</th><th>Actions</th></tr></thead>
+              <tbody id="verificationsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== LEGAL DOCUMENTS ===== -->
+      <div class="tab-panel" id="panel-legal">
+        <div class="dash-card">
+          <div class="dash-card__head">
+            <h3>Legal Documents</h3>
+            <button class="btn btn-dark btn-sm" id="addLegalDocBtn"><i class="fa-solid fa-plus"></i> Add Document</button>
+          </div>
+          <p class="text-muted" style="padding:0 18px;">Terms, seller agreement, and policy PDFs. Only one version of a given type can be published at a time — publishing a new version automatically archives the old one. Sellers can't submit verification until they've accepted every mandatory, published document for their audience.</p>
+          <div class="table-scroll">
+            <table class="dtable">
+              <thead><tr><th>Title</th><th>Type</th><th>Version</th><th>Audience</th><th>Status</th><th>Effective</th><th>Actions</th></tr></thead>
+              <tbody id="legalDocsBody"></tbody>
             </table>
           </div>
         </div>
@@ -320,7 +357,7 @@
         <div id="panel-all-orders" class="dash-card" style="display:none;">
           <div class="dash-card__head">
             <h3>All Orders</h3>
-            <p class="text-muted" style="margin:0;">Click a row to expand full order details — buyer, agent, seller-per-item, and the item breakdown.</p>
+            <p class="text-muted" style="margin:0;">Click a row to expand full order details — contact, shipping, seller pickup location(s), payment verification, and the item breakdown.</p>
           </div>
           <div class="table-scroll">
             <table class="dtable">
@@ -570,7 +607,7 @@
   </div>
 </div>
 
-<!-- Shop review/edit modal (NEW) -->
+<!-- Shop review/edit modal -->
 <div class="modal-overlay" id="shopModal">
   <div class="modal">
     <div class="modal-head">
@@ -638,7 +675,7 @@
   </div>
 </div>
 
-<!-- Shop reject modal (NEW) -->
+<!-- Shop reject modal -->
 <div class="modal-overlay" id="shopRejectModal">
   <div class="modal">
     <div class="modal-head">
@@ -652,6 +689,217 @@
       </div>
       <button type="submit" class="btn btn-dark btn-block">Reject Shop</button>
     </form>
+  </div>
+</div>
+
+<!-- Seller Verification review modal -->
+<div class="modal-overlay" id="verificationModal">
+  <div class="modal modal-lg">
+    <div class="modal-head">
+      <div>
+        <h3>Verification — <span id="verifSellerName"></span></h3>
+        <div class="text-muted" id="verifSellerEmail" style="font-size:.8rem; margin-top:2px;"></div>
+      </div>
+      <button class="modal-close" data-close-modal="verificationModal">&times;</button>
+    </div>
+
+    <div class="verif-summary-grid">
+      <div>
+        <div class="text-muted">Role</div>
+        <span id="verifRolePill" class="pill"></span>
+      </div>
+      <div>
+        <div class="text-muted">Tier</div>
+        <span id="verifTierPill" class="pill"></span>
+      </div>
+      <div>
+        <div class="text-muted">Status</div>
+        <span id="verifStatusPill" class="pill"></span>
+      </div>
+      <div>
+        <div class="text-muted">Email Verified</div>
+        <span id="verifEmailPill" class="pill"></span>
+      </div>
+      <div>
+        <div class="text-muted">Submitted</div>
+        <div id="verifSubmittedAt"></div>
+      </div>
+      <div>
+        <div class="text-muted">Agreement Accepted</div>
+        <div id="verifAgreedAt"></div>
+      </div>
+    </div>
+
+    <div id="verifRejectionNote" class="alert alert-error" style="display:none; margin-bottom:16px;"></div>
+
+    <!-- Store & Branding -->
+    <div class="verif-section">
+      <h4><i class="fa-solid fa-shop"></i> Store &amp; Branding</h4>
+      <div class="store-preview" id="verifStorePreview"></div>
+      <div class="verif-field-grid" id="verifStoreGrid" style="margin-top:14px;"></div>
+    </div>
+
+    <!-- Categories -->
+    <div class="verif-section">
+      <h4><i class="fa-solid fa-tags"></i> Product Categories</h4>
+      <div class="chip-row" id="verifCategoriesRow"></div>
+    </div>
+
+    <div class="verif-section">
+      <h4><i class="fa-solid fa-id-card"></i> Identity</h4>
+      <div class="verif-field-grid" id="verifIdentityGrid"></div>
+    </div>
+
+    <div class="verif-section">
+      <h4><i class="fa-solid fa-receipt"></i> Tax (KRA)</h4>
+      <div class="verif-field-grid" id="verifTaxGrid"></div>
+    </div>
+
+    <div class="verif-section" id="verifBusinessSection">
+      <h4><i class="fa-solid fa-building"></i> Business</h4>
+      <div class="verif-field-grid" id="verifBusinessGrid"></div>
+    </div>
+
+    <!-- Business Address -->
+    <div class="verif-section">
+      <h4><i class="fa-solid fa-location-dot"></i> Business Address</h4>
+      <div class="verif-field-grid" id="verifAddressGrid"></div>
+    </div>
+
+    <!-- Warehouse / Pickup Location -->
+    <div class="verif-section">
+      <h4><i class="fa-solid fa-warehouse"></i> Warehouse / Pickup Location</h4>
+      <div class="pickup-banner" id="verifPickupBanner"></div>
+      <div class="verif-field-grid" id="verifWarehouseGrid" style="margin-top:14px;"></div>
+    </div>
+
+    <!-- Return Address -->
+    <div class="verif-section">
+      <h4><i class="fa-solid fa-rotate-left"></i> Returns Address</h4>
+      <div class="verif-field-grid" id="verifReturnGrid"></div>
+    </div>
+
+    <div class="verif-section">
+      <h4><i class="fa-solid fa-money-bill-transfer"></i> Payout Method</h4>
+      <div class="verif-field-grid" id="verifPayoutGrid"></div>
+    </div>
+
+    <!-- Social Links -->
+    <div class="verif-section">
+      <h4><i class="fa-solid fa-share-nodes"></i> Social &amp; Web</h4>
+      <div class="chip-row" id="verifSocialRow"></div>
+    </div>
+
+    <div class="shop-modal-actions" id="verifModalActions"></div>
+  </div>
+</div>
+
+<!-- Seller Verification reject modal -->
+<div class="modal-overlay" id="verifRejectModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Reject Verification</h3>
+      <button class="modal-close" data-close-modal="verifRejectModal">&times;</button>
+    </div>
+    <form id="verifRejectForm" class="form-grid">
+      <div class="form-field">
+        <label for="verifRejectReason">Reason (shown to the seller)</label>
+        <textarea id="verifRejectReason" required placeholder="e.g. ID photo is blurry, please reupload a clearer copy"></textarea>
+      </div>
+      <button type="submit" class="btn btn-dark btn-block">Reject</button>
+    </form>
+  </div>
+</div>
+
+<!-- Seller Orders modal (opened from the Verification review screen) -->
+<div class="modal-overlay" id="sellerOrdersModal">
+  <div class="modal modal-lg">
+    <div class="modal-head">
+      <div>
+        <h3>Orders — <span id="sellerOrdersName"></span></h3>
+        <div class="text-muted" id="sellerOrdersSub" style="font-size:.8rem; margin-top:2px;"></div>
+      </div>
+      <button class="modal-close" data-close-modal="sellerOrdersModal">&times;</button>
+    </div>
+
+    <div class="pickup-banner" id="sellerOrdersPickupBanner" style="margin-bottom:18px;"></div>
+
+    <div class="table-scroll">
+      <table class="dtable">
+        <thead><tr><th></th><th>Order</th><th>Buyer</th><th>Total</th><th>Agent</th><th>Payment</th><th>Fulfillment</th><th>Items</th><th>Date</th></tr></thead>
+        <tbody id="sellerOrdersBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Legal Document modal (add/edit) -->
+<div class="modal-overlay" id="legalDocModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="legalDocModalTitle">Add Document</h3>
+      <button class="modal-close" data-close-modal="legalDocModal">&times;</button>
+    </div>
+    <form id="legalDocForm" class="form-grid">
+      <div class="form-field">
+        <label for="legalTitle">Title</label>
+        <input type="text" id="legalTitle" required placeholder="e.g. Seller Agreement">
+      </div>
+      <div class="form-field">
+        <label for="legalType">Type</label>
+        <select id="legalType" required></select>
+      </div>
+      <div class="form-field">
+        <label for="legalVersion">Version</label>
+        <input type="text" id="legalVersion" required placeholder="e.g. 1.0">
+      </div>
+      <div class="form-field">
+        <label for="legalDescription">Description (optional)</label>
+        <textarea id="legalDescription" placeholder="Internal note about this version"></textarea>
+      </div>
+      <div class="form-field">
+        <label for="legalAudience">Audience</label>
+        <select id="legalAudience">
+          <option value="sellers">Sellers</option>
+          <option value="buyers">Buyers</option>
+          <option value="both">Both</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label for="legalEffectiveDate">Effective Date</label>
+        <input type="date" id="legalEffectiveDate" required>
+      </div>
+      <div class="form-field">
+        <label for="legalExpiryDate">Expiry Date (optional)</label>
+        <input type="date" id="legalExpiryDate">
+      </div>
+      <div class="form-field" style="flex-direction:row; align-items:center; gap:10px;">
+        <label class="switch"><input type="checkbox" id="legalMandatory" checked><span class="track"></span></label>
+        <label for="legalMandatory" style="margin:0;">Mandatory acceptance</label>
+      </div>
+      <div class="form-field">
+        <label for="legalFileInput">PDF File <span id="legalFileRequired" style="color:var(--brick);">(required)</span></label>
+        <input type="file" id="legalFileInput" accept="application/pdf">
+        <div class="form-hint" id="legalCurrentFileHint"></div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Save Document</button>
+    </form>
+  </div>
+</div>
+
+<!-- Legal Document acceptances viewer -->
+<div class="modal-overlay" id="legalAcceptancesModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Acceptances — <span id="legalAcceptancesDocTitle"></span></h3>
+      <button class="modal-close" data-close-modal="legalAcceptancesModal">&times;</button>
+    </div>
+    <div class="table-scroll">
+      <table class="dtable">
+        <thead><tr><th>Seller</th><th>Role</th><th>Accepted</th></tr></thead>
+        <tbody id="legalAcceptancesBody"></tbody>
+      </table>
+    </div>
   </div>
 </div>
 

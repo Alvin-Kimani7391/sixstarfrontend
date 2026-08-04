@@ -19,9 +19,38 @@ let agentOrdersCache = {};    // agentId -> orders[] (lazy-loaded on first expan
 let catAttrAssigned = []; // [{ attributeId, name, isRequired }] in display order
 let catAttrTargetCategoryId = null;
 
-// NEW: shops state
+// shops state
 let shopFilters = { status: '', search: '' };
 let shopsCache = [];
+
+// seller verification state
+let verifFilters = { status: 'pending', search: '' };
+let verificationsCache = [];
+// Lookup of EVERY verification record (regardless of status), keyed by seller._id.
+// Used to show pickup/warehouse location on order rows anywhere in the dashboard,
+// without needing a new backend endpoint.
+let verificationsBySellerId = {};
+
+// legal documents state
+let legalDocsCache = [];
+const LEGAL_DOC_TYPES = [
+  'terms_and_conditions', 'seller_agreement', 'privacy_policy', 'data_protection_agreement',
+  'product_listing_policy', 'prohibited_products_policy', 'anti_counterfeit_policy', 'returns_policy',
+  'refund_policy', 'shipping_policy', 'payments_commission_policy', 'seller_performance_policy',
+  'cosmetics_compliance_policy', 'seller_code_of_conduct', 'intellectual_property_policy',
+  'account_suspension_policy', 'seller_fees_schedule', 'advertising_promotions_policy',
+  'seller_verification_policy', 'community_guidelines', 'other',
+];
+
+const CATEGORY_LABELS = {
+  phones: 'Phones', electronics: 'Electronics', fashion: 'Fashion', beauty: 'Beauty',
+  groceries: 'Groceries', home_living: 'Home & Living', industrial: 'Industrial',
+  automotive: 'Automotive', agriculture: 'Agriculture',
+};
+
+const BUSINESS_AGE_LABELS = {
+  lt_6m: 'Under 6 months', '6_12m': '6 – 12 months', '1_3y': '1 – 3 years', gt_3y: 'Over 3 years',
+};
 
 const MAX_CATEGORY_LEVEL = 2; // 0 = Parent Category, 1 = Category, 2 = Sub Category
 
@@ -35,6 +64,7 @@ async function init() {
   wireSidebar();
   wireModalCloseButtons();
   wireStaticButtons();
+  populateLegalTypeSelect();
   await checkAuth();
 }
 
@@ -71,6 +101,7 @@ async function showDashboard() {
 
   await loadCategoriesCache();
   await loadAttributesCache();
+  loadVerificationsLookup(); // fire-and-forget: powers pickup-location on order rows everywhere
   switchTab('overview');
 }
 
@@ -138,6 +169,8 @@ function switchTab(tab) {
   if (tab === 'categories') loadCategoriesTable();
   if (tab === 'attributes') loadAttributes();
   if (tab === 'shops') loadShops();
+  if (tab === 'verification') loadVerifications();
+  if (tab === 'legal') loadLegalDocuments();
   if (tab === 'ads') loadAds();
   if (tab === 'orders') loadOrdersTab();
   if (tab === 'users') loadUsers();
@@ -371,7 +404,7 @@ function wireStaticButtons() {
     });
   });
 
-  // NEW: shops
+  // shops
   document.getElementById('shopEditForm').addEventListener('submit', submitShopEdit);
 
   document.getElementById('shopRejectForm').addEventListener('submit', async (e) => {
@@ -398,6 +431,37 @@ function wireStaticButtons() {
     shopFilters.status = e.target.value;
     loadShops();
   });
+
+  // seller verification
+  document.getElementById('verifRejectForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('verifRejectModal').dataset.verifId;
+    const reason = document.getElementById('verifRejectReason').value.trim();
+    try {
+      await apiPatch(`/admin/seller-verifications/${id}/reject`, { reason });
+      showToast('Verification rejected');
+      closeModal('verifRejectModal');
+      closeModal('verificationModal');
+      loadVerifications();
+      loadVerificationsLookup();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+
+  document.getElementById('verifSearchInput').addEventListener('input', debounce(() => {
+    verifFilters.search = document.getElementById('verifSearchInput').value.trim();
+    loadVerifications();
+  }, 400));
+
+  document.getElementById('verifStatusSelect').addEventListener('change', (e) => {
+    verifFilters.status = e.target.value;
+    loadVerifications();
+  });
+
+  // legal documents
+  document.getElementById('addLegalDocBtn').addEventListener('click', () => openLegalDocModal(null));
+  document.getElementById('legalDocForm').addEventListener('submit', submitLegalDocForm);
 }
 
 function openRejectModal(productId) {
@@ -979,7 +1043,7 @@ async function submitCategoryAttributes() {
 }
 
 // ===================================================================
-// SHOPS (NEW — approve / reject / suspend / reactivate / verify / feature / edit / remove)
+// SHOPS (approve / reject / suspend / reactivate / verify / feature / edit / remove)
 // ===================================================================
 const SHOP_STATUS_PILL = {
   pending_approval: 'pill-pending_approval',
@@ -1210,6 +1274,591 @@ async function submitShopEdit(e) {
 }
 
 // ===================================================================
+// SELLER VERIFICATION LOOKUP (background cache used to power pickup
+// location display on order rows all across the dashboard)
+// ===================================================================
+async function loadVerificationsLookup() {
+  try {
+    const { verifications } = await apiGet('/admin/seller-verifications'); // no status filter = everything
+    const map = {};
+    verifications.forEach((v) => {
+      const sellerId = v.seller?._id || v.seller;
+      if (sellerId) map[String(sellerId)] = v;
+    });
+    verificationsBySellerId = map;
+  } catch (err) {
+    verificationsBySellerId = {};
+  }
+}
+
+// Resolves the address a courier/buyer should actually go to for pickup:
+// the dedicated warehouse address if the seller set one, otherwise the
+// business address (their sameAsBusiness default).
+function resolvePickupAddress(record) {
+  if (!record) return null;
+  const wh = record.warehouseAddress;
+  const biz = record.businessAddress;
+  if (wh && wh.sameAsBusiness === false && (wh.county || wh.city || wh.street)) {
+    return {
+      label: wh.warehouseName || 'Warehouse',
+      county: wh.county, city: wh.city, street: wh.street, building: wh.building, mapLink: wh.mapLink,
+    };
+  }
+  if (biz && (biz.county || biz.city || biz.street)) {
+    return { label: 'Business Address', county: biz.county, city: biz.city, street: biz.street, building: biz.building };
+  }
+  return null;
+}
+
+function formatAddressLine(addr) {
+  if (!addr) return '';
+  return [addr.building, addr.street, addr.city, addr.county].filter(Boolean).join(', ');
+}
+
+// Small reusable "pickup" banner used in the verification modal, the seller
+// orders modal, and inline within each order's item breakdown.
+function pickupBannerHtml(sellerLabel, record) {
+  const addr = resolvePickupAddress(record);
+  if (!addr) {
+    return `<div class="pickup-card pickup-card--empty"><i class="fa-solid fa-circle-question"></i><div><strong>${escapeHtml(sellerLabel || 'Seller')}</strong><div class="text-muted">No pickup/warehouse location on file yet.</div></div></div>`;
+  }
+  const line = formatAddressLine(addr);
+  return `
+    <div class="pickup-card">
+      <i class="fa-solid fa-warehouse"></i>
+      <div>
+        <strong>${escapeHtml(sellerLabel || 'Seller')}</strong>
+        <span class="pickup-card__tag">${escapeHtml(addr.label)}</span>
+        <div class="pickup-card__addr">${escapeHtml(line) || '<span class="text-muted">Address incomplete</span>'}</div>
+        ${addr.mapLink ? `<a href="${escapeHtml(addr.mapLink)}" target="_blank" rel="noopener" class="doc-chip" style="margin-top:6px;"><i class="fa-solid fa-map-location-dot"></i> Open map</a>` : ''}
+      </div>
+    </div>`;
+}
+
+// ===================================================================
+// SELLER VERIFICATION (review identity/tax/business/store/pickup docs, approve/reject)
+// ===================================================================
+function verifField(label, value) {
+  return `<div class="verif-field"><span class="vf-label">${escapeHtml(label)}</span><span class="vf-value">${value || '<span class="text-muted">—</span>'}</span></div>`;
+}
+
+function fileChip(label, url) {
+  if (!url) return `<span class="text-muted">Not provided</span>`;
+  const isImage = /\.(jpg|jpeg|png|webp)(\?|$)/i.test(url);
+  return `<a class="doc-chip" href="${url}" target="_blank" rel="noopener">
+    <i class="fa-solid ${isImage ? 'fa-image' : 'fa-file-pdf'}"></i> ${escapeHtml(label)}
+  </a>`;
+}
+
+function linkChip(icon, label, url) {
+  if (!url) return '';
+  const href = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+  return `<a class="doc-chip" href="${escapeHtml(href)}" target="_blank" rel="noopener"><i class="fa-solid ${icon}"></i> ${escapeHtml(label)}</a>`;
+}
+
+async function loadVerifications() {
+  const tbody = document.getElementById('verificationsBody');
+  tbody.innerHTML = `<tr><td colspan="7"><div class="spinner"></div></td></tr>`;
+  try {
+    const params = new URLSearchParams();
+    if (verifFilters.status) params.set('status', verifFilters.status);
+    const { verifications } = await apiGet(`/admin/seller-verifications?${params.toString()}`);
+
+    let list = verifications;
+    if (verifFilters.search) {
+      const q = verifFilters.search.toLowerCase();
+      list = list.filter((v) =>
+        (v.seller?.name || '').toLowerCase().includes(q) ||
+        (v.seller?.businessName || '').toLowerCase().includes(q) ||
+        (v.seller?.shopName || '').toLowerCase().includes(q) ||
+        (v.store?.storeName || '').toLowerCase().includes(q)
+      );
+    }
+    verificationsCache = list;
+
+    // keep the background lookup fresh too, since we already have the full payload here
+    list.forEach((v) => {
+      const sellerId = v.seller?._id || v.seller;
+      if (sellerId) verificationsBySellerId[String(sellerId)] = v;
+    });
+
+    if (list.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7"><div class="dash-empty"><i class="fa-solid fa-id-card"></i><p>No verification records match these filters.</p></div></td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = list
+      .map(
+        (v) => `
+      <tr>
+        <td><strong>${escapeHtml(v.seller?.businessName || v.seller?.shopName || v.seller?.name || '-')}</strong><div class="text-muted">${escapeHtml(v.seller?.email || '')}</div></td>
+        <td>${v.store?.storeName ? escapeHtml(v.store.storeName) : '<span class="text-muted">—</span>'}</td>
+        <td><span class="pill pill-${v.sellerRole}">${v.sellerRole}</span></td>
+        <td class="text-muted" style="text-transform:capitalize;">${v.tier}</td>
+        <td><span class="pill pill-${v.status === 'pending' ? 'pending_review' : v.status}">${v.status.replace(/_/g, ' ')}</span></td>
+        <td>${v.submittedAt ? new Date(v.submittedAt).toLocaleDateString() : '—'}</td>
+        <td>
+          <div class="row-actions">
+            <button class="act-edit" data-view-verif="${v._id}">${v.status === 'pending' ? 'Review' : 'View'}</button>
+          </div>
+        </td>
+      </tr>`
+      )
+      .join('');
+
+    tbody.querySelectorAll('[data-view-verif]').forEach((btn) =>
+      btn.addEventListener('click', () => openVerificationModal(verificationsCache.find((v) => v._id === btn.dataset.viewVerif)))
+    );
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="dash-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>${err.message}</p></div></td></tr>`;
+  }
+}
+
+function openVerificationModal(v) {
+  if (!v) return;
+  const modal = document.getElementById('verificationModal');
+  modal.dataset.verifId = v._id;
+  modal.dataset.sellerId = v.seller?._id || v.seller || '';
+
+  const sellerLabel = v.seller?.businessName || v.seller?.shopName || v.seller?.name || '-';
+  document.getElementById('verifSellerName').textContent = sellerLabel;
+  document.getElementById('verifSellerEmail').textContent = v.seller?.email || v.emailVerification?.email || '';
+
+  const rolePill = document.getElementById('verifRolePill');
+  rolePill.className = `pill pill-${v.sellerRole}`;
+  rolePill.textContent = v.sellerRole;
+
+  const tierPill = document.getElementById('verifTierPill');
+  tierPill.className = 'pill pill-active';
+  tierPill.textContent = v.tier;
+
+  const statusPill = document.getElementById('verifStatusPill');
+  statusPill.className = `pill pill-${v.status === 'pending' ? 'pending_review' : v.status}`;
+  statusPill.textContent = v.status.replace(/_/g, ' ');
+
+  const emailPill = document.getElementById('verifEmailPill');
+  const emailVerified = !!v.emailVerification?.verified;
+  emailPill.className = `pill ${emailVerified ? 'pill-active' : 'pill-rejected'}`;
+  emailPill.textContent = emailVerified ? 'Verified' : 'Not verified';
+
+  document.getElementById('verifSubmittedAt').textContent = v.submittedAt ? new Date(v.submittedAt).toLocaleString() : '—';
+  document.getElementById('verifAgreedAt').textContent = v.agreedAt ? new Date(v.agreedAt).toLocaleString() : '—';
+
+  const rejNote = document.getElementById('verifRejectionNote');
+  if (v.status === 'rejected' && v.rejectionReason) {
+    rejNote.style.display = 'block';
+    rejNote.textContent = `Rejected: ${v.rejectionReason}`;
+  } else {
+    rejNote.style.display = 'none';
+  }
+
+  // ---- Store & Branding ----
+  const store = v.store || {};
+  const storePreview = document.getElementById('verifStorePreview');
+  if (store.storeLogo || store.storeBanner) {
+    storePreview.innerHTML = `
+      ${store.storeBanner ? `<img class="store-preview__banner" src="${store.storeBanner}" alt="Store banner">` : ''}
+      <div class="store-preview__row">
+        ${store.storeLogo ? `<img class="store-preview__logo" src="${store.storeLogo}" alt="Store logo">` : '<div class="store-preview__logo store-preview__logo--empty"><i class="fa-solid fa-shop"></i></div>'}
+        <div>
+          <strong>${escapeHtml(store.storeName || 'Unnamed store')}</strong>
+          <div class="text-muted" style="font-size:.8rem;">${escapeHtml(store.storeDescription || 'No description provided')}</div>
+        </div>
+      </div>`;
+  } else {
+    storePreview.innerHTML = '';
+  }
+  document.getElementById('verifStoreGrid').innerHTML = [
+    verifField('Store Name', escapeHtml(store.storeName || '')),
+    verifField('Description', escapeHtml(store.storeDescription || '')),
+  ].join('');
+
+  // ---- Categories ----
+  const categories = v.categories || [];
+  document.getElementById('verifCategoriesRow').innerHTML = categories.length
+    ? categories.map((c) => `<span class="chip active">${escapeHtml(CATEGORY_LABELS[c] || c)}</span>`).join('')
+    : '<span class="text-muted">No categories selected</span>';
+
+  // ---- Identity ----
+  const id = v.identity || {};
+  document.getElementById('verifIdentityGrid').innerHTML = [
+    verifField('Full Name', escapeHtml(id.fullName || '')),
+    verifField('Date of Birth', id.dateOfBirth ? new Date(id.dateOfBirth).toLocaleDateString() : ''),
+    verifField('Nationality', escapeHtml(id.nationality || '')),
+    verifField('ID Type', id.idType ? id.idType.replace(/_/g, ' ') : ''),
+    verifField('ID Number', escapeHtml(id.idNumber || '')),
+    `<div class="verif-field"><span class="vf-label">ID Front</span>${fileChip('View', id.idFrontImage)}</div>`,
+    `<div class="verif-field"><span class="vf-label">ID Back</span>${fileChip('View', id.idBackImage)}</div>`,
+    `<div class="verif-field"><span class="vf-label">Selfie with ID</span>${fileChip('View', id.selfieWithId)}</div>`,
+  ].join('');
+
+  // ---- Tax ----
+  const tax = v.tax || {};
+  document.getElementById('verifTaxGrid').innerHTML = [
+    verifField('KRA PIN', escapeHtml(tax.kraPinNumber || '')),
+    `<div class="verif-field"><span class="vf-label">KRA Certificate</span>${fileChip('View', tax.kraPinCertificate)}</div>`,
+    verifField('VAT Registered', tax.vatRegistered ? 'Yes' : 'No'),
+    `<div class="verif-field"><span class="vf-label">VAT Certificate</span>${fileChip('View', tax.vatCertificate)}</div>`,
+  ].join('');
+
+  // ---- Business (business tier only) ----
+  const bizSection = document.getElementById('verifBusinessSection');
+  if (v.tier === 'business') {
+    bizSection.style.display = 'block';
+    const biz = v.business || {};
+    document.getElementById('verifBusinessGrid').innerHTML = [
+      verifField('Classification', biz.classification ? biz.classification.replace(/_/g, ' ') : ''),
+      verifField('Business Name', escapeHtml(biz.businessName || '')),
+      verifField('Registration No.', escapeHtml(biz.registrationNumber || '')),
+      verifField('Business Age', BUSINESS_AGE_LABELS[biz.businessAge] || ''),
+      `<div class="verif-field"><span class="vf-label">Registration Cert.</span>${fileChip('View', biz.registrationCertificate)}</div>`,
+      `<div class="verif-field"><span class="vf-label">CR12 Document</span>${fileChip('View', biz.cr12Document)}</div>`,
+      `<div class="verif-field"><span class="vf-label">Partnership Agreement</span>${fileChip('View', biz.partnershipAgreement)}</div>`,
+      `<div class="verif-field"><span class="vf-label">Business Permit</span>${fileChip('View', biz.businessLicense)}</div>`,
+    ].join('');
+  } else {
+    bizSection.style.display = 'none';
+  }
+
+  // ---- Business Address ----
+  const addr = v.businessAddress || {};
+  document.getElementById('verifAddressGrid').innerHTML = [
+    verifField('County', escapeHtml(addr.county || '')),
+    verifField('City/Town', escapeHtml(addr.city || '')),
+    verifField('Street', escapeHtml(addr.street || '')),
+    verifField('Building', escapeHtml(addr.building || '')),
+    verifField('Postal Code', escapeHtml(addr.postalCode || '')),
+  ].join('');
+
+  // ---- Warehouse / Pickup Location ----
+  document.getElementById('verifPickupBanner').innerHTML = pickupBannerHtml(sellerLabel, v);
+  const wh = v.warehouseAddress || {};
+  if (wh.sameAsBusiness === false) {
+    document.getElementById('verifWarehouseGrid').innerHTML = [
+      verifField('Warehouse Name', escapeHtml(wh.warehouseName || '')),
+      verifField('County', escapeHtml(wh.county || '')),
+      verifField('City/Town', escapeHtml(wh.city || '')),
+      verifField('Street', escapeHtml(wh.street || '')),
+      verifField('Building', escapeHtml(wh.building || '')),
+      wh.mapLink ? `<div class="verif-field"><span class="vf-label">Map Link</span>${linkChip('fa-map-location-dot', 'Open map', wh.mapLink)}</div>` : '',
+    ].join('');
+  } else {
+    document.getElementById('verifWarehouseGrid').innerHTML = `<div class="verif-field" style="grid-column:1/-1;"><span class="text-muted">Same as business address above.</span></div>`;
+  }
+
+  // ---- Return Address ----
+  const ret = v.returnAddress || {};
+  document.getElementById('verifReturnGrid').innerHTML = [
+    verifField('Recipient Name', escapeHtml(ret.recipientName || '')),
+    verifField('County', escapeHtml(ret.county || '')),
+    verifField('City/Town', escapeHtml(ret.city || '')),
+    verifField('Street', escapeHtml(ret.street || '')),
+    verifField('Postal Code', escapeHtml(ret.postalCode || '')),
+  ].join('');
+
+  // ---- Payout ----
+  const payout = v.payout || {};
+  const payoutFields = payout.method === 'bank'
+    ? [
+        verifField('Method', 'Bank Transfer'),
+        verifField('Bank Name', escapeHtml(payout.bankName || '')),
+        verifField('Account Name', escapeHtml(payout.accountName || '')),
+        verifField('Account Number', escapeHtml(payout.accountNumber || '')),
+        verifField('Branch', escapeHtml(payout.branchName || '')),
+      ]
+    : [
+        verifField('Method', payout.method === 'mpesa' ? 'M-Pesa' : '—'),
+        verifField('M-Pesa Number', escapeHtml(payout.mpesaNumber || '')),
+        verifField('M-Pesa Name', escapeHtml(payout.mpesaName || '')),
+      ];
+  document.getElementById('verifPayoutGrid').innerHTML = payoutFields.join('');
+
+  // ---- Social & Web ----
+  const social = v.social || {};
+  const socialChips = [
+    linkChip('fa-globe', 'Website', social.website),
+    linkChip('fa-brands fa-facebook', 'Facebook', social.facebook),
+    linkChip('fa-brands fa-instagram', 'Instagram', social.instagram),
+    linkChip('fa-brands fa-tiktok', 'TikTok', social.tiktok),
+  ].filter(Boolean);
+  document.getElementById('verifSocialRow').innerHTML = socialChips.length ? socialChips.join('') : '<span class="text-muted">No social or web links provided</span>';
+
+  renderVerificationModalActions(v);
+  openModal('verificationModal');
+}
+
+function renderVerificationModalActions(v) {
+  const wrap = document.getElementById('verifModalActions');
+  const buttons = [];
+  if (v.status === 'pending') {
+    buttons.push(`<button type="button" class="btn btn-primary act-approve" id="verifApproveBtn">Approve Seller</button>`);
+    buttons.push(`<button type="button" class="btn btn-dark act-reject" id="verifRejectBtn">Reject</button>`);
+  } else {
+    buttons.push(`<span class="text-muted" style="align-self:center;">Status: ${v.status.replace(/_/g, ' ')}</span>`);
+  }
+  buttons.push(`<button type="button" class="btn btn-outline" id="verifViewOrdersBtn"><i class="fa-solid fa-receipt"></i> View Orders</button>`);
+  wrap.innerHTML = buttons.join('');
+
+  document.getElementById('verifApproveBtn')?.addEventListener('click', () => approveVerificationRow(v._id));
+  document.getElementById('verifRejectBtn')?.addEventListener('click', () => {
+    document.getElementById('verifRejectReason').value = '';
+    document.getElementById('verifRejectModal').dataset.verifId = v._id;
+    openModal('verifRejectModal');
+  });
+  document.getElementById('verifViewOrdersBtn')?.addEventListener('click', () => openSellerOrdersModal(v));
+}
+
+async function approveVerificationRow(id) {
+  if (!confirm('Approve this seller? They will immediately be able to list products.')) return;
+  try {
+    await apiPatch(`/admin/seller-verifications/${id}/approve`);
+    showToast('Seller verification approved');
+    closeModal('verificationModal');
+    loadVerifications();
+    loadVerificationsLookup();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+// ===================================================================
+// SELLER ORDERS MODAL — opened from the Verification review screen.
+// Shows this seller's pickup location once at the top, then every order
+// that contains at least one of their items (backend already supports
+// ?sellerId= on /admin/orders).
+// ===================================================================
+async function openSellerOrdersModal(v) {
+  const sellerId = v.seller?._id || v.seller;
+  const sellerLabel = v.seller?.businessName || v.seller?.shopName || v.seller?.name || '-';
+
+  document.getElementById('sellerOrdersName').textContent = sellerLabel;
+  document.getElementById('sellerOrdersSub').textContent = v.seller?.email ? `${v.seller.email}${v.seller?.phone ? ' · ' + v.seller.phone : ''}` : '';
+  document.getElementById('sellerOrdersPickupBanner').innerHTML = pickupBannerHtml(sellerLabel, v);
+
+  const tbody = document.getElementById('sellerOrdersBody');
+  tbody.innerHTML = `<tr><td colspan="9"><div class="spinner"></div></td></tr>`;
+  openModal('sellerOrdersModal');
+
+  try {
+    const { orders } = await apiGet(`/admin/orders?sellerId=${sellerId}&limit=100`);
+    if (!orders.length) {
+      tbody.innerHTML = `<tr><td colspan="9"><div class="dash-empty"><i class="fa-solid fa-receipt"></i><p>This seller has no orders yet.</p></div></td></tr>`;
+      return;
+    }
+
+    const statusOptions = ['processing', 'shipped', 'delivered', 'cancelled'];
+    tbody.innerHTML = orders.map((o) => orderRowPairHtml(o, statusOptions, 'seller')).join('');
+
+    tbody.querySelectorAll('[data-order-toggle-seller]').forEach((btn) =>
+      btn.addEventListener('click', () => toggleOrderDetail(btn.dataset.orderToggleSeller, 'seller'))
+    );
+    tbody.querySelectorAll('.order-status-select').forEach((sel) =>
+      sel.addEventListener('change', async () => {
+        const previousValue = sel.dataset.currentValue || sel.value;
+        sel.disabled = true;
+        try {
+          await apiPatch(`/orders/${sel.dataset.order}/status`, { orderStatus: sel.value });
+          sel.dataset.currentValue = sel.value;
+          showToast('Order status updated');
+        } catch (err) {
+          showToast(err.message, 'error');
+          sel.value = previousValue;
+        } finally {
+          sel.disabled = false;
+        }
+      })
+    );
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="9"><div class="dash-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>${err.message}</p></div></td></tr>`;
+  }
+}
+
+// ===================================================================
+// LEGAL DOCUMENTS (Terms, Seller Agreement, policies — draft → published → archived)
+// ===================================================================
+function docTypeLabel(t) {
+  return t.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function populateLegalTypeSelect() {
+  document.getElementById('legalType').innerHTML = LEGAL_DOC_TYPES
+    .map((t) => `<option value="${t}">${docTypeLabel(t)}</option>`)
+    .join('');
+}
+
+async function loadLegalDocuments() {
+  const tbody = document.getElementById('legalDocsBody');
+  tbody.innerHTML = `<tr><td colspan="7"><div class="spinner"></div></td></tr>`;
+  try {
+    const { documents } = await apiGet('/admin/legal-documents');
+    legalDocsCache = documents;
+
+    if (documents.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7"><div class="dash-empty"><i class="fa-solid fa-file-contract"></i><p>No legal documents yet. Add your Terms &amp; Conditions or Seller Agreement to get started.</p></div></td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = documents
+      .map(
+        (d) => `
+      <tr>
+        <td class="wrap-cell"><strong>${escapeHtml(d.title)}</strong>${d.description ? `<div class="text-muted">${escapeHtml(d.description)}</div>` : ''}</td>
+        <td class="text-muted">${docTypeLabel(d.type)}</td>
+        <td>${escapeHtml(d.version)}</td>
+        <td class="text-muted" style="text-transform:capitalize;">${d.audience}</td>
+        <td><span class="pill pill-${d.status}">${d.status}</span></td>
+        <td>${new Date(d.effectiveDate).toLocaleDateString()}</td>
+        <td>
+          <div class="row-actions">
+            ${d.status !== 'published' ? `<button class="act-edit" data-edit-legal="${d._id}">Edit</button>` : ''}
+            ${d.status === 'draft' ? `<button class="act-approve" data-publish-legal="${d._id}">Publish</button>` : ''}
+            ${d.status === 'published' ? `<button class="act-suspend" data-archive-legal="${d._id}">Archive</button>` : ''}
+            <button class="act-edit" data-view-acceptances="${d._id}" title="View acceptances"><i class="fa-solid fa-users"></i></button>
+            ${d.status !== 'published' ? `<button class="act-reject" data-delete-legal="${d._id}">Delete</button>` : ''}
+          </div>
+        </td>
+      </tr>`
+      )
+      .join('');
+
+    tbody.querySelectorAll('[data-edit-legal]').forEach((btn) =>
+      btn.addEventListener('click', () => openLegalDocModal(legalDocsCache.find((d) => d._id === btn.dataset.editLegal)))
+    );
+    tbody.querySelectorAll('[data-publish-legal]').forEach((btn) =>
+      btn.addEventListener('click', () => publishLegalDocRow(btn.dataset.publishLegal))
+    );
+    tbody.querySelectorAll('[data-archive-legal]').forEach((btn) =>
+      btn.addEventListener('click', () => archiveLegalDocRow(btn.dataset.archiveLegal))
+    );
+    tbody.querySelectorAll('[data-delete-legal]').forEach((btn) =>
+      btn.addEventListener('click', () => deleteLegalDocRow(btn.dataset.deleteLegal))
+    );
+    tbody.querySelectorAll('[data-view-acceptances]').forEach((btn) =>
+      btn.addEventListener('click', () => openAcceptancesModal(legalDocsCache.find((d) => d._id === btn.dataset.viewAcceptances)))
+    );
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="dash-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>${err.message}</p></div></td></tr>`;
+  }
+}
+
+function openLegalDocModal(doc) {
+  const modal = document.getElementById('legalDocModal');
+  modal.dataset.docId = doc?._id || '';
+  document.getElementById('legalDocModalTitle').textContent = doc ? 'Edit Document' : 'Add Document';
+  document.getElementById('legalTitle').value = doc?.title || '';
+  document.getElementById('legalType').value = doc?.type || LEGAL_DOC_TYPES[0];
+  document.getElementById('legalVersion').value = doc?.version || '';
+  document.getElementById('legalDescription').value = doc?.description || '';
+  document.getElementById('legalAudience').value = doc?.audience || 'sellers';
+  document.getElementById('legalEffectiveDate').value = doc?.effectiveDate ? doc.effectiveDate.slice(0, 10) : '';
+  document.getElementById('legalExpiryDate').value = doc?.expiryDate ? doc.expiryDate.slice(0, 10) : '';
+  document.getElementById('legalMandatory').checked = doc ? doc.isMandatory : true;
+  document.getElementById('legalFileInput').value = '';
+  document.getElementById('legalFileRequired').style.display = doc ? 'none' : 'inline';
+  document.getElementById('legalCurrentFileHint').innerHTML = doc?.fileUrl
+    ? `Current file: <a href="${doc.fileUrl}" target="_blank" rel="noopener">view PDF</a> — leave empty to keep it.`
+    : '';
+  openModal('legalDocModal');
+}
+
+async function submitLegalDocForm(e) {
+  e.preventDefault();
+  const modal = document.getElementById('legalDocModal');
+  const id = modal.dataset.docId;
+  const file = document.getElementById('legalFileInput').files[0];
+
+  if (!id && !file) {
+    showToast('A PDF file is required for a new document', 'error');
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('title', document.getElementById('legalTitle').value.trim());
+  formData.append('type', document.getElementById('legalType').value);
+  formData.append('version', document.getElementById('legalVersion').value.trim());
+  formData.append('description', document.getElementById('legalDescription').value.trim());
+  formData.append('audience', document.getElementById('legalAudience').value);
+  formData.append('effectiveDate', document.getElementById('legalEffectiveDate').value);
+  if (document.getElementById('legalExpiryDate').value) formData.append('expiryDate', document.getElementById('legalExpiryDate').value);
+  formData.append('isMandatory', document.getElementById('legalMandatory').checked);
+  if (file) formData.append('file', file);
+
+  try {
+    if (id) {
+      await apiPatch(`/admin/legal-documents/${id}`, formData, true);
+      showToast('Document updated');
+    } else {
+      await apiPost('/admin/legal-documents', formData, true);
+      showToast('Document created as a draft');
+    }
+    closeModal('legalDocModal');
+    loadLegalDocuments();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function publishLegalDocRow(id) {
+  if (!confirm('Publish this document? It becomes the active version and any previously published version of this type is auto-archived.')) return;
+  try {
+    await apiPatch(`/admin/legal-documents/${id}/publish`);
+    showToast('Document published');
+    loadLegalDocuments();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function archiveLegalDocRow(id) {
+  if (!confirm('Archive this document? It will stop being shown as active.')) return;
+  try {
+    await apiPatch(`/admin/legal-documents/${id}/archive`);
+    showToast('Document archived');
+    loadLegalDocuments();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function deleteLegalDocRow(id) {
+  if (!confirm('Delete this document permanently?')) return;
+  try {
+    await apiDelete(`/admin/legal-documents/${id}`);
+    showToast('Document deleted');
+    loadLegalDocuments();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function openAcceptancesModal(doc) {
+  if (!doc) return;
+  document.getElementById('legalAcceptancesDocTitle').textContent = doc.title;
+  const tbody = document.getElementById('legalAcceptancesBody');
+  tbody.innerHTML = `<tr><td colspan="3"><div class="spinner"></div></td></tr>`;
+  openModal('legalAcceptancesModal');
+  try {
+    const { acceptances } = await apiGet(`/admin/legal-documents/${doc._id}/acceptances`);
+    if (acceptances.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="3"><div class="dash-empty"><i class="fa-solid fa-users"></i><p>No sellers have accepted this yet.</p></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = acceptances
+      .map(
+        (a) => `
+      <tr>
+        <td><strong>${escapeHtml(a.seller?.businessName || a.seller?.shopName || a.seller?.name || '-')}</strong><div class="text-muted">${escapeHtml(a.seller?.email || '')}</div></td>
+        <td>${a.seller?.role ? `<span class="pill pill-${a.seller.role}">${a.seller.role}</span>` : '<span class="text-muted">—</span>'}</td>
+        <td>${new Date(a.acceptedAt).toLocaleString()}</td>
+      </tr>`
+      )
+      .join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="3"><div class="dash-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>${err.message}</p></div></td></tr>`;
+  }
+}
+
+// ===================================================================
 // ADS
 // ===================================================================
 async function loadAds() {
@@ -1401,6 +2050,9 @@ async function loadAllOrders() {
   const tbody = document.getElementById('allOrdersBody');
   tbody.innerHTML = `<tr><td colspan="9"><div class="spinner"></div></td></tr>`;
   try {
+    // make sure pickup-location data is fresh before rendering item breakdowns
+    if (!Object.keys(verificationsBySellerId).length) await loadVerificationsLookup();
+
     const { orders } = await apiGet('/admin/orders?limit=50');
     allOrdersCache = orders;
 
@@ -1411,10 +2063,10 @@ async function loadAllOrders() {
 
     const statusOptions = ['processing', 'shipped', 'delivered', 'cancelled'];
 
-    tbody.innerHTML = orders.map((o) => orderRowPairHtml(o, statusOptions)).join('');
+    tbody.innerHTML = orders.map((o) => orderRowPairHtml(o, statusOptions, 'all')).join('');
 
-    tbody.querySelectorAll('[data-order-toggle]').forEach((btn) =>
-      btn.addEventListener('click', () => toggleOrderDetail(btn.dataset.orderToggle))
+    tbody.querySelectorAll('[data-order-toggle-all]').forEach((btn) =>
+      btn.addEventListener('click', () => toggleOrderDetail(btn.dataset.orderToggleAll, 'all'))
     );
 
     tbody.querySelectorAll('.order-status-select').forEach((sel) =>
@@ -1440,11 +2092,14 @@ async function loadAllOrders() {
 
 // Renders a normal summary row plus a hidden detail row right below it.
 // Clicking the chevron toggles the detail row instead of navigating anywhere else.
-function orderRowPairHtml(o, statusOptions) {
+// `scope` namespaces the toggle id/data-attribute so the same order can appear
+// (and be independently expanded) in both the All Orders table and the
+// per-seller Orders modal without id collisions.
+function orderRowPairHtml(o, statusOptions, scope) {
   const id = o._id;
   return `
     <tr data-order-row="${id}">
-      <td><button type="button" class="row-toggle-btn" data-order-toggle="${id}" aria-label="Expand order"><i class="fa-solid fa-chevron-right"></i></button></td>
+      <td><button type="button" class="row-toggle-btn" data-order-toggle-${scope}="${id}" aria-label="Expand order"><i class="fa-solid fa-chevron-right"></i></button></td>
       <td><span class="agent-code">${escapeHtml(o.orderNumber || ('#' + id.slice(-8).toUpperCase()))}</span></td>
       <td>${escapeHtml(o.buyer?.name || '-')}</td>
       <td>KSh ${o.totalAmount?.toLocaleString()}</td>
@@ -1458,16 +2113,75 @@ function orderRowPairHtml(o, statusOptions) {
       <td>${o.items.length} item(s)</td>
       <td>${new Date(o.createdAt).toLocaleDateString()}</td>
     </tr>
-    <tr class="order-detail-row" id="order-detail-${id}" style="display:none;">
+    <tr class="order-detail-row" id="order-detail-${scope}-${id}" style="display:none;">
       <td colspan="9">${orderDetailHtml(o)}</td>
     </tr>`;
 }
 
-// Full order breakdown shown when a row is expanded: customer, shipping, agent,
-// delivery cost breakdown, payment info, and a per-item table showing both the
-// buyer-facing price and the seller's own original asking price so admin can
-// see the full picture (markup, variant chosen, and per-line delivery fee).
+// Modern expand panel. Deliberately does NOT repeat buyer name, total, agent
+// code, payment-status pill, or date — those are already visible in the
+// collapsed row directly above. This surfaces what the row can't show:
+// contact info, shipping address, seller pickup/warehouse location(s),
+// payment verification trail, delivery-fee breakdown, agent commission,
+// and the per-item table.
 function orderDetailHtml(o) {
+  const dd = o.deliveryDetails || {};
+  const subtotal = (o.totalAmount || 0) - (o.deliveryFee || 0);
+
+  const statsHtml = `
+    <div class="od-stats">
+      <div class="od-stat"><span class="od-stat-label">Subtotal</span><span class="od-stat-value">KSh ${subtotal.toLocaleString()}</span></div>
+      <div class="od-stat"><span class="od-stat-label">Delivery Fee</span><span class="od-stat-value">KSh ${(o.deliveryFee || 0).toLocaleString()}</span></div>
+      ${o.agent ? `<div class="od-stat"><span class="od-stat-label">Commission</span><span class="od-stat-value">KSh ${(o.commissionAmount || 0).toLocaleString()}</span></div>` : ''}
+    </div>`;
+
+  const contactCard = `
+    <div class="od-card">
+      <h5><i class="fa-solid fa-user"></i> Contact &amp; Shipping</h5>
+      <div class="od-row"><span>Phone</span><span>${escapeHtml(o.buyer?.phone || '—')}</span></div>
+      <div class="od-row"><span>Email</span><span>${escapeHtml(o.buyer?.email || '—')}</span></div>
+      <div class="od-row"><span>Recipient</span><span>${escapeHtml(o.shippingAddress?.fullName || '—')}</span></div>
+      <div class="od-row"><span>Address</span><span>${escapeHtml(o.shippingAddress?.address || '-')}${o.shippingAddress?.city ? ', ' + escapeHtml(o.shippingAddress.city) : ''}</span></div>
+      ${o.shippingAddress?.notes ? `<div class="od-note">${escapeHtml(o.shippingAddress.notes)}</div>` : ''}
+    </div>`;
+
+  const agentBlock = o.agent
+    ? `<div class="od-row"><span>Agent</span><span>${escapeHtml(o.agent.name)} · ${o.agent.commissionRate}%</span></div>`
+    : '';
+
+  const paymentCard = `
+    <div class="od-card">
+      <h5><i class="fa-solid fa-money-bill-wave"></i> Payment &amp; Delivery</h5>
+      <div class="od-row"><span>M-Pesa Code</span><span>${escapeHtml(o.mpesaCode || '—')}</span></div>
+      <div class="od-row"><span>Message</span><span>${escapeHtml(o.mpesaMessage || '—')}</span></div>
+      ${o.verifiedBy ? `<div class="od-row"><span>Verified By</span><span>${escapeHtml(o.verifiedBy.name)}${o.verifiedAt ? ' · ' + new Date(o.verifiedAt).toLocaleDateString() : ''}</span></div>` : ''}
+      ${agentBlock}
+      ${dd.transportFee ? `<div class="od-row"><span>Retail Transport</span><span>KSh ${dd.transportFee.toLocaleString()}</span></div>` : ''}
+      ${dd.wholesaleDeliveryFee ? `<div class="od-row"><span>Wholesale Delivery</span><span>KSh ${dd.wholesaleDeliveryFee.toLocaleString()}</span></div>` : ''}
+      ${(dd.notes || []).map((n) => `<div class="od-note">${escapeHtml(n)}</div>`).join('')}
+    </div>`;
+
+  // ---- Pickup Locations: one card per distinct seller in this order ----
+  const uniqueSellers = [];
+  const seenSellerIds = new Set();
+  o.items.forEach((i) => {
+    const sid = i.seller?._id || i.seller;
+    if (!sid || seenSellerIds.has(String(sid))) return;
+    seenSellerIds.add(String(sid));
+    uniqueSellers.push({ id: sid, label: i.seller?.businessName || i.seller?.shopName || i.seller?.name || 'Seller' });
+  });
+
+  const pickupCards = uniqueSellers
+    .map((s) => pickupBannerHtml(s.label, verificationsBySellerId[String(s.id)]))
+    .join('');
+
+  const pickupSection = uniqueSellers.length
+    ? `<div class="od-card od-card--pickup">
+         <h5><i class="fa-solid fa-warehouse"></i> Pickup Location${uniqueSellers.length > 1 ? 's' : ''}</h5>
+         ${pickupCards}
+       </div>`
+    : '';
+
   const itemsHtml = o.items
     .map((i) => {
       const sellerLabel = i.seller?.businessName || i.seller?.shopName || i.seller?.name || '-';
@@ -1484,7 +2198,7 @@ function orderDetailHtml(o) {
         <td>${i.quantity}</td>
         <td>
           KSh ${(i.priceAtPurchase || 0).toLocaleString()}
-          <div class="text-muted">Seller price: KSh ${(i.sellerPriceAtPurchase || 0).toLocaleString()}</div>
+          <div class="text-muted">Seller: KSh ${(i.sellerPriceAtPurchase || 0).toLocaleString()}</div>
         </td>
         <td>
           KSh ${lineTotal.toLocaleString()}
@@ -1495,65 +2209,28 @@ function orderDetailHtml(o) {
     })
     .join('');
 
-  const agentBlock = o.agent
-    ? `${escapeHtml(o.agent.name)} <span class="agent-code">${escapeHtml(o.agent.code)}</span><div class="text-muted">${o.agent.commissionRate}% rate · KSh ${(o.commissionAmount || 0).toLocaleString()} commission on this order</div>`
-    : o.agentCode
-    ? `<span class="agent-code">${escapeHtml(o.agentCode)}</span><div class="text-muted">KSh ${(o.commissionAmount || 0).toLocaleString()} commission on this order</div>`
-    : '<span class="text-muted">No agent on this order</span>';
-
-  const dd = o.deliveryDetails || {};
-  const deliveryBlock = `
-    <div>Total delivery: <strong>KSh ${(o.deliveryFee || 0).toLocaleString()}</strong></div>
-    ${dd.transportFee ? `<div class="text-muted">Retail transport: KSh ${dd.transportFee.toLocaleString()}</div>` : ''}
-    ${dd.wholesaleDeliveryFee ? `<div class="text-muted">Wholesale delivery: KSh ${dd.wholesaleDeliveryFee.toLocaleString()}</div>` : ''}
-    ${(dd.notes || []).map((n) => `<div class="text-muted wrap-cell">${escapeHtml(n)}</div>`).join('')}
-  `;
-
   return `
-    <div class="order-detail-panel">
-      <div class="order-detail-grid">
-        <div>
-          <div class="text-muted">Customer</div>
-          <strong>${escapeHtml(o.buyer?.name || '-')}</strong>
-          <div>${escapeHtml(o.buyer?.phone || '')}</div>
-          <div>${escapeHtml(o.buyer?.email || '')}</div>
-        </div>
-        <div>
-          <div class="text-muted">Shipping</div>
-          <div>${escapeHtml(o.shippingAddress?.fullName || '')}</div>
-          <div>${escapeHtml(o.shippingAddress?.address || '-')}${o.shippingAddress?.city ? ', ' + escapeHtml(o.shippingAddress.city) : ''}</div>
-          ${o.shippingAddress?.notes ? `<div class="text-muted">${escapeHtml(o.shippingAddress.notes)}</div>` : ''}
-        </div>
-        <div>
-          <div class="text-muted">Agent</div>
-          ${agentBlock}
-        </div>
-        <div>
-          <div class="text-muted">Delivery</div>
-          ${deliveryBlock}
-        </div>
-        <div>
-          <div class="text-muted">Payment</div>
-          <div>M-Pesa code: ${escapeHtml(o.mpesaCode || '-')}</div>
-          <div class="wrap-cell text-muted">${escapeHtml(o.mpesaMessage || '')}</div>
-          ${o.verifiedBy ? `<div class="text-muted">Verified by ${escapeHtml(o.verifiedBy.name)} on ${o.verifiedAt ? new Date(o.verifiedAt).toLocaleString() : ''}</div>` : ''}
-        </div>
-        <div>
-          <div class="text-muted">Placed</div>
-          <div>${new Date(o.createdAt).toLocaleString()}</div>
-        </div>
+    <div class="order-detail-panel-v2">
+      ${statsHtml}
+      <div class="od-columns">
+        ${contactCard}
+        ${paymentCard}
       </div>
-      <table class="dtable" style="margin-top:14px;">
-        <thead><tr><th></th><th>Item</th><th>Seller</th><th>Qty</th><th>Price</th><th>Subtotal</th><th>Delivery</th></tr></thead>
-        <tbody>${itemsHtml}</tbody>
-      </table>
+      ${pickupSection}
+      <div class="od-items-wrap">
+        <h5><i class="fa-solid fa-boxes-stacked"></i> Items</h5>
+        <table class="dtable">
+          <thead><tr><th></th><th>Item</th><th>Seller</th><th>Qty</th><th>Price</th><th>Subtotal</th><th>Delivery</th></tr></thead>
+          <tbody>${itemsHtml}</tbody>
+        </table>
+      </div>
     </div>`;
 }
 
-function toggleOrderDetail(id) {
-  const row = document.getElementById(`order-detail-${id}`);
+function toggleOrderDetail(id, scope) {
+  const row = document.getElementById(`order-detail-${scope}-${id}`);
   if (!row) return;
-  const btn = document.querySelector(`[data-order-toggle="${id}"] i`);
+  const btn = document.querySelector(`[data-order-toggle-${scope}="${id}"] i`);
   const isOpen = row.style.display !== 'none';
   row.style.display = isOpen ? 'none' : 'table-row';
   if (btn) btn.className = isOpen ? 'fa-solid fa-chevron-right' : 'fa-solid fa-chevron-down';

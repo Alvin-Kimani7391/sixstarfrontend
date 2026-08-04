@@ -10,6 +10,11 @@
    names are kept as aliases so nothing already wired up in your HTML
    breaks. See the comments next to createOrder/placeOrder and
    addReview/postReview below.
+
+   Also includes:
+   - Seller verification (identity/business/tax onboarding gate, now
+     preceded by a mandatory email-OTP step — see sendEmailOtp/verifyEmailOtp)
+   - Legal documents (Terms, Seller Agreement, policies) + seller acceptance
    ============================================================ */
 
 const SS_API = (() => {
@@ -201,6 +206,92 @@ const SS_API = (() => {
     // Matches PATCH /api/shops/my-shop/toggle-active on the backend.
     toggleShopActive() {
       return request("/shops/my-shop/toggle-active", { method: "PATCH", requiresAuth: true });
+    },
+
+    // ============================================================
+    // SELLER VERIFICATION (onboarding gate — must be approved before
+    // the seller dashboard is accessible)
+    // ============================================================
+
+    // ---- Email verification (must pass before submitVerification is accepted) ----
+    // Sends/resends a 6-digit code to the logged-in seller's account email.
+    // Returns { success, email, expiresInSeconds } or { success, alreadyVerified: true }.
+    sendEmailOtp() {
+      return request("/seller-verification/email/send-code", { method: "POST", requiresAuth: true });
+    },
+    // Returns { success, verified, email }.
+    verifyEmailOtp(code) {
+      return request("/seller-verification/email/verify-code", {
+        method: "POST",
+        body: { code },
+        requiresAuth: true,
+      });
+    },
+
+    // Returns { success, verification, eligibleTiers, emailVerified, email, categoryOptions } —
+    // verification is null if the seller hasn't submitted anything yet.
+    getMyVerification() {
+      return request("/seller-verification/me", { requiresAuth: true });
+    },
+    // formData: tier, identity (incl. dateOfBirth/nationality) / tax / business
+    // (incl. businessAge) / businessAddress / warehouse* / return* / store*
+    // (incl. storeDescription) / categories (JSON array string) / social
+    // fields, plus any of idFrontImage / idBackImage / selfieWithId /
+    // kraPinCertificate / vatCertificate / registrationCertificate /
+    // cr12Document / partnershipAgreement / businessLicenseDoc / storeLogo /
+    // storeBanner file fields that apply.
+    submitVerification(formData) {
+      return request("/seller-verification", { method: "POST", body: formData, isForm: true, requiresAuth: true });
+    },
+
+    // ============================================================
+    // LEGAL DOCUMENTS (Terms, Seller Agreement, policies) —
+    // sellers must accept every published mandatory one to get verified
+    // ============================================================
+    // Returns { success, documents } — each document flagged with `accepted`.
+    getRequiredLegalDocuments() {
+      return request("/legal-documents/required", { requiresAuth: true });
+    },
+    acceptLegalDocument(id) {
+      return request(`/legal-documents/${id}/accept`, { method: "POST", requiresAuth: true });
+    },
+
+    // ============================================================
+    // ADMIN — SELLER VERIFICATION REVIEW
+    // ============================================================
+    getPendingVerifications() {
+      return request("/admin/seller-verifications/pending", { requiresAuth: true });
+    },
+    approveVerification(id) {
+      return request(`/admin/seller-verifications/${id}/approve`, { method: "PATCH", requiresAuth: true });
+    },
+    rejectVerification(id, reason) {
+      return request(`/admin/seller-verifications/${id}/reject`, { method: "PATCH", body: { reason }, requiresAuth: true });
+    },
+
+    // ============================================================
+    // ADMIN — LEGAL DOCUMENT MANAGEMENT
+    // ============================================================
+    getAllLegalDocumentsAdmin(params = {}) {
+      return request("/admin/legal-documents", { query: params, requiresAuth: true });
+    },
+    createLegalDocument(formData) {
+      return request("/admin/legal-documents", { method: "POST", body: formData, isForm: true, requiresAuth: true });
+    },
+    updateLegalDocument(id, formData) {
+      return request(`/admin/legal-documents/${id}`, { method: "PATCH", body: formData, isForm: true, requiresAuth: true });
+    },
+    publishLegalDocument(id) {
+      return request(`/admin/legal-documents/${id}/publish`, { method: "PATCH", requiresAuth: true });
+    },
+    archiveLegalDocument(id) {
+      return request(`/admin/legal-documents/${id}/archive`, { method: "PATCH", requiresAuth: true });
+    },
+    deleteLegalDocument(id) {
+      return request(`/admin/legal-documents/${id}`, { method: "DELETE", requiresAuth: true });
+    },
+    getDocumentAcceptances(id) {
+      return request(`/admin/legal-documents/${id}/acceptances`, { requiresAuth: true });
     },
 
     // ============================================================

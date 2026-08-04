@@ -1233,3 +1233,203 @@ table.dtable img.thumb{ width:38px; height:38px; border-radius:6px; object-fit:c
     padding-bottom: env(safe-area-inset-bottom);
   }
 }
+
+
+
+
+
+/* ============================================================
+   APPEND TO THE END OF css/styles.css
+   Seller Verification + Legal Documents + modern Order detail
+   (Reuses existing tokens: --navy-deep, --marigold, --teal,
+   --paper-dim, --font-display, --font-mono, --shadow-card, etc.)
+   ============================================================ */
+
+/* --- extra status pills needed by the new tables --- */
+.pill-not_submitted{ background:#E4D6BD; color:#5B564C; }
+.pill-published{ background:#DEEFE9; color:var(--teal-deep); }
+.pill-archived{ background:#E4D6BD; color:#5B564C; }
+
+/* wider modal variant for the verification review screen */
+.modal-lg{ max-width:760px; }
+
+/* ============================================================
+   SELLER VERIFICATION
+   ============================================================ */
+.verif-summary-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+  gap:14px;
+  margin-bottom:20px;
+  padding-bottom:18px;
+  border-bottom:1px solid var(--line);
+}
+
+.verif-section{ margin-bottom:24px; }
+.verif-section:last-of-type{ margin-bottom:6px; }
+.verif-section h4{
+  display:flex; align-items:center; gap:9px;
+  font-family:var(--font-display); font-size:1rem; font-weight:600;
+  color:var(--navy-deep); margin:0 0 14px;
+  padding-bottom:9px; border-bottom:1px dashed var(--line);
+}
+.verif-section h4 i{
+  width:28px; height:28px; border-radius:50%; background:var(--paper-dim);
+  color:var(--teal-deep); display:inline-flex; align-items:center; justify-content:center;
+  font-size:.8rem; flex-shrink:0;
+}
+
+.verif-field-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
+  gap:16px 20px;
+}
+.verif-field{ display:flex; flex-direction:column; gap:5px; }
+.verif-field .vf-label{
+  font-size:.68rem; text-transform:uppercase; letter-spacing:.05em;
+  color:var(--ink-soft); font-weight:700;
+}
+.verif-field .vf-value{ font-size:.9rem; font-weight:600; color:var(--ink); word-break:break-word; }
+
+/* file/document link chip — used for ID scans, KRA cert, CR12 etc. */
+.doc-chip{
+  display:inline-flex; align-items:center; gap:7px;
+  padding:7px 13px;
+  background:var(--paper-dim);
+  border:1px solid var(--line);
+  border-radius:999px;
+  font-size:.78rem; font-weight:700;
+  color:var(--teal-deep);
+  width:fit-content;
+  transition:background .15s ease, color .15s ease, border-color .15s ease;
+}
+.doc-chip i{ font-size:.78rem; }
+.doc-chip:hover{ background:var(--teal); color:#fff; border-color:var(--teal); }
+
+@media(min-width:640px){
+  .verif-summary-grid{ grid-template-columns:repeat(4,1fr); }
+}
+
+/* ============================================================
+   LEGAL DOCUMENTS
+   (mostly reuses .dash-card / .dtable / .pill — no new layout needed
+   beyond the pill colors above and a little breathing room here)
+   ============================================================ */
+#legalDocsBody td.wrap-cell strong{ display:block; }
+
+/* ============================================================
+   ORDERS — modern expand panel
+   Replaces the old plain .order-detail-panel with a dynamic,
+   card-based breakdown that never repeats what the collapsed
+   row already shows (buyer name, total, agent code, date, status).
+   ============================================================ */
+.order-detail-row td{ background:var(--paper-dim); padding:0; border-bottom:2px solid var(--line); }
+
+.order-detail-panel-v2{
+  padding:22px;
+  animation:odFadeIn .22s ease;
+}
+@keyframes odFadeIn{
+  from{ opacity:0; transform:translateY(-6px); }
+  to{ opacity:1; transform:translateY(0); }
+}
+
+/* quick stat chips: subtotal / delivery fee / commission */
+.od-stats{ display:flex; flex-wrap:wrap; gap:12px; margin-bottom:20px; }
+.od-stat{
+  background:var(--white);
+  border:1px solid var(--line);
+  border-radius:var(--radius-m);
+  padding:12px 20px;
+  display:flex; flex-direction:column; gap:3px;
+  min-width:150px;
+  box-shadow:var(--shadow-card);
+  position:relative;
+  overflow:hidden;
+}
+.od-stat::before{
+  content:""; position:absolute; left:0; top:0; bottom:0; width:4px;
+  background:var(--marigold);
+}
+.od-stat .od-stat-label{
+  font-size:.66rem; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--ink-soft); font-weight:700;
+}
+.od-stat .od-stat-value{
+  font-family:var(--font-mono); font-size:1.08rem; font-weight:700; color:var(--navy-deep);
+}
+
+/* two-column info cards: contact/shipping + payment/delivery */
+.od-columns{ display:grid; grid-template-columns:1fr; gap:16px; margin-bottom:20px; }
+@media(min-width:760px){ .od-columns{ grid-template-columns:1fr 1fr; } }
+
+.od-card{
+  background:var(--white);
+  border:1px solid var(--line);
+  border-radius:var(--radius-m);
+  padding:18px 20px;
+  box-shadow:var(--shadow-card);
+}
+.od-card h5{
+  display:flex; align-items:center; gap:9px;
+  font-family:var(--font-display); font-size:.95rem; font-weight:600;
+  color:var(--navy-deep); margin:0 0 12px;
+}
+.od-card h5 i{ color:var(--marigold-deep); font-size:.85rem; }
+.od-card .od-row{
+  display:flex; justify-content:space-between; align-items:flex-start; gap:14px;
+  font-size:.84rem; padding:7px 0;
+  border-bottom:1px solid var(--paper-dim);
+}
+.od-card .od-row:last-of-type{ border-bottom:none; }
+.od-card .od-row span:first-child{ color:var(--ink-soft); flex-shrink:0; }
+.od-card .od-row span:last-child{ font-weight:600; text-align:right; }
+.od-note{
+  font-size:.78rem; color:var(--ink-soft);
+  margin-top:10px; padding-top:10px; border-top:1px dashed var(--line);
+}
+
+/* items table wrapper — its own card with a labeled header bar */
+.od-items-wrap{
+  background:var(--white);
+  border:1px solid var(--line);
+  border-radius:var(--radius-m);
+  overflow:hidden;
+  box-shadow:var(--shadow-card);
+}
+.od-items-wrap h5{
+  display:flex; align-items:center; gap:9px;
+  font-family:var(--font-display); font-size:.95rem; font-weight:600;
+  color:var(--navy-deep); margin:0;
+  padding:15px 20px;
+  border-bottom:1px solid var(--line);
+  background:var(--paper-dim);
+}
+.od-items-wrap h5 i{ color:var(--marigold-deep); font-size:.85rem; }
+.od-items-wrap table.dtable th{ background:var(--white); }
+.od-items-wrap table.dtable tr:hover td{ background:var(--paper-dim); }
+
+/* toggle chevron animates smoothly when expanding/collapsing */
+.row-toggle-btn i{ transition:transform .18s ease; }
+
+/* ============================================================
+   MOBILE (max-width: 480px) — additions for the sections above
+   ============================================================ */
+@media (max-width: 480px) {
+  .modal-lg{ max-width:100%; }
+
+  .verif-summary-grid{ grid-template-columns:repeat(2,1fr); gap:10px; }
+  .verif-section h4{ font-size:.9rem; }
+  .verif-field-grid{ grid-template-columns:1fr 1fr; gap:12px; }
+  .verif-field .vf-value{ font-size:.82rem; }
+  .doc-chip{ font-size:.72rem; padding:6px 10px; }
+
+  .order-detail-panel-v2{ padding:14px; }
+  .od-stats{ gap:8px; margin-bottom:14px; }
+  .od-stat{ min-width:0; flex:1 1 calc(50% - 8px); padding:10px 14px; }
+  .od-stat .od-stat-value{ font-size:.92rem; }
+  .od-columns{ gap:12px; margin-bottom:14px; }
+  .od-card{ padding:14px 16px; }
+  .od-card .od-row{ font-size:.78rem; }
+  .od-items-wrap h5{ padding:12px 14px; font-size:.88rem; }
+}

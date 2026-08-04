@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Seller Verification — Six Star Suppliers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/dashboard.css">
+<link rel="stylesheet" href="css/wizard.css">
+<style>
+  .verify-shell{ max-width:720px; margin:0 auto; padding:30px 20px 80px; }
+  .verify-head{ margin-bottom:24px; }
+  .verify-head h1{ font-size:1.6rem; margin-bottom:6px; }
+  .verify-head p{ color:var(--ink-soft,#7a7268); font-size:.9rem; }
+
+  .tier-choice-group{ display:flex; flex-direction:column; gap:12px; margin:20px 0; }
+  .tier-choice-card{
+    display:flex; gap:14px; align-items:flex-start; padding:16px 18px;
+    border:1.5px solid var(--line,#e4d6bd); border-radius:14px; cursor:pointer; transition:.2s ease;
+  }
+  .tier-choice-card:hover{ border-color:var(--marigold,#f2a93b); }
+  .tier-choice-card.active{ border-color:var(--marigold,#f2a93b); background:rgba(242,169,59,.06); }
+  .tier-choice-card input{ margin-top:4px; }
+  .tier-choice-card__icon{
+    width:40px; height:40px; border-radius:50%; background:rgba(242,169,59,.14);
+    color:var(--marigold-deep,#d98c1f); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:1.05rem;
+  }
+  .tier-choice-card__title{ font-weight:700; font-size:.95rem; margin-bottom:3px; }
+  .tier-choice-card__desc{ font-size:.8rem; color:var(--ink-soft,#7a7268); line-height:1.5; }
+  .tier-choice-card__req{ font-size:.72rem; color:var(--ink-faint,#a89f92); margin-top:6px; }
+
+  .status-screen{ text-align:center; padding:70px 20px; }
+  .status-screen i{ font-size:2.6rem; margin-bottom:16px; display:block; }
+  .status-screen.pending i{ color:var(--marigold,#f2a93b); }
+  .status-screen.rejected i{ color:var(--brick,#b8442e); }
+  .status-screen h2{ font-size:1.3rem; margin-bottom:8px; }
+  .status-screen p{ color:var(--ink-soft,#7a7268); max-width:440px; margin:0 auto 20px; font-size:.9rem; line-height:1.6; }
+  .status-reject-box{
+    background:rgba(224,80,80,.08); border:1px solid rgba(224,80,80,.25); color:#a33;
+    padding:12px 16px; border-radius:10px; font-size:.85rem; max-width:none; margin:0 0 20px; text-align:left;
+  }
+
+  .toggle-row{ display:flex; align-items:center; gap:8px; margin:6px 0; }
+  .section-intro{ margin:26px 0 14px; }
+  .section-intro h3{ font-size:1rem; display:flex; align-items:center; gap:8px; }
+  .section-intro p{ font-size:.82rem; color:var(--ink-soft,#7a7268); margin-top:2px; }
+
+  .legal-doc-row{
+    display:flex; align-items:flex-start; gap:12px; padding:12px 14px;
+    border:1px solid var(--line,#e4d6bd); border-radius:12px; font-size:.85rem;
+    background:var(--white,#fff); cursor:pointer;
+    transition:border-color .15s ease;
+  }
+  .legal-doc-row:hover{ border-color:var(--marigold,#f2a93b); }
+  .legal-doc-row input{ margin-top:3px; flex-shrink:0; }
+  .legal-doc-row__body{
+    display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
+    gap:10px; flex:1; min-width:0;
+  }
+  .legal-doc-row__title{ line-height:1.5; }
+  .legal-doc-row .doc-version{ color:var(--ink-faint,#a89f92); font-size:.75rem; margin-left:4px; }
+
+  .doc-view-btn{
+    display:inline-flex; align-items:center; gap:7px;
+    padding:7px 14px;
+    background:var(--paper-dim,#f1e4ce);
+    border:1px solid var(--line,#e4d6bd);
+    border-radius:999px;
+    font-size:.78rem; font-weight:700;
+    color:var(--teal-deep,#0f6e56);
+    white-space:nowrap; flex-shrink:0;
+    transition:background .15s ease, color .15s ease, border-color .15s ease;
+  }
+  .doc-view-btn i{ font-size:.78rem; }
+  .doc-view-btn:hover{ background:var(--teal,#12726b); color:#fff; border-color:var(--teal,#12726b); }
+  .doc-view-btn--missing{
+    background:rgba(224,80,80,.08); color:#a33; border-color:rgba(224,80,80,.25); cursor:default;
+  }
+  .doc-view-btn--missing:hover{ background:rgba(224,80,80,.08); color:#a33; border-color:rgba(224,80,80,.25); }
+
+  @media (max-width: 480px){
+    .legal-doc-row{ flex-direction:column; }
+    .legal-doc-row__body{ flex-direction:column; align-items:flex-start; gap:8px; }
+    .doc-view-btn{ width:100%; justify-content:center; }
+  }
+
+  /* ---------- new: email OTP gate ---------- */
+  .otp-gate{ max-width:460px; margin:40px auto; text-align:center; }
+  .otp-gate i.gate-icon{ font-size:2.4rem; color:var(--marigold,#f2a93b); margin-bottom:14px; display:block; }
+  .otp-gate h2{ font-size:1.25rem; margin-bottom:6px; }
+  .otp-gate p{ font-size:.85rem; color:var(--ink-soft,#7a7268); margin-bottom:20px; line-height:1.6; }
+  .otp-input-row{ display:flex; gap:8px; justify-content:center; margin:18px 0; }
+  .otp-input-row input{
+    width:44px; height:54px; text-align:center; font-size:1.3rem; font-weight:700;
+    border:1.5px solid var(--line,#e4d6bd); border-radius:10px; font-family:'Space Mono', monospace;
+  }
+  .otp-input-row input:focus{ border-color:var(--marigold,#f2a93b); outline:none; }
+  .otp-resend{ font-size:.8rem; color:var(--ink-soft,#7a7268); margin-top:10px; }
+  .otp-resend button{ background:none; border:none; color:var(--teal-deep,#0f6e56); font-weight:700; cursor:pointer; padding:0; }
+  .otp-resend button:disabled{ color:var(--ink-faint,#a89f92); cursor:default; }
+  .verified-pill{
+    display:inline-flex; align-items:center; gap:6px; font-size:.78rem; font-weight:700;
+    color:#0f6e56; background:rgba(15,110,86,.08); padding:5px 12px; border-radius:999px;
+  }
+
+  /* ---------- category checkboxes ---------- */
+  .category-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); gap:10px; margin:16px 0; }
+  .category-chip{
+    display:flex; align-items:center; gap:8px; padding:11px 12px; border:1.5px solid var(--line,#e4d6bd);
+    border-radius:10px; font-size:.83rem; cursor:pointer; transition:.15s ease;
+  }
+  .category-chip:hover{ border-color:var(--marigold,#f2a93b); }
+  .category-chip.active{ border-color:var(--marigold,#f2a93b); background:rgba(242,169,59,.06); }
+
+  .char-counter{ font-size:.72rem; color:var(--ink-faint,#a89f92); text-align:right; margin-top:4px; }
+  .form-hint{ font-size:.78rem; color:var(--ink-faint,#a89f92); margin-top:4px; }
+</style>
+</head>
+<body>
+
+<div id="pageLoader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+
+<header class="site-header">
+  <div class="header-row">
+    <a href="index.html" class="brand">
+      <div class="brand-mark">6★</div>
+      <div>
+        <div class="brand-name">Six Star Suppliers</div>
+        <div class="brand-tag">Seller Verification</div>
+      </div>
+    </a>
+    <button class="iconbtn" id="logoutBtn" title="Log out"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
+  </div>
+</header>
+
+<main class="verify-shell">
+
+  <!-- ============ STATUS SCREENS (pending / rejected-and-blocked etc.) ============ -->
+  <div id="statusScreen" class="status-screen" style="display:none;"></div>
+
+  <!-- ============ STEP 0: EMAIL VERIFICATION GATE ============ -->
+  <div id="otpGate" class="otp-gate" style="display:none;">
+    <i class="fa-solid fa-envelope-circle-check gate-icon"></i>
+    <h2>Verify your email first</h2>
+    <p>We need to confirm <strong id="otpGateEmail"></strong> before you can start your seller verification. Enter the 6-digit code we've sent.</p>
+
+    <form id="otpForm">
+      <div class="otp-input-row" id="otpInputRow">
+        <input type="text" inputmode="numeric" maxlength="1" data-otp-digit />
+        <input type="text" inputmode="numeric" maxlength="1" data-otp-digit />
+        <input type="text" inputmode="numeric" maxlength="1" data-otp-digit />
+        <input type="text" inputmode="numeric" maxlength="1" data-otp-digit />
+        <input type="text" inputmode="numeric" maxlength="1" data-otp-digit />
+        <input type="text" inputmode="numeric" maxlength="1" data-otp-digit />
+      </div>
+      <div id="otpError" class="alert alert-error"></div>
+      <button type="submit" class="btn btn-primary" id="otpSubmitBtn" style="width:100%;">Verify email</button>
+      <div class="otp-resend">
+        Didn't get it? <button type="button" id="otpResendBtn">Resend code</button>
+        <span id="otpCooldown"></span>
+      </div>
+    </form>
+  </div>
+
+  <!-- ============ WIZARD ============ -->
+  <div id="wizardWrap" style="display:none;">
+    <div class="verify-head">
+      <h1>Get verified to start selling</h1>
+      <p>A quick one-time check so buyers can trust every seller on Six Star Suppliers.</p>
+      <div style="margin-top:10px;"><span class="verified-pill"><i class="fa-solid fa-circle-check"></i> Email verified</span></div>
+    </div>
+
+    <div id="rejectedBanner"></div>
+
+    <div class="wizard-steps" id="wizardSteps"></div>
+    <div id="formError" class="alert alert-error"></div>
+
+    <form id="verifyForm" class="form-grid" novalidate>
+
+      <!-- STEP: tier choice (retailers only) -->
+      <div class="wizard-panel" data-step-panel="tier">
+        <div class="section-intro">
+          <h3><i class="fa-solid fa-route"></i> Choose how you want to verify</h3>
+          <p>No business registration? No problem — start with the basic option below.</p>
+        </div>
+        <div class="tier-choice-group" id="tierChoiceGroup">
+          <label class="tier-choice-card" data-tier-card="basic">
+            <input type="radio" name="tier" value="basic" checked />
+            <div class="tier-choice-card__icon"><i class="fa-solid fa-id-card"></i></div>
+            <div>
+              <div class="tier-choice-card__title">Basic — Individual seller</div>
+              <div class="tier-choice-card__desc">For farmers, small traders, and individuals without a registered business.</div>
+              <div class="tier-choice-card__req">Needs: ID photo, selfie with ID, KRA PIN</div>
+            </div>
+          </label>
+          <label class="tier-choice-card" data-tier-card="business">
+            <input type="radio" name="tier" value="business" />
+            <div class="tier-choice-card__icon"><i class="fa-solid fa-building"></i></div>
+            <div>
+              <div class="tier-choice-card__title">Registered business</div>
+              <div class="tier-choice-card__desc">For wholesalers, manufacturers, companies, partnerships, NGOs and cooperatives.</div>
+              <div class="tier-choice-card__req">Needs: registration certificate, KRA PIN, ID</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- STEP: identity -->
+      <div class="wizard-panel" data-step-panel="identity">
+        <div class="section-intro">
+          <h3><i class="fa-solid fa-id-badge"></i> Identity verification</h3>
+          <p>Must be valid, in color, and clearly visible.</p>
+        </div>
+
+        <div class="form-field">
+          <label>ID type</label>
+          <select id="idType" required>
+            <option value="national_id">National ID (Kenyan citizens)</option>
+            <option value="passport">Passport</option>
+            <option value="alien_id">Alien ID (foreign residents)</option>
+          </select>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-field">
+            <label for="fullName">Full name (as on ID)</label>
+            <input type="text" id="fullName" required />
+          </div>
+          <div class="form-field">
+            <label for="idNumber">ID number</label>
+            <input type="text" id="idNumber" required />
+          </div>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-field">
+            <label for="dateOfBirth">Date of birth</label>
+            <input type="date" id="dateOfBirth" required />
+          </div>
+          <div class="form-field">
+            <label for="nationality">Nationality</label>
+            <input type="text" id="nationality" placeholder="e.g. Kenyan" required />
+          </div>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-field">
+            <label>ID — front</label>
+            <div class="file-upload-wrapper" data-dropzone="idFrontImage">
+              <i class="fa-solid fa-image"></i>
+              <span>Click to upload</span>
+              <small>JPG or PNG</small>
+              <input type="file" id="idFrontImage" accept="image/png,image/jpeg" />
+            </div>
+            <div class="image-preview" id="idFrontPreview"></div>
+          </div>
+          <div class="form-field" id="idBackField">
+            <label>ID — back</label>
+            <div class="file-upload-wrapper" data-dropzone="idBackImage">
+              <i class="fa-solid fa-image"></i>
+              <span>Click to upload</span>
+              <small>JPG or PNG</small>
+              <input type="file" id="idBackImage" accept="image/png,image/jpeg" />
+            </div>
+            <div class="image-preview" id="idBackPreview"></div>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label>Selfie holding your ID</label>
+          <div class="file-upload-wrapper" data-dropzone="selfieWithId">
+            <i class="fa-solid fa-camera"></i>
+            <span>Click to upload</span>
+            <small>JPG or PNG</small>
+            <input type="file" id="selfieWithId" accept="image/png,image/jpeg" />
+          </div>
+          <div class="image-preview" id="selfiePreview"></div>
+        </div>
+      </div>
+
+      <!-- STEP: business (business tier only) -->
+      <div class="wizard-panel" data-step-panel="business">
+        <div class="section-intro">
+          <h3><i class="fa-solid fa-building"></i> Business details</h3>
+          <p>Match this to your registration certificate exactly.</p>
+        </div>
+
+        <div class="form-field">
+          <label>Business classification</label>
+          <select id="businessClassification" required>
+            <option value="">Select…</option>
+            <option value="sole_proprietorship">Sole proprietorship</option>
+            <option value="partnership">Partnership</option>
+            <option value="limited_company">Limited company</option>
+            <option value="ngo">NGO</option>
+            <option value="cooperative">Cooperative society</option>
+            <option value="other">Other registered entity</option>
+          </select>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-field">
+            <label for="businessName">Business name</label>
+            <input type="text" id="businessName" required />
+          </div>
+          <div class="form-field">
+            <label for="registrationNumber">Registration number</label>
+            <input type="text" id="registrationNumber" />
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label>Business age <span class="label-soft">(helps us assess risk)</span></label>
+          <select id="businessAge">
+            <option value="">Select…</option>
+            <option value="lt_6m">Less than 6 months</option>
+            <option value="6_12m">6–12 months</option>
+            <option value="1_3y">1–3 years</option>
+            <option value="gt_3y">More than 3 years</option>
+          </select>
+        </div>
+
+        <div class="form-field">
+          <label>Registration certificate</label>
+          <div class="file-upload-wrapper" data-dropzone="registrationCertificate">
+            <i class="fa-solid fa-file-lines"></i>
+            <span>Click to upload</span>
+            <small>JPG, PNG or PDF</small>
+            <input type="file" id="registrationCertificate" accept="image/png,image/jpeg,application/pdf" />
+          </div>
+          <div class="image-preview" id="registrationPreview"></div>
+        </div>
+
+        <div class="form-field" id="cr12Field" style="display:none;">
+          <label>CR12 <span class="label-soft">(limited companies)</span></label>
+          <div class="file-upload-wrapper" data-dropzone="cr12Document">
+            <i class="fa-solid fa-file-lines"></i>
+            <span>Click to upload</span>
+            <small>JPG, PNG or PDF</small>
+            <input type="file" id="cr12Document" accept="image/png,image/jpeg,application/pdf" />
+          </div>
+          <div class="image-preview" id="cr12Preview"></div>
+        </div>
+
+        <div class="form-field" id="partnershipField" style="display:none;">
+          <label>Partnership agreement</label>
+          <div class="file-upload-wrapper" data-dropzone="partnershipAgreement">
+            <i class="fa-solid fa-file-lines"></i>
+            <span>Click to upload</span>
+            <small>JPG, PNG or PDF</small>
+            <input type="file" id="partnershipAgreement" accept="image/png,image/jpeg,application/pdf" />
+          </div>
+          <div class="image-preview" id="partnershipPreview"></div>
+        </div>
+
+        <div class="form-field">
+          <label>County Business Permit <span class="label-soft">(optional — depends on your category/region)</span></label>
+          <div class="file-upload-wrapper" data-dropzone="businessLicenseDoc">
+            <i class="fa-solid fa-file-lines"></i>
+            <span>Click to upload</span>
+            <small>JPG, PNG or PDF</small>
+            <input type="file" id="businessLicenseDoc" accept="image/png,image/jpeg,application/pdf" />
+          </div>
+          <div class="image-preview" id="businessLicensePreview"></div>
+        </div>
+      </div>
+
+      <!-- STEP: tax -->
+      <div class="wizard-panel" data-step-panel="tax">
+        <div class="section-intro">
+          <h3><i class="fa-solid fa-receipt"></i> Tax details</h3>
+          <p>Required for every seller, regardless of tier.</p>
+        </div>
+
+        <div class="form-field">
+          <label for="kraPinNumber">KRA PIN number</label>
+          <input type="text" id="kraPinNumber" required placeholder="e.g. A012345678B" />
+        </div>
+
+        <div class="form-field">
+          <label>KRA PIN certificate</label>
+          <div class="file-upload-wrapper" data-dropzone="kraPinCertificate">
+            <i class="fa-solid fa-file-lines"></i>
+            <span>Click to upload</span>
+            <small>JPG, PNG or PDF</small>
+            <input type="file" id="kraPinCertificate" accept="image/png,image/jpeg,application/pdf" />
+          </div>
+          <div class="image-preview" id="kraPreview"></div>
+        </div>
+
+        <div class="toggle-row">
+          <input type="checkbox" id="vatRegistered" />
+          <label for="vatRegistered">I'm VAT registered</label>
+        </div>
+
+        <div class="form-field" id="vatField" style="display:none;">
+          <label>VAT registration certificate</label>
+          <div class="file-upload-wrapper" data-dropzone="vatCertificate">
+            <i class="fa-solid fa-file-lines"></i>
+            <span>Click to upload</span>
+            <small>JPG, PNG or PDF</small>
+            <input type="file" id="vatCertificate" accept="image/png,image/jpeg,application/pdf" />
+          </div>
+          <div class="image-preview" id="vatPreview"></div>
+        </div>
+      </div>
+
+      <!-- STEP: business address -->
+      <div class="wizard-panel" data-step-panel="address">
+        <div class="section-intro">
+          <h3><i class="fa-solid fa-location-dot"></i> Business address</h3>
+          <p>Where you operate from — used for delivery zoning too.</p>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-field">
+            <label for="county">County</label>
+            <input type="text" id="county" required placeholder="e.g. Nairobi" />
+          </div>
+          <div class="form-field">
+            <label for="city">Town / City</label>
+            <input type="text" id="city" placeholder="e.g. Nairobi" />
+          </div>
+        </div>
+        <div class="form-row-2">
+          <div class="form-field">
+            <label for="street">Street</label>
+            <input type="text" id="street" />
+          </div>
+          <div class="form-field">
+            <label for="building">Building</label>
+            <input type="text" id="building" />
+          </div>
+        </div>
+        <div class="form-field">
+          <label for="postalCode">Postal code <span class="label-soft">(optional)</span></label>
+          <input type="text" id="postalCode" style="max-width:220px;" />
+        </div>
+      </div>
+
+      <!-- STEP: warehouse / pickup address -->
+      <div class="wizard-panel" data-step-panel="warehouse">
+        <div class="section-intro">
+          <h3><i class="fa-solid fa-warehouse"></i> Warehouse / pickup address</h3>
+          <p>Only fill this in if it's different from your business address above.</p>
+        </div>
+
+        <div class="toggle-row">
+          <input type="checkbox" id="warehouseSameAsBusiness" checked />
+          <label for="warehouseSameAsBusiness">Same as business address</label>
+        </div>
+
+        <div id="warehouseFields" style="display:none;">
+          <div class="form-field">
+            <label for="warehouseName">Warehouse name</label>
+            <input type="text" id="warehouseName" />
+          </div>
+          <div class="form-row-2">
+            <div class="form-field">
+              <label for="warehouseCounty">County</label>
+              <input type="text" id="warehouseCounty" />
+            </div>
+            <div class="form-field">
+              <label for="warehouseCity">Town / City</label>
+              <input type="text" id="warehouseCity" />
+            </div>
+          </div>
+          <div class="form-row-2">
+            <div class="form-field">
+              <label for="warehouseStreet">Street</label>
+              <input type="text" id="warehouseStreet" />
+            </div>
+            <div class="form-field">
+              <label for="warehouseBuilding">Building</label>
+              <input type="text" id="warehouseBuilding" />
+            </div>
+          </div>
+          <div class="form-field">
+            <label for="warehouseMapLink">Google Maps link <span class="label-soft">(optional)</span></label>
+            <input type="url" id="warehouseMapLink" placeholder="https://maps.google.com/…" />
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP: return address -->
+      <div class="wizard-panel" data-step-panel="returns">
+        <div class="section-intro">
+          <h3><i class="fa-solid fa-rotate-left"></i> Return address</h3>
+          <p>Where buyers should send returns.</p>
+        </div>
+
+        <div class="form-field">
+          <label for="returnRecipientName">Recipient name</label>
+          <input type="text" id="returnRecipientName" required />
+        </div>
+        <div class="form-row-2">
+          <div class="form-field">
+            <label for="returnCounty">County</label>
+            <input type="text" id="returnCounty" required />
+          </div>
+          <div class="form-field">
+            <label for="returnCity">Town / City</label>
+            <input type="text" id="returnCity" />
+          </div>
+        </div>
+        <div class="form-row-2">
+          <div class="form-field">
+            <label for="returnStreet">Street</label>
+            <input type="text" id="returnStreet" />
+          </div>
+          <div class="form-field">
+            <label for="returnPostalCode">Postal code <span class="label-soft">(optional)</span></label>
+            <input type="text" id="returnPostalCode" />
+          </div>
+        </div>
+        <div class="toggle-row">
+          <input type="checkbox" id="returnSameAsBusiness" />
+          <label for="returnSameAsBusiness">Same as business address</label>
+        </div>
+      </div>
+
+      <!-- STEP: store profile -->
+      <div class="wizard-panel" data-step-panel="store">
+        <div class="section-intro">
+          <h3><i class="fa-solid fa-store"></i> Store profile</h3>
+          <p>This is how buyers will see you on the marketplace.</p>
+        </div>
+
+        <div class="form-field">
+          <label for="storeName">Store name</label>
+          <input type="text" id="storeName" required />
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-field">
+            <label>Store logo <span class="label-soft">(optional)</span></label>
+            <div class="file-upload-wrapper" data-dropzone="storeLogo">
+              <i class="fa-solid fa-image"></i>
+              <span>Click to upload</span>
+              <small>JPG or PNG</small>
+              <input type="file" id="storeLogo" accept="image/png,image/jpeg" />
+            </div>
+            <div class="image-preview" id="storeLogoPreview"></div>
+          </div>
+          <div class="form-field">
+            <label>Store banner <span class="label-soft">(optional)</span></label>
+            <div class="file-upload-wrapper" data-dropzone="storeBanner">
+              <i class="fa-solid fa-image"></i>
+              <span>Click to upload</span>
+              <small>JPG or PNG</small>
+              <input type="file" id="storeBanner" accept="image/png,image/jpeg" />
+            </div>
+            <div class="image-preview" id="storeBannerPreview"></div>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="storeDescription">Store description <span class="label-soft">(optional)</span></label>
+          <textarea id="storeDescription" maxlength="500" rows="4"></textarea>
+          <div class="char-counter"><span id="storeDescCount">0</span>/500</div>
+        </div>
+      </div>
+
+      <!-- STEP: categories -->
+      <div class="wizard-panel" data-step-panel="categories">
+        <div class="section-intro">
+          <h3><i class="fa-solid fa-tags"></i> Product categories</h3>
+          <p>Choose everything you intend to sell — this determines which compliance checks apply.</p>
+        </div>
+        <div class="category-grid" id="categoryGrid"></div>
+      </div>
+
+      <!-- STEP: social links -->
+      <div class="wizard-panel" data-step-panel="social">
+        <div class="section-intro">
+          <h3><i class="fa-solid fa-share-nodes"></i> Social links</h3>
+          <p>Optional — helps us verify your legitimacy faster.</p>
+        </div>
+        <div class="form-field">
+          <label for="website">Website</label>
+          <input type="url" id="website" placeholder="https://yourbrand.com" />
+        </div>
+        <div class="form-row-2">
+          <div class="form-field">
+            <label for="facebook">Facebook</label>
+            <input type="url" id="facebook" placeholder="https://facebook.com/…" />
+          </div>
+          <div class="form-field">
+            <label for="instagram">Instagram</label>
+            <input type="url" id="instagram" placeholder="https://instagram.com/…" />
+          </div>
+        </div>
+        <div class="form-field">
+          <label for="tiktok">TikTok</label>
+          <input type="url" id="tiktok" placeholder="https://tiktok.com/@…" />
+        </div>
+      </div>
+
+      <!-- STEP: payout -->
+      <div class="wizard-panel" data-step-panel="payout">
+        <div class="section-intro">
+          <h3><i class="fa-solid fa-money-bill-transfer"></i> How should we pay you?</h3>
+          <p>You can change this later from your dashboard settings.</p>
+        </div>
+
+        <div class="tier-choice-group" id="payoutMethodGroup">
+          <label class="tier-choice-card" data-payout-card="mpesa">
+            <input type="radio" name="payoutMethod" value="mpesa" checked />
+            <div class="tier-choice-card__icon"><i class="fa-solid fa-mobile-screen"></i></div>
+            <div>
+              <div class="tier-choice-card__title">M-Pesa</div>
+              <div class="tier-choice-card__desc">Fastest option — payouts land on your phone.</div>
+            </div>
+          </label>
+          <label class="tier-choice-card" data-payout-card="bank">
+            <input type="radio" name="payoutMethod" value="bank" />
+            <div class="tier-choice-card__icon"><i class="fa-solid fa-building-columns"></i></div>
+            <div>
+              <div class="tier-choice-card__title">Bank transfer</div>
+              <div class="tier-choice-card__desc">Straight to your bank account.</div>
+            </div>
+          </label>
+        </div>
+
+        <div id="mpesaFields">
+          <div class="form-row-2">
+            <div class="form-field">
+              <label for="mpesaNumber">M-Pesa number</label>
+              <input type="text" id="mpesaNumber" placeholder="07XXXXXXXX" />
+            </div>
+            <div class="form-field">
+              <label for="mpesaName">Registered name</label>
+              <input type="text" id="mpesaName" />
+            </div>
+          </div>
+        </div>
+
+        <div id="bankFields" style="display:none;">
+          <div class="form-row-2">
+            <div class="form-field">
+              <label for="bankName">Bank name</label>
+              <input type="text" id="bankName" />
+            </div>
+            <div class="form-field">
+              <label for="branchName">Branch</label>
+              <input type="text" id="branchName" />
+            </div>
+          </div>
+          <div class="form-row-2">
+            <div class="form-field">
+              <label for="accountName">Account name</label>
+              <input type="text" id="accountName" />
+            </div>
+            <div class="form-field">
+              <label for="accountNumber">Account number</label>
+              <input type="text" id="accountNumber" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP: review + legal agreements -->
+      <div class="wizard-panel" data-step-panel="review">
+        <div class="section-intro">
+          <h3><i class="fa-solid fa-clipboard-check"></i> Review and submit</h3>
+          <p>Double check your details — you can't edit while it's under review.</p>
+        </div>
+
+        <div id="reviewSummary" style="font-size:.85rem; color:var(--ink-soft,#7a7268); line-height:1.9;"></div>
+
+        <div class="section-intro" style="margin-top:24px;">
+          <h3><i class="fa-solid fa-file-contract"></i> Marketplace agreements</h3>
+          <p>Read and accept each one to continue.</p>
+        </div>
+        <div id="legalDocsList" style="display:flex; flex-direction:column; gap:8px;"></div>
+      </div>
+
+      <div class="wizard-footer">
+        <button type="button" class="btn btn-outline" id="wizardBackBtn" style="display:none;">
+          <i class="fa-solid fa-arrow-left"></i> Back
+        </button>
+        <div class="wizard-footer__spacer"></div>
+        <button type="button" class="btn btn-primary" id="wizardNextBtn">Next <i class="fa-solid fa-arrow-right"></i></button>
+        <button type="submit" class="btn btn-primary" id="submitVerifyBtn" style="display:none;">Submit for review</button>
+      </div>
+    </form>
+  </div>
+
+</main>
+
+<div id="toast"><i class="fa-solid fa-circle-check"></i><span></span></div>
+
+<script src="js/config.js"></script>
+<script src="js/toast.js"></script>
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/seller-verification.js"></script>
+</body>
+</html>
