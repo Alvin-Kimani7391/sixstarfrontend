@@ -45,15 +45,15 @@ if (!resetToken) {
 
       ssToast("Password updated — you're logged in", "fa-circle-check");
 
-      let target = "index.html";
+      let target = "/index.html";
       if (user) {
         switch (user.role) {
           case "wholesaler":
           case "retailer":
-            target = "seller-dashboard.html";
+            target = "/six-star-suppliers/seller-dashboard.html";
             break;
           case "admin":
-            target = "admin-dashboard.html";
+            target = "/site/admin-dashboard.html";
             break;
         }
       }

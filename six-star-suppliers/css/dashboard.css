@@ -1460,3 +1460,116 @@
     }
   }
 }
+
+
+
+/* ============================================================
+   SELLER PROFILE PAGE — phone-only styles
+   ============================================================ */
+@media (max-width: 480px) {
+  .profile-shell {
+    padding: 18px 14px 70px;
+  }
+  .profile-head h1 {
+    font-size: 1.3rem;
+  }
+  .profile-head p {
+    font-size: 0.82rem;
+  }
+
+  .locked-banner {
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    gap: 10px;
+    font-size: 0.8rem;
+    margin-bottom: 16px;
+  }
+  .locked-banner i {
+    font-size: 1rem;
+  }
+  .locked-summary {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .locked-summary__item .lbl {
+    font-size: 0.62rem;
+  }
+  .locked-summary__item .val {
+    font-size: 0.75rem;
+  }
+
+  .profile-section {
+    padding: 16px 16px;
+    border-radius: var(--radius-md);
+    margin-bottom: 14px;
+  }
+  .profile-section__head {
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .profile-section__head i {
+    width: 30px;
+    height: 30px;
+    font-size: 0.85rem;
+  }
+  .profile-section__head h3 {
+    font-size: 0.92rem;
+  }
+  .profile-section__head span {
+    font-size: 0.7rem;
+  }
+
+  .category-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 8px;
+  }
+  .category-chip {
+    padding: 9px 10px;
+    font-size: 0.76rem;
+    border-radius: 8px;
+  }
+
+  .tier-choice-group {
+    gap: 10px;
+  }
+  .tier-choice-card {
+    padding: 12px 14px;
+    gap: 10px;
+    border-radius: 10px;
+  }
+  .tier-choice-card__icon {
+    width: 30px;
+    height: 30px;
+    font-size: 0.85rem;
+  }
+  .tier-choice-card__title {
+    font-size: 0.82rem;
+  }
+
+  #pfStoreDescription {
+    min-height: 70px;
+  }
+
+  .save-bar {
+    padding: 12px 0;
+    justify-content: stretch;
+  }
+  .save-bar .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* file upload previews reuse existing .image-preview / .file-upload-wrapper
+     rules already defined earlier in this file at max-width:640px, so no
+     duplication needed here */
+}
+
+@media (max-width: 360px) {
+  .locked-summary {
+    grid-template-columns: 1fr;
+  }
+  .category-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  }
+}

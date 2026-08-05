@@ -1792,3 +1792,10 @@ body.drawer-lock {
     font-size:13.5px;
   }
 }
+
+
+
+
+#toast{ position:fixed; left:50%; bottom:24px; transform:translate(-50%,20px); background:var(--navy-deep); color:var(--paper); padding:12px 20px; border-radius:999px; font-size:.85rem; font-weight:600; opacity:0; pointer-events:none; transition:all .25s ease; z-index:200; display:flex; align-items:center; gap:8px; }
+#toast.show{ opacity:1; transform:translate(-50%,0); }
+#toast i{ color:var(--marigold); }

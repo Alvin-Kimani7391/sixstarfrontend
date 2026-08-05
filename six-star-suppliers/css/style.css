@@ -2146,3 +2146,71 @@ section.block.tint{ background:var(--paper-dim); }
     border-color: var(--ink, #1b1f23);
   }
 }
+
+
+
+/* ============================================================
+   LOGIN PAGE — Google button, divider, OTP stage (phone-only)
+   ============================================================ */
+@media (max-width: 480px) {
+  #googleBtn {
+    margin-bottom: 14px !important;
+  }
+  #googleBtn > div {
+    width: 100% !important;
+  }
+  #googleBtn iframe {
+    width: 100% !important;
+  }
+
+  .auth-divider {
+    font-size: 11px !important;
+    margin: 4px 0 14px !important;
+  }
+
+  /* ---- Login OTP stage ---- */
+  .login-otp-stage i.gate-icon {
+    font-size: 1.9rem;
+    margin-bottom: 10px;
+  }
+  .login-otp-stage h1 {
+    font-size: 1.2rem;
+  }
+  .login-otp-stage p.sub {
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+
+  .otp-input-row {
+    gap: 6px;
+    margin: 18px 0 4px;
+  }
+  .otp-input-row input {
+    width: 100%;
+    max-width: 42px;
+    height: 48px;
+    font-size: 1.15rem;
+    border-radius: 8px;
+  }
+
+  .otp-resend {
+    font-size: 0.78rem;
+    margin: 12px 0 2px;
+  }
+
+  .otp-back-link {
+    font-size: 0.78rem;
+    margin-top: 14px;
+  }
+}
+
+@media (max-width: 360px) {
+  .otp-input-row {
+    gap: 4px;
+  }
+  .otp-input-row input {
+    max-width: 36px;
+    height: 44px;
+    font-size: 1rem;
+  }
+}

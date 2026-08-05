@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My Profile — Six Star Suppliers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/dashboard.css">
+<link rel="stylesheet" href="css/wizard.css">
+<style>
+  .profile-shell{ max-width:820px; margin:0 auto; padding:30px 20px 90px; }
+  .profile-head{ margin-bottom:24px; }
+  .profile-head h1{ font-size:1.6rem; margin-bottom:6px; }
+  .profile-head p{ color:var(--ink-soft,#7a7268); font-size:.9rem; }
+
+  .profile-section{
+    background:var(--white,#fff); border:1px solid var(--line,#e4d6bd);
+    border-radius:16px; padding:22px 24px; margin-bottom:18px;
+  }
+  .profile-section__head{ display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+  .profile-section__head i{
+    width:36px; height:36px; border-radius:50%; background:rgba(242,169,59,.14);
+    color:var(--marigold-deep,#d98c1f); display:flex; align-items:center; justify-content:center; font-size:1rem; flex-shrink:0;
+  }
+  .profile-section__head h3{ font-size:1.02rem; margin:0; }
+  .profile-section__head span{ display:block; font-size:.78rem; color:var(--ink-soft,#7a7268); margin-top:2px; }
+
+  .locked-banner{
+    display:flex; gap:12px; align-items:flex-start; padding:16px 18px;
+    background:rgba(120,120,120,.06); border:1px solid rgba(120,120,120,.2);
+    border-radius:14px; margin-bottom:22px; font-size:.86rem; color:var(--ink-soft,#7a7268); line-height:1.6;
+  }
+  .locked-banner i{ color:var(--ink-soft,#7a7268); font-size:1.1rem; margin-top:2px; }
+  .locked-banner strong{ color:var(--ink,#1b1f23); }
+
+  .locked-summary{ display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; margin-top:14px; }
+  .locked-summary__item{ font-size:.8rem; }
+  .locked-summary__item .lbl{ color:var(--ink-faint,#a89f92); text-transform:uppercase; letter-spacing:.03em; font-size:.68rem; display:block; margin-bottom:2px; }
+  .locked-summary__item .val{ color:var(--ink,#1b1f23); font-weight:600; }
+
+  .category-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); gap:10px; }
+  .category-chip{
+    display:flex; align-items:center; gap:8px; padding:11px 12px; border:1.5px solid var(--line,#e4d6bd);
+    border-radius:10px; font-size:.83rem; cursor:pointer; transition:.15s ease;
+  }
+  .category-chip:hover{ border-color:var(--marigold,#f2a93b); }
+  .category-chip.active{ border-color:var(--marigold,#f2a93b); background:rgba(242,169,59,.06); }
+
+  .tier-choice-group{ display:flex; flex-direction:column; gap:12px; }
+  .tier-choice-card{
+    display:flex; gap:14px; align-items:flex-start; padding:14px 16px;
+    border:1.5px solid var(--line,#e4d6bd); border-radius:14px; cursor:pointer; transition:.2s ease;
+  }
+  .tier-choice-card:hover{ border-color:var(--marigold,#f2a93b); }
+  .tier-choice-card.active{ border-color:var(--marigold,#f2a93b); background:rgba(242,169,59,.06); }
+  .tier-choice-card input{ margin-top:4px; }
+  .tier-choice-card__icon{
+    width:36px; height:36px; border-radius:50%; background:rgba(242,169,59,.14);
+    color:var(--marigold-deep,#d98c1f); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:1rem;
+  }
+  .tier-choice-card__title{ font-weight:700; font-size:.9rem; margin-bottom:3px; }
+
+  .save-bar{
+    position:sticky; bottom:0; background:var(--paper,#fbf3e7); border-top:1px solid var(--line,#e4d6bd);
+    padding:16px 0; display:flex; justify-content:flex-end; gap:12px; margin-top:8px;
+  }
+
+  .toggle-row{ display:flex; align-items:center; gap:8px; margin:6px 0; }
+</style>
+</head>
+<body>
+
+<div id="pageLoader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+
+<header class="site-header">
+  <div class="header-row">
+    <a href="seller-dashboard.html" class="brand">
+      <div class="brand-mark">6★</div>
+      <div>
+        <div class="brand-name">Six Star Suppliers</div>
+        <div class="brand-tag">My Profile</div>
+      </div>
+    </a>
+    <a href="seller-dashboard.html" class="iconbtn" title="Back to dashboard">
+      <i class="fa-solid fa-arrow-left"></i>
+    </a>
+    <button class="iconbtn" id="logoutBtn" title="Log out"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
+  </div>
+</header>
+
+<main class="profile-shell">
+  <div class="profile-head">
+    <h1>My Profile</h1>
+    <p>Update your personal, location, product and payment details any time — no admin review needed for these.</p>
+  </div>
+
+  <div id="lockedBanner" class="locked-banner" style="display:none;">
+    <i class="fa-solid fa-lock"></i>
+    <div>
+      <strong>Your identity and business documents are locked.</strong>
+      Changing your ID, business registration, KRA PIN, or tier requires a new verification review. Contact support if any of that needs to change.
+      <div class="locked-summary" id="lockedSummary"></div>
+    </div>
+  </div>
+
+  <div id="loadingState" style="text-align:center; padding:60px 0; color:var(--ink-soft,#7a7268);">
+    <i class="fa-solid fa-spinner fa-spin" style="font-size:1.6rem;"></i>
+  </div>
+
+  <div id="lockedOutState" style="display:none; text-align:center; padding:70px 20px;">
+    <i class="fa-solid fa-hourglass-half" style="font-size:2.4rem; color:var(--marigold,#f2a93b); margin-bottom:14px; display:block;"></i>
+    <h2 style="margin-bottom:8px;">Profile not available yet</h2>
+    <p style="color:var(--ink-soft,#7a7268); max-width:420px; margin:0 auto 20px;" id="lockedOutMsg">
+      Your seller profile unlocks once your verification is approved.
+    </p>
+    <a href="seller-verification.html" class="btn btn-primary"><i class="fa-solid fa-arrow-right"></i> Go to verification</a>
+  </div>
+
+  <form id="profileForm" style="display:none;">
+    <div id="formError" class="alert alert-error"></div>
+
+    <!-- ---------- Personal ---------- -->
+    <div class="profile-section">
+      <div class="profile-section__head">
+        <i class="fa-solid fa-id-badge"></i>
+        <div><h3>Personal details</h3><span>Your account contact info</span></div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-field"><label for="pfName">Full name</label><input type="text" id="pfName" required /></div>
+        <div class="form-field"><label for="pfPhone">Phone number</label><input type="text" id="pfPhone" required /></div>
+      </div>
+    </div>
+
+    <!-- ---------- Business location ---------- -->
+    <div class="profile-section">
+      <div class="profile-section__head">
+        <i class="fa-solid fa-location-dot"></i>
+        <div><h3>Business location</h3><span>Where you operate from</span></div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-field"><label for="pfCounty">County</label><input type="text" id="pfCounty" required /></div>
+        <div class="form-field"><label for="pfCity">Town / City</label><input type="text" id="pfCity" /></div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-field"><label for="pfStreet">Street</label><input type="text" id="pfStreet" /></div>
+        <div class="form-field"><label for="pfBuilding">Building</label><input type="text" id="pfBuilding" /></div>
+      </div>
+      <div class="form-field"><label for="pfPostalCode">Postal code <span class="label-soft">(optional)</span></label><input type="text" id="pfPostalCode" style="max-width:220px;" /></div>
+    </div>
+
+    <!-- ---------- Warehouse / delivery pickup ---------- -->
+    <div class="profile-section">
+      <div class="profile-section__head">
+        <i class="fa-solid fa-warehouse"></i>
+        <div><h3>Warehouse &amp; delivery pickup</h3><span>Where buyers' couriers collect from</span></div>
+      </div>
+      <div class="toggle-row">
+        <input type="checkbox" id="pfWarehouseSame" />
+        <label for="pfWarehouseSame">Same as business address</label>
+      </div>
+      <div id="pfWarehouseFields" style="display:none; margin-top:10px;">
+        <div class="form-field"><label for="pfWarehouseName">Warehouse name</label><input type="text" id="pfWarehouseName" /></div>
+        <div class="form-row-2">
+          <div class="form-field"><label for="pfWarehouseCounty">County</label><input type="text" id="pfWarehouseCounty" /></div>
+          <div class="form-field"><label for="pfWarehouseCity">Town / City</label><input type="text" id="pfWarehouseCity" /></div>
+        </div>
+        <div class="form-row-2">
+          <div class="form-field"><label for="pfWarehouseStreet">Street</label><input type="text" id="pfWarehouseStreet" /></div>
+          <div class="form-field"><label for="pfWarehouseBuilding">Building</label><input type="text" id="pfWarehouseBuilding" /></div>
+        </div>
+        <div class="form-field"><label for="pfWarehouseMapLink">Google Maps link <span class="label-soft">(optional)</span></label><input type="url" id="pfWarehouseMapLink" /></div>
+      </div>
+    </div>
+
+    <!-- ---------- Return address ---------- -->
+    <div class="profile-section">
+      <div class="profile-section__head">
+        <i class="fa-solid fa-rotate-left"></i>
+        <div><h3>Return address</h3><span>Where buyers send returns</span></div>
+      </div>
+      <div class="form-field"><label for="pfReturnRecipient">Recipient name</label><input type="text" id="pfReturnRecipient" required /></div>
+      <div class="form-row-2">
+        <div class="form-field"><label for="pfReturnCounty">County</label><input type="text" id="pfReturnCounty" required /></div>
+        <div class="form-field"><label for="pfReturnCity">Town / City</label><input type="text" id="pfReturnCity" /></div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-field"><label for="pfReturnStreet">Street</label><input type="text" id="pfReturnStreet" /></div>
+        <div class="form-field"><label for="pfReturnPostalCode">Postal code</label><input type="text" id="pfReturnPostalCode" /></div>
+      </div>
+    </div>
+
+    <!-- ---------- Store profile ---------- -->
+    <div class="profile-section">
+      <div class="profile-section__head">
+        <i class="fa-solid fa-store"></i>
+        <div><h3>Store profile</h3><span>How buyers see you on the marketplace</span></div>
+      </div>
+      <div class="form-field"><label for="pfStoreName">Store name</label><input type="text" id="pfStoreName" required /></div>
+      <div class="form-row-2">
+        <div class="form-field">
+          <label>Store logo <span class="label-soft">(optional)</span></label>
+          <div class="file-upload-wrapper" data-dropzone="storeLogo">
+            <i class="fa-solid fa-image"></i><span>Click to upload</span><small>JPG or PNG</small>
+            <input type="file" id="pfStoreLogo" accept="image/png,image/jpeg" />
+          </div>
+          <div class="image-preview" id="pfStoreLogoPreview"></div>
+        </div>
+        <div class="form-field">
+          <label>Store banner <span class="label-soft">(optional)</span></label>
+          <div class="file-upload-wrapper" data-dropzone="storeBanner">
+            <i class="fa-solid fa-image"></i><span>Click to upload</span><small>JPG or PNG</small>
+            <input type="file" id="pfStoreBanner" accept="image/png,image/jpeg" />
+          </div>
+          <div class="image-preview" id="pfStoreBannerPreview"></div>
+        </div>
+      </div>
+      <div class="form-field">
+        <label for="pfStoreDescription">Store description <span class="label-soft">(optional)</span></label>
+        <textarea id="pfStoreDescription" maxlength="500" rows="4"></textarea>
+        <div class="char-counter" style="font-size:.72rem;color:var(--ink-faint,#a89f92);text-align:right;margin-top:4px;"><span id="pfStoreDescCount">0</span>/500</div>
+      </div>
+    </div>
+
+    <!-- ---------- Product categories ---------- -->
+    <div class="profile-section">
+      <div class="profile-section__head">
+        <i class="fa-solid fa-tags"></i>
+        <div><h3>Products you sell</h3><span>Choose every category you list under</span></div>
+      </div>
+      <div class="category-grid" id="pfCategoryGrid"></div>
+    </div>
+
+    <!-- ---------- Social links ---------- -->
+    <div class="profile-section">
+      <div class="profile-section__head">
+        <i class="fa-solid fa-share-nodes"></i>
+        <div><h3>Social links</h3><span>Optional</span></div>
+      </div>
+      <div class="form-field"><label for="pfWebsite">Website</label><input type="url" id="pfWebsite" placeholder="https://yourbrand.com" /></div>
+      <div class="form-row-2">
+        <div class="form-field"><label for="pfFacebook">Facebook</label><input type="url" id="pfFacebook" /></div>
+        <div class="form-field"><label for="pfInstagram">Instagram</label><input type="url" id="pfInstagram" /></div>
+      </div>
+      <div class="form-field"><label for="pfTiktok">TikTok</label><input type="url" id="pfTiktok" /></div>
+    </div>
+
+    <!-- ---------- Payout ---------- -->
+    <div class="profile-section">
+      <div class="profile-section__head">
+        <i class="fa-solid fa-money-bill-transfer"></i>
+        <div><h3>Payment details</h3><span>How you get paid</span></div>
+      </div>
+      <div class="tier-choice-group" id="pfPayoutMethodGroup">
+        <label class="tier-choice-card" data-payout-card="mpesa">
+          <input type="radio" name="pfPayoutMethod" value="mpesa" />
+          <div class="tier-choice-card__icon"><i class="fa-solid fa-mobile-screen"></i></div>
+          <div><div class="tier-choice-card__title">M-Pesa</div></div>
+        </label>
+        <label class="tier-choice-card" data-payout-card="bank">
+          <input type="radio" name="pfPayoutMethod" value="bank" />
+          <div class="tier-choice-card__icon"><i class="fa-solid fa-building-columns"></i></div>
+          <div><div class="tier-choice-card__title">Bank transfer</div></div>
+        </label>
+      </div>
+
+      <div id="pfMpesaFields" style="margin-top:14px;">
+        <div class="form-row-2">
+          <div class="form-field"><label for="pfMpesaNumber">M-Pesa number</label><input type="text" id="pfMpesaNumber" placeholder="07XXXXXXXX" /></div>
+          <div class="form-field"><label for="pfMpesaName">Registered name</label><input type="text" id="pfMpesaName" /></div>
+        </div>
+      </div>
+      <div id="pfBankFields" style="display:none; margin-top:14px;">
+        <div class="form-row-2">
+          <div class="form-field"><label for="pfBankName">Bank name</label><input type="text" id="pfBankName" /></div>
+          <div class="form-field"><label for="pfBranchName">Branch</label><input type="text" id="pfBranchName" /></div>
+        </div>
+        <div class="form-row-2">
+          <div class="form-field"><label for="pfAccountName">Account name</label><input type="text" id="pfAccountName" /></div>
+          <div class="form-field"><label for="pfAccountNumber">Account number</label><input type="text" id="pfAccountNumber" /></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="save-bar">
+      <button type="submit" class="btn btn-primary" id="pfSaveBtn"><i class="fa-solid fa-floppy-disk"></i> Save changes</button>
+    </div>
+  </form>
+</main>
+
+<div id="toast"><i class="fa-solid fa-circle-check"></i><span></span></div>
+
+<script src="js/config.js"></script>
+<script src="js/toast.js"></script>
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/seller-profile.js"></script>
+</body>
+</html>

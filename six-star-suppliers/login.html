@@ -8,6 +8,37 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="css/style.css">
+<style>
+  /* ---- Login-OTP stage ---- */
+  .login-otp-stage{ text-align:center; }
+  .login-otp-stage i.gate-icon{
+    font-size:2.3rem; color:var(--marigold,#f2a93b); margin-bottom:12px; display:block;
+  }
+  .login-otp-stage h1{ font-size:1.4rem; margin-bottom:6px; }
+  .login-otp-stage p.sub{ font-size:.88rem; }
+  .login-otp-stage p.sub strong{ color:var(--navy-deep,#16324f); }
+
+  .otp-input-row{ display:flex; gap:8px; justify-content:center; margin:22px 0 6px; }
+  .otp-input-row input{
+    width:46px; height:56px; text-align:center; font-size:1.35rem; font-weight:700;
+    border:1.5px solid var(--line,#e4d6bd); border-radius:10px; font-family:'Space Mono', monospace;
+    background:var(--paper,#fbf3e7);
+  }
+  .otp-input-row input:focus{ border-color:var(--marigold,#f2a93b); outline:none; }
+
+  .otp-resend{ font-size:.82rem; color:var(--ink-soft,#7a7268); margin:14px 0 4px; }
+  .otp-resend button{ background:none; border:none; color:var(--teal-deep,#0f6e56); font-weight:700; cursor:pointer; padding:0; }
+  .otp-resend button:disabled{ color:var(--ink-faint,#a89f92); cursor:default; }
+  .otp-cooldown{ font-variant-numeric:tabular-nums; font-family:'Space Mono', monospace; }
+
+  .otp-back-link{
+    display:inline-flex; align-items:center; gap:6px; margin-top:18px;
+    font-size:.82rem; color:var(--ink-soft,#7a7268); background:none; border:none; cursor:pointer;
+  }
+  .otp-back-link:hover{ color:var(--navy-deep,#16324f); }
+
+  #otpStage{ display:none; }
+</style>
 </head>
 <body>
 
@@ -27,24 +58,62 @@
 
 <main class="wrap">
   <div class="auth-shell">
-    <h1>Welcome back</h1>
-    <p class="sub">Log in to manage orders, track deliveries, or list your stock.</p>
 
-    <div id="loginError" class="alert alert-error"></div>
+    <!-- ============ STAGE 1: credentials ============ -->
+    <div id="credentialsStage">
+      <h1>Welcome back</h1>
+      <p class="sub">Log in to manage orders, track deliveries, or list your stock.</p>
 
-    <form id="loginForm" class="form-grid" novalidate>
-      <div class="form-field">
-        <label for="email">Email address</label>
-        <input type="email" id="email" name="email" placeholder="you@business.com" required />
-      </div>
-      <div class="form-field">
-        <label for="password">Password</label>
-        <input type="password" id="password" name="password" placeholder="••••••••" required />
-      </div>
-      <button type="submit" id="loginBtn" class="btn btn-primary btn-block">Log in</button>
-    </form>
+      <div id="loginError" class="alert alert-error"></div>
 
-    <p class="auth-switch">New to Six Star Suppliers? <a href="/register.html">Create an account</a></p>
+      <form id="loginForm" class="form-grid" novalidate>
+        <div class="form-field">
+          <label for="email">Email address</label>
+          <input type="email" id="email" name="email" placeholder="you@business.com" required />
+        </div>
+        <div class="form-field">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" placeholder="••••••••" required />
+        </div>
+        <button type="submit" id="loginBtn" class="btn btn-primary btn-block">Log in</button>
+      </form>
+
+      <p class="auth-switch">New to Six Star Suppliers? <a href="/register.html">Create an account</a></p>
+    </div>
+
+    <!-- ============ STAGE 2: login OTP (approved sellers only) ============ -->
+    <div id="otpStage" class="login-otp-stage">
+      <i class="fa-solid fa-shield-halved gate-icon"></i>
+      <h1>Verify it's you</h1>
+      <p class="sub">Enter the 6-digit code we just sent to <strong id="otpStageEmail"></strong></p>
+
+      <div id="otpError" class="alert alert-error"></div>
+
+      <form id="loginOtpForm">
+        <div class="otp-input-row" id="otpInputRow">
+          <input type="text" inputmode="numeric" maxlength="1" data-otp-digit />
+          <input type="text" inputmode="numeric" maxlength="1" data-otp-digit />
+          <input type="text" inputmode="numeric" maxlength="1" data-otp-digit />
+          <input type="text" inputmode="numeric" maxlength="1" data-otp-digit />
+          <input type="text" inputmode="numeric" maxlength="1" data-otp-digit />
+          <input type="text" inputmode="numeric" maxlength="1" data-otp-digit />
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block" id="otpSubmitBtn" style="margin-top:16px;">
+          Verify &amp; log in
+        </button>
+
+        <div class="otp-resend">
+          Didn't get it? <button type="button" id="otpResendBtn" disabled>Resend code</button>
+          <span id="otpCooldown" class="otp-cooldown"></span>
+        </div>
+      </form>
+
+      <button type="button" class="otp-back-link" id="otpBackBtn">
+        <i class="fa-solid fa-arrow-left"></i> Use a different account
+      </button>
+    </div>
+
   </div>
 </main>
 

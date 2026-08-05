@@ -95,6 +95,15 @@ const SS_API = (() => {
     googleAuth({ credential }) {
       return request("/auth/google", { method: "POST", body: { credential }, requiresAuth: false });
     },
+
+     // Second step of a seller login gated by a login OTP.
+    verifyLoginOtp({ otpToken, code }) {
+      return request("/auth/login/verify-otp", { method: "POST", body: { otpToken, code }, requiresAuth: false });
+    },
+    resendLoginOtp({ otpToken }) {
+      return request("/auth/login/resend-otp", { method: "POST", body: { otpToken }, requiresAuth: false });
+    },
+
     // Always resolves (never throws for "email not found") — the backend intentionally
     // returns the same generic message either way, so it can't be used to enumerate accounts.
     forgotPassword({ email }) {

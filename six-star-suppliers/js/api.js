@@ -100,6 +100,17 @@ const SS_API = (() => {
     googleAuth({ credential }) {
       return request("/auth/google", { method: "POST", body: { credential }, requiresAuth: false });
     },
+
+   
+    // Second step of a seller login gated by a login OTP.
+    verifyLoginOtp({ otpToken, code }) {
+      return request("/auth/login/verify-otp", { method: "POST", body: { otpToken, code }, requiresAuth: false });
+    },
+    resendLoginOtp({ otpToken }) {
+      return request("/auth/login/resend-otp", { method: "POST", body: { otpToken }, requiresAuth: false });
+    },
+
+
     // Always resolves (never throws for "email not found") — the backend intentionally
     // returns the same generic message either way, so it can't be used to enumerate accounts.
     forgotPassword({ email }) {
@@ -133,6 +144,16 @@ const SS_API = (() => {
     },
     trackProductView(productId) {
       return request(`/users/recently-viewed/${productId}`, { method: "POST", requiresAuth: true });
+    },
+
+    // ============================================================
+    // SELLER PROFILE (post-approval, editable-only-safe-fields view)
+    // ============================================================
+    getMySellerProfile() {
+      return request("/seller-profile/me", { requiresAuth: true });
+    },
+    updateMySellerProfile(formData) {
+      return request("/seller-profile/me", { method: "PUT", body: formData, isForm: true, requiresAuth: true });
     },
 
     // ============================================================
