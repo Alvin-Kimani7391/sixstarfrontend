@@ -64,8 +64,8 @@ function ssRenderShopPassport(shop) {
       <div class="shop-passport__stats">
         <div class="shop-passport__stat"><strong id="shopProductCountStat">—</strong><span>Products</span></div>
         <div class="shop-passport__stat">
-          <strong>${(shop.ratingsAverage || 0).toFixed(1)} <i class="fa-solid fa-star" style="font-size:.7em;color:var(--sun)"></i></strong>
-          <span>${shop.ratingsCount || 0} review${shop.ratingsCount === 1 ? "" : "s"}</span>
+          <strong id="shopAvgRatingStat">${(shop.ratingsAverage || 0).toFixed(1)} <i class="fa-solid fa-star" style="font-size:.7em;color:var(--sun)"></i></strong>
+          <span id="shopReviewCountStat">${shop.ratingsCount || 0} review${shop.ratingsCount === 1 ? "" : "s"}</span>
         </div>
         <div class="shop-passport__stat"><strong>${memberSince}</strong><span>On Six Star since</span></div>
         ${shop.businessHours ? `<div class="shop-passport__stat"><strong style="font-size:.82rem;">${shop.businessHours}</strong><span>Hours</span></div>` : ""}
@@ -80,6 +80,20 @@ function ssRenderShopPassport(shop) {
       <a href="/contact.html" class="btn btn-dark btn-sm">Contact support</a>
     </div>
   `;
+}
+
+// Lightweight refresh for just the passport's rating stat block — used after
+// a review is submitted so the header updates instantly without re-rendering
+// (and losing) the rest of the passport card, like the product count.
+function ssUpdateShopRatingStats(shop) {
+  const avgEl = document.getElementById("shopAvgRatingStat");
+  const countEl = document.getElementById("shopReviewCountStat");
+  if (avgEl) {
+    avgEl.innerHTML = `${(shop.ratingsAverage || 0).toFixed(1)} <i class="fa-solid fa-star" style="font-size:.7em;color:var(--sun)"></i>`;
+  }
+  if (countEl) {
+    countEl.textContent = `${shop.ratingsCount || 0} review${shop.ratingsCount === 1 ? "" : "s"}`;
+  }
 }
 
 async function ssLoadShopProducts() {
@@ -183,6 +197,10 @@ async function ssLoadShopReviews() {
       <span style="color:var(--ink-faint);font-size:12.5px;margin-left:4px;">(${count} review${count === 1 ? "" : "s"})</span>
     `;
 
+    // Keep the passport header's stat block in sync with whatever we just
+    // fetched, in case it's stale from a previous render.
+    ssUpdateShopRatingStats(shop);
+
     if (!reviews.length) {
       listEl.innerHTML = `<p style="color:var(--ink-faint);">No reviews yet — be the first to review this shop.</p>`;
     } else {
@@ -242,17 +260,28 @@ function ssRenderShopReviewForm() {
     e.preventDefault();
     if (!selectedRating) { ssToast?.("Please select a star rating"); return; }
 
+    const submitBtn = wrap.querySelector("button[type='submit']");
+    if (submitBtn) submitBtn.disabled = true;
+
     try {
       await SS_API.addShopReview(ssShopDetailState.shop.id || ssShopDetailState.shop._id, {
         rating: selectedRating,
         comment: document.getElementById("shopReviewComment").value.trim(),
       });
       ssToast?.("Review submitted, thank you!");
+
+      // With the backend recalculation hook now properly awaited, this
+      // re-fetch is guaranteed to reflect the updated ratingsAverage/Count.
       const res = await SS_API.getShopBySlug(ssGetSlugFromUrl());
       ssShopDetailState.shop = res.shop;
+
+      // Refresh the passport header stats immediately, then reload the
+      // review list/summary underneath.
+      ssUpdateShopRatingStats(res.shop);
       ssLoadShopReviews();
     } catch (err) {
       ssToast?.(err.message || "Couldn't submit review");
+      if (submitBtn) submitBtn.disabled = false;
     }
   });
 }

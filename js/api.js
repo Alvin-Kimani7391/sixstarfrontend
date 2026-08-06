@@ -1,5 +1,5 @@
 /* ============================================================
-   SIX STAR SUPPLIERS — API client
+   SIX STAR SUPPLIERS — BUYER-API.JS client
    Cookie-based authentication (httpOnly JWT cookie from Express backend).
 
    This merges two earlier versions of api.js into one:
