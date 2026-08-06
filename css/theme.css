@@ -1281,38 +1281,16 @@ img{ max-width:100%; display:block; }
 
 
 
-
-
-
-@media(max-width:599px){
-  .wrap{ 
-    padding: 0; /* Remove padding completely on phone */
-  }
-  .block{ 
-    padding: 8px 0; /* Minimal vertical padding only */ 
-  }
-  .rail{ 
-    border-radius: 0; /* Remove border-radius on phone */
-    border-left: none; 
-    border-right: none; 
-    box-shadow: none; 
-  }
-  .sec-head{ 
-    padding: 13px 16px; /* Slightly more horizontal padding for better readability */ 
-  }
-}
-
-
-
-
-
-
-
-
 @media(max-width:599px){
 
-  .wrap{ padding:0; } /* ← changed from 0 14px */
-  .block{ padding:8px 0; } /* ← changed from 18px 0 */
+  /* ---- Base: remove padding from all wraps by default ---- */
+  .wrap{ padding:0; }
+  .block{ padding:8px 0; }
+
+  /* ---- BUT keep padding for the banner section ---- */
+  .block--banner .wrap{ padding:0 14px; }
+  /* If you don't have a class, target by ID or structure */
+  #bannerAd .wrap{ padding:0 14px; }
 
   /* ---- compact header ---- */
   .header-row{ padding:10px 14px; gap:10px; }
@@ -1336,31 +1314,29 @@ img{ max-width:100%; display:block; }
   .brand-tag{ display:none; }
   .iconbtn{ width:38px; height:38px; font-size:15px; }
 
-
-.hamburger-btn{ width:38px; height:38px; border-radius:11px; }
+  .hamburger-btn{ width:38px; height:38px; border-radius:11px; }
   .hamburger-icon{ width:17px; height:13px; }
-
 
   .header-actions{ gap:2px; }
   .action-link{ padding:4px 8px; }
-  .action-link span:not(.cart-count){ display:none; } /* icon-only, like the app header */
+  .action-link span:not(.cart-count){ display:none; }
   .action-link i{ font-size:19px; }
   .search-bar{ margin-top:2px; }
   .search-bar input{ padding:11px 16px; font-size:13.5px; }
   .search-bar button{ width:44px; height:40px; }
 
   /* ---- hero banner: shorter, phone-proportioned ---- */
-  .home-top{ margin-top:12px; gap:12px; padding:0 14px; } /* ← keep padding on home-top */
+  .home-top{ margin-top:12px; gap:12px; padding:0 14px; }
   .hero-banner-wrap{ min-height:170px; }
   .hero-banner-wrap .ad-slot{ min-height:170px; }
   .ad-slot{ --ad-aspect:16/9; border-radius:var(--radius-md); }
   .ad-slot__dots{ bottom:9px; }
 
   /* ---- category grid: crisp 4-up tiles, square-edged on phone ---- */
-  .cat-section-head{ margin-bottom:12px; padding:0 14px; } /* ← add padding */
+  .cat-section-head{ margin-bottom:12px; padding:0 14px; }
   .cat-section-head h2{ font-size:16.5px; }
   .cat-section-head .see-all{ padding:6px 11px; font-size:11.5px; }
-  .cat-scroll{ gap:10px 8px; padding:0 14px; } /* ← add padding */
+  .cat-scroll{ gap:10px 8px; padding:0 14px; }
   .cat-thumb{ border-radius:0; box-shadow:none; }
   .cat-item span{ font-size:11px; max-width:100%; }
 
@@ -1370,16 +1346,16 @@ img{ max-width:100%; display:block; }
     border-left:none; 
     border-right:none; 
     box-shadow:none; 
-  } /* ← changed */
-  .sec-head{ padding:13px 16px; gap:8px; } /* ← changed from 13px 14px */
+  }
+  .sec-head{ padding:13px 16px; gap:8px; }
   .sec-head h2{ font-size:14px; gap:7px; }
   .sec-head h2 i{ font-size:13px; }
   .deal-timer{ font-size:10.5px; padding:4px 9px; }
   .sec-head .see-all{ font-size:11.5px; }
 
   /* ---- product cards: bigger, breathing room, app-style peek-scroll ---- */
-  .p-scroll{ padding:4px 14px 8px; gap:10px; background:transparent; } /* ← changed from 4px 4px 8px */
-  .p-grid{ gap:10px; background:transparent; padding:2px 14px; } /* ← changed from 2px */
+  .p-scroll{ padding:4px 14px 8px; gap:10px; background:transparent; }
+  .p-grid{ gap:10px; background:transparent; padding:2px 14px; }
   .p-card{
     flex-basis:172px;
     border:1px solid var(--line-soft);
@@ -1399,7 +1375,7 @@ img{ max-width:100%; display:block; }
   .p-card__hot{ font-size:10px; padding:4px 10px; }
 
   /* ---- trust row: stack to two columns, icon-led ---- */
-  .trust-row{ gap:12px 18px; justify-content:flex-start !important; padding:0 14px; } /* ← add padding */
+  .trust-row{ gap:12px 18px; justify-content:flex-start !important; padding:0 14px; }
   .trust-row div{ font-size:12px; flex:1 1 44%; }
 
   /* ---- footer: single column, breathable ---- */
