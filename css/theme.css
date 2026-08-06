@@ -43,8 +43,8 @@ img{ max-width:100%; display:block; }
 :focus-visible{ outline:2.5px solid var(--pop); outline-offset:2px; border-radius:4px; }
 
 /* ================= LAYOUT UTILITIES ================= */
-.wrap{ max-width:1240px; margin:0 auto; padding:0 16px; }
-.block{ padding:26px 0; }
+.wrap{ width:100%; margin:0 auto; padding:0 0px; }
+.block{ padding: 0; width:100%; margin:0 auto; }
 .block.tint{ background:var(--surface); }
 
 .see-all{ font-size:12.5px; font-weight:700; display:inline-flex; align-items:center; gap:5px; }
@@ -327,9 +327,9 @@ img{ max-width:100%; display:block; }
 .cat-item:nth-child(6n+6) .cat-thumb{ background:#E7EFFB; }
 
 /* ================= PRODUCT RAIL CARD (white card housing a coloured header bar + products) ================= */
-.rail{ background:var(--surface); border-radius:var(--radius-lg); border:1px solid var(--line); overflow:hidden; }
+.rail{ background:var(--surface); border-radius:var(--radius-lg); border:1px solid var(--line); overflow:hidden; width:100%; }
 
-.sec-head{ display:flex; align-items:center; justify-content:space-between; gap:14px; padding:15px 18px; flex-wrap:wrap; background:var(--surface); color:var(--ink); border-bottom:1px solid var(--line); }
+.sec-head{ width:100%; display:flex; align-items:center; justify-content:space-between; gap:0px; padding:15px 18px; flex-wrap:wrap; background:var(--surface); color:var(--ink); border-bottom:1px solid var(--line); }
 .sec-head h2{ font-size:15.5px; font-weight:800; display:flex; align-items:center; gap:10px; }
 .sec-head .see-all{ font-weight:800; color:var(--brand); }
 
@@ -1276,3 +1276,139 @@ img{ max-width:100%; display:block; }
 #toast{ position:fixed; left:50%; bottom:24px; transform:translate(-50%,20px); background:var(--navy-deep); color:var(--paper); padding:12px 20px; border-radius:999px; font-size:.85rem; font-weight:600; opacity:0; pointer-events:none; transition:all .25s ease; z-index:200; display:flex; align-items:center; gap:8px; }
 #toast.show{ opacity:1; transform:translate(-50%,0); }
 #toast i{ color:var(--marigold); }
+
+
+
+
+
+
+
+
+@media(max-width:599px){
+  .wrap{ 
+    padding: 0; /* Remove padding completely on phone */
+  }
+  .block{ 
+    padding: 8px 0; /* Minimal vertical padding only */ 
+  }
+  .rail{ 
+    border-radius: 0; /* Remove border-radius on phone */
+    border-left: none; 
+    border-right: none; 
+    box-shadow: none; 
+  }
+  .sec-head{ 
+    padding: 13px 16px; /* Slightly more horizontal padding for better readability */ 
+  }
+}
+
+
+
+
+
+
+
+
+@media(max-width:599px){
+
+  .wrap{ padding:0; } /* ← changed from 0 14px */
+  .block{ padding:8px 0; } /* ← changed from 18px 0 */
+
+  /* ---- compact header ---- */
+  .header-row{ padding:10px 14px; gap:10px; }
+  .brand-mark{ width:36px; height:36px; border-radius:10px; border-width:1.5px; }
+  .brand-name{
+    flex-direction:column;
+    align-items:flex-start;
+    gap:0;
+    font-size:14.5px;
+    line-height:1.2;
+    white-space:normal;
+  }
+  .brand-name__line1{ font-weight:700; }
+  .brand-name__line2{
+    font-size:10.5px;
+    font-weight:700;
+    letter-spacing:.7px;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+  }
+  .brand-tag{ display:none; }
+  .iconbtn{ width:38px; height:38px; font-size:15px; }
+
+
+.hamburger-btn{ width:38px; height:38px; border-radius:11px; }
+  .hamburger-icon{ width:17px; height:13px; }
+
+
+  .header-actions{ gap:2px; }
+  .action-link{ padding:4px 8px; }
+  .action-link span:not(.cart-count){ display:none; } /* icon-only, like the app header */
+  .action-link i{ font-size:19px; }
+  .search-bar{ margin-top:2px; }
+  .search-bar input{ padding:11px 16px; font-size:13.5px; }
+  .search-bar button{ width:44px; height:40px; }
+
+  /* ---- hero banner: shorter, phone-proportioned ---- */
+  .home-top{ margin-top:12px; gap:12px; padding:0 14px; } /* ← keep padding on home-top */
+  .hero-banner-wrap{ min-height:170px; }
+  .hero-banner-wrap .ad-slot{ min-height:170px; }
+  .ad-slot{ --ad-aspect:16/9; border-radius:var(--radius-md); }
+  .ad-slot__dots{ bottom:9px; }
+
+  /* ---- category grid: crisp 4-up tiles, square-edged on phone ---- */
+  .cat-section-head{ margin-bottom:12px; padding:0 14px; } /* ← add padding */
+  .cat-section-head h2{ font-size:16.5px; }
+  .cat-section-head .see-all{ padding:6px 11px; font-size:11.5px; }
+  .cat-scroll{ gap:10px 8px; padding:0 14px; } /* ← add padding */
+  .cat-thumb{ border-radius:0; box-shadow:none; }
+  .cat-item span{ font-size:11px; max-width:100%; }
+
+  /* ---- deal rail / product section: edge-to-edge, no rounded card ---- */
+  .rail{ 
+    border-radius:0; 
+    border-left:none; 
+    border-right:none; 
+    box-shadow:none; 
+  } /* ← changed */
+  .sec-head{ padding:13px 16px; gap:8px; } /* ← changed from 13px 14px */
+  .sec-head h2{ font-size:14px; gap:7px; }
+  .sec-head h2 i{ font-size:13px; }
+  .deal-timer{ font-size:10.5px; padding:4px 9px; }
+  .sec-head .see-all{ font-size:11.5px; }
+
+  /* ---- product cards: bigger, breathing room, app-style peek-scroll ---- */
+  .p-scroll{ padding:4px 14px 8px; gap:10px; background:transparent; } /* ← changed from 4px 4px 8px */
+  .p-grid{ gap:10px; background:transparent; padding:2px 14px; } /* ← changed from 2px */
+  .p-card{
+    flex-basis:172px;
+    border:1px solid var(--line-soft);
+    box-shadow:0 3px 10px rgba(21,22,26,.05);
+    transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .p-card:active{ transform:scale(.97); }
+  .p-card__img{ aspect-ratio:1/1; background:linear-gradient(180deg,#FAFAFC,#F3F4F8); }
+  .p-card__img img{ padding:18px; }
+  .p-card__body{ padding:12px 13px 15px; gap:7px; }
+  .p-card__name{ font-size:13px; min-height:35px; line-height:1.4; }
+  .p-card__rating{ font-size:11.5px; }
+  .price-tag{ font-size:15.5px; font-weight:800; }
+  .p-card__old{ font-size:11px; }
+  .p-card__add{ width:32px; height:32px; box-shadow:0 2px 6px rgba(21,22,26,.08); }
+  .p-card__discount{ font-size:11px; padding:4px 9px; }
+  .p-card__hot{ font-size:10px; padding:4px 10px; }
+
+  /* ---- trust row: stack to two columns, icon-led ---- */
+  .trust-row{ gap:12px 18px; justify-content:flex-start !important; padding:0 14px; } /* ← add padding */
+  .trust-row div{ font-size:12px; flex:1 1 44%; }
+
+  /* ---- footer: single column, breathable ---- */
+  .footer-grid{ grid-template-columns:1fr 1fr; gap:26px 18px; padding:34px 14px 22px; }
+  .footer-grid h4{ font-size:13.5px; margin-bottom:11px; }
+  .footer-grid a{ font-size:12.5px; margin:7px 0; }
+
+  .wa-float{ width:50px; height:50px; font-size:22px; right:14px; bottom:18px; }
+  
+  /* ---- Catalog block on phone ---- */
+  .block--catalog{ border-left:none; border-right:none; }
+}
