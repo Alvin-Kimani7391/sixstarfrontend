@@ -2,8 +2,10 @@
    PRODUCT DETAIL PAGE
    Renders full retail + wholesale product info: gallery, price
    (with live tiered pricing for wholesalers), accurate stock
-   state, MOQ, delivery terms, rating, reviews, and a "related
-   products" rail pulled from the same category.
+   state, MOQ, delivery terms, rating, reviews, product
+   specifications (non-variant attributes), a variant picker
+   (Size/Color etc. from ProductVariant + CategoryAttribute defs),
+   and a "related products" rail pulled from the same category.
 
    Wholesale delivery now branches on `deliveryType`:
      - 'simple' -> this product ships exactly like a normal retail
@@ -22,6 +24,11 @@
   const content = document.getElementById("pdContent");
   let qty = 1;
   let product = null;
+
+  // Variant-picker state (only populated when the product's category has
+  // variant-defining attributes, e.g. Size/Color).
+  let selectedVariant = null;
+  let selectedOptions = {};
 
   if (!id) {
     content.innerHTML = `<div class="empty-state"><i class="fa-solid fa-circle-question"></i><h3>No product selected</h3><p><a href="product.html">Browse all products</a></p></div>`;
@@ -90,6 +97,37 @@
     return { level: "in", label: "In stock", stock };
   }
 
+  /* ---------------- attribute / spec helpers ---------------- */
+
+  // Product-level attributes (Brand, Material, ...) — variant-defining
+  // attributes (Size/Color) never land here; they live on ProductVariant.
+  function nonVariantAttributes(p) {
+    return Array.isArray(p.attributes) ? p.attributes.filter(a => a.attribute) : [];
+  }
+
+  function formatAttrValue(attr, value) {
+    if (attr.type === "boolean") return value ? "Yes" : "No";
+    if (Array.isArray(value)) return value.join(", ");
+    if (value === undefined || value === null || value === "") return "—";
+    return `${value}${attr.unit ? " " + attr.unit : ""}`;
+  }
+
+  function renderSpecsPanel(p) {
+    const specs = nonVariantAttributes(p);
+    if (!specs.length) return "";
+    return `
+      <div class="pd-specs">
+        <h3 class="pd-specs__head">Specifications</h3>
+        <table class="pd-specs__table"><tbody>
+          ${specs.map(a => `
+            <tr>
+              <td class="pd-specs__label">${a.attribute.name}</td>
+              <td class="pd-specs__value">${formatAttrValue(a.attribute, a.value)}</td>
+            </tr>`).join("")}
+        </tbody></table>
+      </div>`;
+  }
+
   /* ---------------- share helpers ---------------- */
 
   // Canonical, shareable link for THIS product (drops any other query params
@@ -119,6 +157,10 @@
     const sellerName = p.seller?.businessName || p.seller?.shopName || p.seller?.name || "Verified seller";
 
     qty = wholesale ? moq : 1;
+
+    // Reset variant-picker state on every render (fresh product load).
+    selectedVariant = null;
+    selectedOptions = {};
 
     document.title = `${p.name} — Six Star Suppliers`;
 
@@ -166,7 +208,11 @@
 
           <p class="pd-desc">${p.description || "No description provided for this product yet."}</p>
 
+          ${renderSpecsPanel(p)}
+
           ${wholesale ? renderWholesalePanel(p, moq, tiers, heavyWholesale) : ""}
+
+          <div id="pdVariantPicker"></div>
 
           <div class="qty-row">
             <div class="qty-stepper">
@@ -262,6 +308,7 @@
     bindReviewForm(p);
     bindShare(p);
     if (wholesale) updateWholesaleLive(p, moq, tiers, heavyWholesale);
+    setupVariantPicker(p);
   }
 
   function renderWholesalePanel(p, moq, tiers, heavyWholesale) {
@@ -381,6 +428,146 @@
     refresh();
   }
 
+  /* ---------------- variant picker (Size / Color etc.) ---------------- */
+
+  // Fetches the category's variant-defining attribute defs so we can label
+  // each picker group ("Size", "Color") and unit-suffix the option buttons.
+  // Positionally zips defs (sorted by displayOrder) against each variant's
+  // `combination` array, which the backend builds in that same order at
+  // product-creation/edit time.
+  async function setupVariantPicker(p) {
+    const mount = document.getElementById("pdVariantPicker");
+    if (!mount) return;
+
+    const variants = Array.isArray(p.variants) ? p.variants.filter(v => v.isActive !== false) : [];
+    if (!variants.length) {
+      mount.innerHTML = "";
+      refreshActionState(p, false);
+      return;
+    }
+
+    const categoryId = p.category?._id || p.category?.id || p.category;
+    let defs = [];
+    try {
+      const res = await SS_API.getCategoryAttributes(categoryId);
+      defs = res.attributes || res.data || (Array.isArray(res) ? res : []);
+    } catch (_) {
+      defs = [];
+    }
+
+    const variantDefs = defs
+      .filter(d => d.isVariantAttribute)
+      .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+
+    if (!variantDefs.length) {
+      mount.innerHTML = "";
+      refreshActionState(p, false);
+      return;
+    }
+
+    // Collect the distinct option values available at each position, in
+    // first-seen order.
+    const optionsByIndex = variantDefs.map(() => []);
+    variants.forEach(v => {
+      (v.combination || []).forEach((c, i) => {
+        if (optionsByIndex[i] && !optionsByIndex[i].includes(c.value)) {
+          optionsByIndex[i].push(c.value);
+        }
+      });
+    });
+
+    selectedOptions = {};
+    selectedVariant = null;
+
+    function findMatch() {
+      if (variantDefs.some((_, i) => !selectedOptions[i])) return null;
+      return variants.find(v =>
+        (v.combination || []).every((c, i) => c.value === selectedOptions[i])
+      ) || null;
+    }
+
+    function applySelection() {
+      selectedVariant = findMatch();
+      renderVariantFeedback(p, selectedVariant, variantDefs.length);
+      refreshActionState(p, true);
+    }
+
+    mount.innerHTML = variantDefs.map((def, i) => `
+      <div class="pd-variant-group">
+        <div class="pd-variant-group__label">${def.name}</div>
+        <div class="pd-variant-group__opts">
+          ${optionsByIndex[i].map(val => `
+            <button type="button" class="pd-variant-opt" data-i="${i}" data-val="${val}">${val}${def.unit ? " " + def.unit : ""}</button>
+          `).join("")}
+        </div>
+      </div>`).join("") + `<div class="pd-variant-status" id="pdVariantStatus">Select an option for each attribute above</div>`;
+
+    mount.querySelectorAll(".pd-variant-opt").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const i = btn.dataset.i;
+        selectedOptions[i] = btn.dataset.val;
+        mount.querySelectorAll(`.pd-variant-opt[data-i="${i}"]`).forEach(b => b.classList.toggle("active", b === btn));
+        applySelection();
+      });
+    });
+
+    applySelection();
+  }
+
+  function renderVariantFeedback(p, variant, totalAttrCount) {
+    const statusEl = document.getElementById("pdVariantStatus");
+    const priceEl = document.getElementById("pdPrice");
+    const chosenCount = Object.keys(selectedOptions).length;
+
+    if (!variant) {
+      if (statusEl) {
+        statusEl.textContent = chosenCount < totalAttrCount
+          ? "Select an option for each attribute above"
+          : "This combination is not available";
+        statusEl.className = "pd-variant-status" + (chosenCount >= totalAttrCount ? " error" : "");
+      }
+      if (priceEl) priceEl.textContent = ssFmtPrice(basePrice(p));
+      updateStockDisplay(stockState(p));
+      return;
+    }
+
+    if (statusEl) {
+      statusEl.className = "pd-variant-status ok";
+      statusEl.innerHTML = `<i class="fa-solid fa-circle-check"></i> Selected: ${variant.label || ""}${variant.sku ? ` (SKU: ${variant.sku})` : ""}`;
+    }
+    if (priceEl) priceEl.textContent = ssFmtPrice(basePrice(p) + (variant.priceAdjustment || 0));
+
+    updateStockDisplay(stockState({ stock: variant.stock }));
+  }
+
+  function updateStockDisplay(stock) {
+    const row = document.querySelector(".pd-stock-row");
+    const dot = document.querySelector(".pd-stock-dot");
+    const label = document.querySelector(".pd-stock-row span:last-child");
+    if (!row || !dot || !label) return;
+    row.classList.remove("in", "low", "out"); row.classList.add(stock.level);
+    dot.classList.remove("in", "low", "out"); dot.classList.add(stock.level);
+    label.textContent = stock.label;
+  }
+
+  // hasVariants = false -> fall back to the plain product-level stock check
+  // (used both when there's no variant scheme, and by the initial static
+  // template markup before setupVariantPicker resolves).
+  function refreshActionState(p, hasVariants) {
+    const addBtn = document.getElementById("addBtn");
+    const buyBtn = document.getElementById("buyBtn");
+    if (!addBtn || !buyBtn) return;
+    if (!hasVariants) {
+      const out = stockState(p).level === "out";
+      addBtn.disabled = out;
+      buyBtn.disabled = out;
+      return;
+    }
+    const noStock = !selectedVariant || (Number(selectedVariant.stock) || 0) <= 0;
+    addBtn.disabled = noStock;
+    buyBtn.disabled = noStock;
+  }
+
   /* ---------------- cart actions ---------------- */
 
   function bindActions(p, wholesale, moq) {
@@ -388,14 +575,29 @@
     const buyBtn = document.getElementById("buyBtn");
     if (!addBtn || !buyBtn) return;
 
-    function addToCart() {
-      SS_CART.add(p, qty);
-      ssToast(`${p.name} added to cart${wholesale ? ` (${qty} units)` : ""}`, "fa-cart-shopping");
+    // If a variant is selected, tag it onto the cart payload so downstream
+    // cart/checkout code can price and identify it correctly. NOTE: SS_CART
+    // and the checkout/order pipeline still need to be updated to actually
+    // read/persist `selectedVariant` — this only prepares the payload.
+    function buildPayload() {
+      if (!selectedVariant) return p;
+      return {
+        ...p,
+        selectedVariant: {
+          id: selectedVariant._id,
+          label: selectedVariant.label,
+          sku: selectedVariant.sku,
+          priceAdjustment: selectedVariant.priceAdjustment || 0
+        }
+      };
     }
 
-    addBtn.addEventListener("click", addToCart);
+    addBtn.addEventListener("click", () => {
+      SS_CART.add(buildPayload(), qty);
+      ssToast(`${p.name} added to cart${wholesale ? ` (${qty} units)` : ""}`, "fa-cart-shopping");
+    });
     buyBtn.addEventListener("click", () => {
-      SS_CART.add(p, qty);
+      SS_CART.add(buildPayload(), qty);
       location.href = "cart.html";
     });
   }

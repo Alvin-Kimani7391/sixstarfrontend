@@ -285,6 +285,8 @@ getShopBySlug(slug) {
     getCategories() {
       return request("/categories", { requiresAuth: false });
     },
+
+    
     // Nested Parent Category -> Category -> Sub Category tree, used to drive the
     // seller's cascading category picker during product creation.
     getCategoryTree() {
