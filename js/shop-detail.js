@@ -225,7 +225,10 @@ async function ssLoadShopReviews() {
 
 function ssRenderShopReviewForm() {
   const wrap = document.getElementById("shopReviewFormWrap");
-  const user = typeof SS_AUTH !== "undefined" && SS_AUTH.getUser ? SS_AUTH.getUser() : null;
+  // SS_AUTH exposes get(), not getUser() — that mismatch was the bug causing
+  // this to always fall through to the "log in as a buyer" message even for
+  // logged-in buyers.
+  const user = typeof SS_AUTH !== "undefined" && SS_AUTH.get ? SS_AUTH.get() : null;
 
   if (!user) {
     wrap.innerHTML = `<p class="shop-review-cta"><a href="/login.html">Log in</a> as a buyer to leave a review.</p>`;
@@ -270,13 +273,9 @@ function ssRenderShopReviewForm() {
       });
       ssToast?.("Review submitted, thank you!");
 
-      // With the backend recalculation hook now properly awaited, this
-      // re-fetch is guaranteed to reflect the updated ratingsAverage/Count.
       const res = await SS_API.getShopBySlug(ssGetSlugFromUrl());
       ssShopDetailState.shop = res.shop;
 
-      // Refresh the passport header stats immediately, then reload the
-      // review list/summary underneath.
       ssUpdateShopRatingStats(res.shop);
       ssLoadShopReviews();
     } catch (err) {
