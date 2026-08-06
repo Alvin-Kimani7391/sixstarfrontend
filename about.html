@@ -4,10 +4,380 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>About Us — Six Star Suppliers</title>
+<meta name="description" content="Six Star Suppliers connects verified buyers with trusted sellers across Kenya. Learn about our marketplace, legal protections, and how we operate." />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://kit.fontawesome.com/e1426ab85b.js" crossorigin="anonymous"></script>
 <link rel="stylesheet" href="css/style.css">
+<style>
+/* ============================================================
+   ABOUT PAGE — Full Width with Brand Colors
+   ============================================================ */
+
+/* ---- Full width layout ---- */
+.about-full {
+  width: 100%;
+  max-width: 100%;
+  padding: 0;
+}
+
+.about-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px 60px;
+}
+
+/* ---- Hero - full width ---- */
+.page-hero {
+  background: linear-gradient(135deg, var(--brand-dark), var(--brand) 60%, var(--sun));
+  padding: 60px 0 50px;
+  margin-bottom: 0;
+  width: 100%;
+}
+.page-hero .wrap {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+.page-hero h1 {
+  color: #fff;
+  font-size: 2.4rem;
+  max-width: 14ch;
+}
+.page-hero p {
+  color: rgba(255,255,255,0.9);
+  max-width: 65ch;
+  font-size: 1.1rem;
+  line-height: 1.7;
+}
+
+/* ---- Stats row - full width cards ---- */
+.about-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin: 30px 0 24px;
+}
+@media (min-width: 640px) {
+  .about-stats { grid-template-columns: repeat(4, 1fr); }
+}
+
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 22px 16px;
+  text-align: center;
+  box-shadow: var(--shadow-card);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-soft);
+}
+.stat-card .num {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 1.8rem;
+  color: var(--brand-dark);
+  line-height: 1.1;
+}
+.stat-card .label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+  margin-top: 5px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+/* ---- Section headers ---- */
+.about-section-title {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 48px 0 20px;
+  padding-bottom: 12px;
+  border-bottom: 3px solid var(--brand);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.about-section-title i {
+  color: var(--brand);
+  font-size: 1.4rem;
+}
+.about-section-title .section-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--brand);
+  color: #fff;
+  margin-left: auto;
+}
+.about-section-title .section-badge.seller-badge {
+  background: var(--pop);
+}
+
+/* ---- Accordion Cards ---- */
+.accordion-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 768px) {
+  .accordion-grid { grid-template-columns: 1fr 1fr; }
+}
+
+.accordion-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  transition: box-shadow 0.25s ease, transform 0.2s ease;
+  overflow: hidden;
+}
+.accordion-card:hover {
+  box-shadow: var(--shadow-soft);
+  transform: translateY(-2px);
+}
+.accordion-card.full-width {
+  grid-column: 1 / -1;
+}
+
+.accordion-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  cursor: pointer;
+  user-select: none;
+  gap: 14px;
+  transition: background 0.2s ease;
+}
+.accordion-header:hover {
+  background: var(--paper-dim);
+}
+.accordion-header .left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+.accordion-header .icon {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--paper-dim);
+  color: var(--brand-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+.accordion-header .title {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--ink);
+}
+.accordion-header .badge {
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--paper-dim);
+  color: var(--brand-dark);
+  white-space: nowrap;
+}
+.accordion-header .badge.buyer {
+  background: #e3f0f5;
+  color: #1a6a7a;
+}
+.accordion-header .badge.seller {
+  background: #ede6f5;
+  color: #6a4a8a;
+}
+.accordion-header .badge.legal {
+  background: #f5ece6;
+  color: #8a6a4a;
+}
+.accordion-header .badge.core {
+  background: #e6f5ed;
+  color: #1a7a5a;
+}
+.accordion-header .toggle-icon {
+  flex-shrink: 0;
+  color: var(--ink-faint);
+  font-size: 0.85rem;
+  transition: transform 0.3s ease;
+}
+.accordion-card.open .accordion-header .toggle-icon {
+  transform: rotate(180deg);
+}
+
+.accordion-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.45s ease, padding 0.3s ease;
+  padding: 0 20px;
+}
+.accordion-card.open .accordion-body {
+  max-height: 3000px;
+  padding: 0 20px 22px;
+}
+
+.accordion-body .content {
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+.accordion-body p {
+  color: var(--ink-soft);
+  line-height: 1.8;
+  font-size: 0.92rem;
+  margin: 12px 0;
+}
+.accordion-body p strong {
+  color: var(--ink);
+}
+.accordion-body ul {
+  margin: 8px 0 14px 22px;
+  color: var(--ink-soft);
+  line-height: 1.9;
+  font-size: 0.9rem;
+}
+.accordion-body ul li::marker {
+  color: var(--brand);
+}
+.accordion-body .legal-ref {
+  font-size: 0.75rem;
+  color: var(--ink-faint);
+  background: var(--paper-dim);
+  padding: 5px 14px;
+  border-radius: 6px;
+  display: inline-block;
+  margin-top: 8px;
+  font-family: var(--font-mono);
+  border: 1px solid var(--line);
+}
+.accordion-body .highlight-box {
+  background: var(--paper-dim);
+  border-left: 3px solid var(--brand);
+  padding: 14px 18px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  margin: 12px 0;
+}
+.accordion-body .highlight-box.seller-box {
+  border-left-color: var(--pop);
+}
+.accordion-body .highlight-box p {
+  margin: 4px 0;
+  font-size: 0.88rem;
+}
+
+/* ---- Intro paragraph ---- */
+.about-intro {
+  font-size: 1.05rem;
+  color: var(--ink-soft);
+  line-height: 1.8;
+  margin: 16px 0 8px;
+  max-width: 80ch;
+}
+.about-intro strong {
+  color: var(--ink);
+}
+
+/* ---- CTA Banner ---- */
+.cta-banner {
+  margin: 48px 0 10px;
+  padding: 40px 32px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--brand-dark), var(--brand) 60%, var(--sun));
+  color: #fff;
+  text-align: center;
+}
+.cta-banner h2 {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  color: #fff;
+  margin: 0 0 8px;
+}
+.cta-banner p {
+  color: rgba(255,255,255,0.85);
+  margin: 0 0 20px;
+  max-width: 55ch;
+  margin-inline: auto;
+  line-height: 1.7;
+}
+.cta-banner .btn-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: center;
+}
+.cta-banner .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 28px;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  text-decoration: none;
+  transition: 0.25s ease;
+}
+.cta-banner .btn-primary {
+  background: #fff;
+  color: var(--brand-dark);
+  border: none;
+}
+.cta-banner .btn-primary:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-pop);
+}
+.cta-banner .btn-outline {
+  background: transparent;
+  color: #fff;
+  border: 2px solid rgba(255,255,255,0.6);
+}
+.cta-banner .btn-outline:hover {
+  background: rgba(255,255,255,0.15);
+  border-color: #fff;
+  transform: translateY(-3px);
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 768px) {
+  .page-hero h1 { font-size: 1.8rem; }
+  .about-section-title { font-size: 1.4rem; flex-wrap: wrap; }
+  .about-section-title .section-badge { margin-left: 0; }
+  .accordion-header { padding: 14px 16px; }
+  .accordion-header .title { font-size: 0.9rem; }
+  .accordion-body { padding: 0 16px; }
+  .accordion-card.open .accordion-body { padding: 0 16px 16px; }
+  .cta-banner { padding: 28px 18px; }
+  .cta-banner h2 { font-size: 1.3rem; }
+  .stat-card .num { font-size: 1.4rem; }
+}
+
+@media (max-width: 480px) {
+  .about-stats { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat-card { padding: 14px 10px; }
+  .accordion-grid { gap: 8px; }
+}
+
+/* ---- Misc ---- */
+.mt-0 { margin-top: 0; }
+.mb-0 { margin-bottom: 0; }
+.text-muted { color: var(--ink-soft); }
+.fw-600 { font-weight: 600; }
+</style>
 </head>
 <body data-page="about.html">
 <div id="pageLoader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
@@ -15,91 +385,692 @@
 <header class="site-header" id="site-header"></header>
 
 <main>
+  <!-- ===== HERO — Full Width ===== -->
   <section class="page-hero">
     <div class="wrap">
-      <h1>Built for shoppers who want it done right, the first time.</h1>
-      <p>Six Star Suppliers connects everyday buyers with vetted retailers and wholesalers across Kenya — with every product checked before it ever reaches the storefront.</p>
+      <h1>About Six Star Suppliers</h1>
+      <p>We connect verified buyers with trusted sellers across Kenya — with clear policies, legal protections, and a commitment to transparency. Every transaction is backed by our Terms and Conditions (SSTC-001).</p>
     </div>
   </section>
 
-  <div class="wrap">
-    <div class="content-block">
-      <h2 id="our-story">Our story</h2>
-      <p>Six Star Suppliers started as a small supply desk moving household goods and electronics to shops and individual buyers around Nairobi. Today, every product on the site passes through an approval step before it's listed — so what you see is what's actually in stock, at a price our team has checked.</p>
+  <!-- ===== MAIN CONTENT — Full Width Container ===== -->
+  <div class="about-full">
+    <div class="about-container">
 
-      <h2 id="ordering">How ordering works</h2>
-      <p>Browse the catalog, add what you need to your cart, and check out with your delivery details and an M-Pesa payment. Our team verifies each payment against your order before it's confirmed and dispatched — you can follow every step from the Track My Order page.</p>
+      
 
-      <h2 id="shipping-returns">Shipping &amp; returns</h2>
-      <p>We deliver countrywide. Delivery timing depends on your location and is confirmed once your order is verified. Every order carries a 1-year warranty; if something arrives faulty or wrong, reach out within 7 days and we'll sort it out.</p>
+      <!-- Intro -->
+      <p class="about-intro">
+        <strong>Six Star Suppliers Ltd</strong> is a registered Kenyan marketplace operator 
+        (<strong>Document SSTC-001</strong>) that provides a secure digital platform connecting 
+        verified buyers with approved sellers. We are <strong>not a retailer</strong> — we are 
+        the trusted bridge between you and the products you need. Our Terms and Conditions 
+        establish the legal framework that protects every user of our platform.
+      </p>
 
-      <!-- ===== OWN A SHOP — seller shop feature explainer ===== -->
-      <h2 id="own-a-shop">Own a shop at Six Star Suppliers</h2>
-      <p>Beyond listing individual products, approved sellers can run their own branded storefront inside Six Star Suppliers — a dedicated page with your own name, logo, banner and description, showing every product you've listed in one place.</p>
+      <!-- ===== SECTION 1: MARKETPLACE OVERVIEW ===== -->
+      <h2 class="about-section-title">
+        <i class="fa-solid fa-store"></i> Marketplace Overview
+        <span class="section-badge">Core</span>
+      </h2>
 
-      <div class="shop-steps">
-        <div class="shop-step">
-          <div class="shop-step__num">1</div>
-          <div class="shop-step__body">
-            <h3>Register as a retailer or wholesaler</h3>
-            <p>Shop ownership is only available to approved sellers — create a free retailer or wholesaler account to get started.</p>
+      <div class="accordion-grid">
+        <!-- Card 1: What We Do -->
+        <div class="accordion-card open full-width">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <div class="left">
+              <div class="icon"><i class="fa-solid fa-scale-balanced"></i></div>
+              <span class="title">What We Do — Marketplace Services</span>
+              <span class="badge core">Core</span>
+            </div>
+            <span class="toggle-icon"><i class="fa-solid fa-chevron-down"></i></span>
+          </div>
+          <div class="accordion-body">
+            <div class="content">
+              <p>Six Star Suppliers Ltd operates an electronic marketplace that connects buyers with verified sellers for the sale of products and services. We provide the platform, but <strong>we are not the manufacturer, importer, or exporter</strong> of products listed by independent sellers.</p>
+
+              <p><strong>Services we provide directly or through authorized third-party providers:</strong></p>
+              <ul>
+                <li><strong>Online product listings</strong> — sellers can list products with descriptions, images, and pricing</li>
+                <li><strong>Product search and discovery</strong> — advanced search and filtering to help you find what you need</li>
+                <li><strong>Seller storefronts</strong> — branded shops for approved sellers</li>
+                <li><strong>Shopping cart functionality</strong> — seamless checkout experience</li>
+                <li><strong>Order processing</strong> — automated order management and tracking</li>
+                <li><strong>Secure payment processing</strong> — industry-standard security for all transactions</li>
+                <li><strong>Shipping and logistics coordination</strong> — delivery management and tracking</li>
+                <li><strong>Customer support</strong> — dedicated support for buyers and sellers</li>
+                <li><strong>Returns and refunds management</strong> — structured process for returns and refunds</li>
+                <li><strong>Promotions and advertising services</strong> — marketing tools for sellers</li>
+                <li><strong>Product recommendations</strong> — personalized suggestions based on your activity</li>
+                <li><strong>Marketplace analytics</strong> — data insights for sellers</li>
+                <li><strong>Seller performance monitoring</strong> — quality assurance and performance tracking</li>
+                <li><strong>Review and rating systems</strong> — transparent feedback from verified buyers</li>
+              </ul>
+
+              <div class="highlight-box">
+                <p><strong>Important:</strong> Sellers remain fully responsible for the legality, quality, safety, and accuracy of their products. Buyers are responsible for evaluating products before purchase. We facilitate transactions but do not assume ownership of third-party products.</p>
+              </div>
+
+              <span class="legal-ref">Source: Terms &amp; Conditions § 1, § 7, § 23</span>
+            </div>
           </div>
         </div>
-        <div class="shop-step">
-          <div class="shop-step__num">2</div>
-          <div class="shop-step__body">
-            <h3>Activate your shop in the seller dashboard</h3>
-            <p>Once logged in, head to your seller dashboard and activate your shop — give it a name, category and description. It goes live once our team approves it.</p>
+
+        <!-- Card 2: Acceptance of Terms -->
+        <div class="accordion-card">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <div class="left">
+              <div class="icon"><i class="fa-solid fa-file-contract"></i></div>
+              <span class="title">Acceptance of Terms</span>
+              <span class="badge legal">Legal</span>
+            </div>
+            <span class="toggle-icon"><i class="fa-solid fa-chevron-down"></i></span>
+          </div>
+          <div class="accordion-body">
+            <div class="content">
+              <p>By accessing, browsing, registering for, or using the marketplace, <strong>each user agrees to comply with our Terms and Conditions</strong>. If you do not agree, you must immediately discontinue use.</p>
+
+              <p><strong>By using the marketplace, you confirm that you:</strong></p>
+              <ul>
+                <li>Have read and understood these Terms</li>
+                <li>Agree to be legally bound by these Terms</li>
+                <li>Agree to all marketplace policies incorporated by reference</li>
+                <li>Agree to comply with all applicable laws</li>
+                <li>Agree to future amendments published by the Company</li>
+                <li>Confirm that information provided is accurate and complete</li>
+                <li>Undertake to use the Marketplace lawfully and responsibly</li>
+              </ul>
+
+              <p><strong>Electronic communications:</strong> Users consent to receive communications electronically, including notices, invoices, policy updates, security alerts, account notifications, and legally required disclosures. Electronic communications shall satisfy any legal requirement that communications be provided in writing.</p>
+
+              <span class="legal-ref">Source: Terms &amp; Conditions § 5, § 10, § 117</span>
+            </div>
           </div>
         </div>
-        <div class="shop-step">
-          <div class="shop-step__num">3</div>
-          <div class="shop-step__body">
-            <h3>Customize it to match your brand</h3>
-            <p>Upload a logo and banner, set your business hours, and every approved product you list is automatically pulled into your storefront.</p>
+
+        <!-- Card 3: Eligibility -->
+        <div class="accordion-card">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <div class="left">
+              <div class="icon"><i class="fa-solid fa-user-check"></i></div>
+              <span class="title">Eligibility Requirements</span>
+              <span class="badge legal">Legal</span>
+            </div>
+            <span class="toggle-icon"><i class="fa-solid fa-chevron-down"></i></span>
           </div>
-        </div>
-        <div class="shop-step">
-          <div class="shop-step__num">4</div>
-          <div class="shop-step__body">
-            <h3>Track performance with shop analytics</h3>
-            <p>See views, orders and ratings for your shop right from the dashboard, so you know what's working and what to restock.</p>
+          <div class="accordion-body">
+            <div class="content">
+              <p><strong>To use the marketplace, you must satisfy all of the following:</strong></p>
+              <ul>
+                <li>Be at least <strong>eighteen (18) years of age</strong> or the age of legal majority in your jurisdiction</li>
+                <li>Have <strong>legal capacity</strong> to enter into binding contracts</li>
+                <li>Provide <strong>accurate registration information</strong></li>
+                <li>Maintain <strong>current contact information</strong></li>
+                <li>Not be prohibited by applicable law from using online marketplaces</li>
+                <li>Not be subject to <strong>sanctions or trade restrictions</strong> applicable to the marketplace</li>
+              </ul>
+
+              <p><strong>Business entities:</strong> Organizations registering on behalf of their business warrant that the individual completing registration has authority to bind the organization.</p>
+
+              <p><strong>Account verification may include:</strong></p>
+              <ul>
+                <li>Email verification and mobile phone verification</li>
+                <li>Government-issued identification, passport, or National Identification Card</li>
+                <li>Company registration certificate and business license</li>
+                <li>Utility bill, tax registration, and banking verification</li>
+                <li>Address verification, video verification, and facial recognition (where permitted by law)</li>
+              </ul>
+
+              <p>Verification requirements vary by country, product category, sales volume, risk profile, and regulatory requirements. <strong>Failure to complete verification may result in restricted account functionality.</strong></p>
+
+              <span class="legal-ref">Source: Terms &amp; Conditions § 6, § 11, § 13</span>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- This block swaps itself based on login/role state — see the inline
-           script at the bottom of the page. Server-safe default (logged out). -->
-      <div class="shop-cta" id="shopCta">
-        <a href="/register.html" class="btn btn-primary" id="shopCtaPrimary">
-          <i class="fa-solid fa-store"></i> Register as a Seller
-        </a>
-        <a href="/login.html" class="btn btn-outline" id="shopCtaSecondary">
-          <i class="fa-solid fa-right-to-bracket"></i> Seller Login
-        </a>
+      <!-- ===== SECTION 2: FOR BUYERS ===== -->
+      <h2 class="about-section-title">
+        <i class="fa-solid fa-user"></i> For Buyers — Your Rights &amp; Protections
+        <span class="section-badge">Buyer</span>
+      </h2>
+
+      <div class="accordion-grid">
+        <!-- Card: How Ordering Works -->
+        <div class="accordion-card full-width">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <div class="left">
+              <div class="icon"><i class="fa-solid fa-cart-shopping"></i></div>
+              <span class="title">How Ordering Works — Step by Step</span>
+              <span class="badge buyer">Buyer</span>
+            </div>
+            <span class="toggle-icon"><i class="fa-solid fa-chevron-down"></i></span>
+          </div>
+          <div class="accordion-body">
+            <div class="content">
+              <p><strong>Step-by-step ordering process:</strong></p>
+              <ul>
+                <li><strong>Browse &amp; Discover:</strong> Explore our catalog of verified products from approved sellers. Use search and filters to find exactly what you need.</li>
+                <li><strong>Place Your Order:</strong> Add items to your cart, enter your delivery details, and complete checkout using M-Pesa or other approved payment methods.</li>
+                <li><strong>Payment Verification:</strong> Our team verifies each payment against your order before confirmation — this extra step protects you from fraud and ensures accuracy.</li>
+                <li><strong>Order Processing:</strong> The seller reviews and accepts your order. You'll receive confirmation once your order is accepted.</li>
+                <li><strong>Track &amp; Receive:</strong> Follow your order every step of the way on the <a href="/track.html">Track My Order</a> page. Delivery timelines are confirmed once your order is verified and dispatched.</li>
+              </ul>
+
+              <p><strong>Order confirmation:</strong> Upon successful submission, you'll receive an electronic acknowledgment. Order confirmation indicates that the order has been received for processing but does not necessarily constitute acceptance. <strong>Acceptance occurs when the seller dispatches the product or otherwise confirms fulfillment.</strong></p>
+
+              <p><strong>Order cancellation:</strong> You may request cancellation before shipment, subject to seller approval and product type. Orders for customized, personalized, perishable, or digital products may not be cancellable once processing has begun. The Company may cancel an order where payment fails, fraud is suspected, the product is unavailable, pricing errors occur, regulatory restrictions apply, or the seller is unable to fulfill the order.</p>
+
+              <div class="highlight-box">
+                <p><strong>Registered buyers may also:</strong> Save products to wish lists, submit product reviews, communicate with sellers through approved channels, participate in promotional campaigns, and receive customer support.</p>
+              </div>
+
+              <span class="legal-ref">Source: Terms &amp; Conditions § 24, § 32-34</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card: Buyer Protections -->
+        <div class="accordion-card">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <div class="left">
+              <div class="icon"><i class="fa-solid fa-shield-halved"></i></div>
+              <span class="title">Buyer Protections &amp; Rights</span>
+              <span class="badge buyer">Buyer</span>
+            </div>
+            <span class="toggle-icon"><i class="fa-solid fa-chevron-down"></i></span>
+          </div>
+          <div class="accordion-body">
+            <div class="content">
+              <p><strong>Your rights and protections as a buyer:</strong></p>
+              <ul>
+                <li><strong>Returns &amp; Refunds:</strong> If you receive the wrong item, a damaged product, or something that doesn't match the description, contact us within 7 days of delivery. Products may be eligible for return where the incorrect product was delivered, the product arrived damaged, is defective, materially differs from its description, or delivery was incomplete.</li>
+                <li><strong>1-Year Warranty:</strong> Every eligible order comes with a 1-year warranty against manufacturing defects. If something fails, we'll help you get it resolved.</li>
+                <li><strong>Dispute Resolution:</strong> Our internal dispute resolution process helps you and the seller reach a fair outcome without unnecessary stress or delay. The Company encourages amicable resolution before legal proceedings.</li>
+                <li><strong>Data Privacy:</strong> Your personal information is protected under the Kenya Data Protection Act, 2019. We never share your data without your consent.</li>
+                <li><strong>Delivery Protection:</strong> Risk of loss transfers only upon delivery. If your package is lost or damaged in transit, we'll work with you and the seller to make it right.</li>
+                <li><strong>Product Accuracy:</strong> Sellers must ensure product information is accurate, complete, truthful, and not misleading. Product images must accurately represent the product being sold.</li>
+                <li><strong>Inspection Rights:</strong> You are encouraged to inspect products promptly upon delivery. Any issues should be reported within the timeframe specified in the Returns Policy.</li>
+              </ul>
+
+              <p><strong>Products that may not be eligible for return:</strong> Personalized products, perishable goods, opened hygiene products, digital products already accessed or downloaded, and products excluded by law.</p>
+
+              <span class="legal-ref">Source: Terms &amp; Conditions § 25-27, § 37, § 67-69</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card: Payments & Pricing -->
+        <div class="accordion-card">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <div class="left">
+              <div class="icon"><i class="fa-solid fa-credit-card"></i></div>
+              <span class="title">Payments, Pricing &amp; Taxes</span>
+              <span class="badge buyer">Buyer</span>
+            </div>
+            <span class="toggle-icon"><i class="fa-solid fa-chevron-down"></i></span>
+          </div>
+          <div class="accordion-body">
+            <div class="content">
+              <p><strong>Accepted payment methods:</strong></p>
+              <ul>
+                <li>Debit Cards and Credit Cards</li>
+                <li>Mobile Money (M-Pesa)</li>
+                <li>Bank Transfers</li>
+                <li>Digital Wallets</li>
+                <li>Buy Now, Pay Later services (where supported)</li>
+                <li>Cash on Delivery (selected locations only)</li>
+                <li>Gift Cards and Promotional Credits</li>
+              </ul>
+
+              <p><strong>Pricing:</strong> All prices are stated in the applicable currency. Prices may include or exclude taxes depending on local legal requirements and marketplace settings. Prices may be updated by sellers at any time prior to order confirmation. The Company reserves the right to correct pricing errors resulting from technical failures, human error, system malfunctions, currency conversion issues, or data synchronization delays.</p>
+
+              <p><strong>Taxes:</strong> Buyers are responsible for paying all applicable Value Added Tax (VAT), Goods and Services Tax (GST), sales tax, customs duties, import duties, excise taxes, regulatory fees, and government levies.</p>
+
+              <p><strong>Payment security:</strong> All payment information is processed using industry-recognized security measures. The Company does not store complete payment card details unless permitted by applicable law and compliant with relevant security standards. Users must never submit payment information through unsecured communication channels.</p>
+
+              <p><strong>Discounts and promotions:</strong> Promotions are subject to availability, cannot be exchanged for cash, may not be combined with other offers, and may be withdrawn or modified at any time. Misuse of promotional offers may result in cancellation of orders or suspension of user accounts.</p>
+
+              <span class="legal-ref">Source: Terms &amp; Conditions § 29-31, § 56</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card: Shipping & Delivery -->
+        <div class="accordion-card full-width">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <div class="left">
+              <div class="icon"><i class="fa-solid fa-truck"></i></div>
+              <span class="title">Shipping, Delivery &amp; Risk of Loss</span>
+              <span class="badge buyer">Buyer</span>
+            </div>
+            <span class="toggle-icon"><i class="fa-solid fa-chevron-down"></i></span>
+          </div>
+          <div class="accordion-body">
+            <div class="content">
+              <p><strong>Shipping services may be performed by:</strong> Sellers, Six Star Suppliers Ltd, third-party logistics providers, courier companies, or freight forwarding companies. Estimated delivery times are indicative only and do not constitute guaranteed delivery commitments unless expressly stated.</p>
+
+              <p><strong>Shipping addresses:</strong> Buyers are responsible for providing accurate delivery information. Incorrect addresses may result in delivery delays, additional shipping costs, failed deliveries, returned shipments, or order cancellation. The Company shall not be liable for losses arising from inaccurate delivery information provided by buyers.</p>
+
+              <p><strong>Delivery:</strong> Delivery shall be deemed completed when the buyer accepts the goods, delivery is made to the address provided, delivery is confirmed electronically, delivery is completed in accordance with carrier procedures, or delivery is made to an authorized recipient.</p>
+
+              <p><strong>Proof of delivery may include:</strong> Electronic signatures, GPS confirmation, delivery photographs, courier records, and barcode scans.</p>
+
+              <p><strong>Risk of loss:</strong> Unless otherwise required by applicable law, the risk of loss or damage to products transfers upon delivery to the buyer. Where Six Star Suppliers Ltd provides fulfilment services, risk allocation shall be governed by the applicable fulfilment agreement.</p>
+
+              <p><strong>Title to goods:</strong> Ownership of products passes to the buyer upon full payment of the purchase price and transfer of title by the seller in accordance with applicable law. Nothing in these Terms affects statutory consumer rights.</p>
+
+              <p><strong>Delivery delays:</strong> May occur due to weather conditions, customs inspections, transportation disruptions, public holidays, regulatory restrictions, force majeure events, security incidents, or incorrect delivery information. The Company shall use reasonable efforts to communicate known delays but does not guarantee uninterrupted delivery services.</p>
+
+              <span class="legal-ref">Source: Terms &amp; Conditions § 61-66</span>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <h2 id="faq">Frequently asked questions</h2>
-      <details class="faq-item">
-        <summary>How do I pay?</summary>
-        <p style="margin-top:8px;">Pay via our Paybill number and paste the M-Pesa confirmation message at checkout, or arrange payment on delivery where available.</p>
-      </details>
-      <details class="faq-item">
-        <summary>How long does verification take?</summary>
-        <p style="margin-top:8px;">Most M-Pesa payments are verified within a few hours. You'll see the update on the Track My Order page.</p>
-      </details>
-      <details class="faq-item">
-        <summary>Can I sell on Six Star Suppliers?</summary>
-        <p style="margin-top:8px;">Yes — register as a retailer or wholesaler, then list your products from your seller dashboard. Once approved, you can also activate your own branded shop — see "Own a shop at Six Star Suppliers" above for how that works.</p>
-      </details>
-      <details class="faq-item">
-        <summary>What's the difference between listing products and owning a shop?</summary>
-        <p style="margin-top:8px;">Every approved seller can list products individually on the main catalog. Owning a shop additionally gives you a dedicated storefront page — your own logo, banner and description — where all your products appear together under your brand.</p>
-      </details>
-      <details class="faq-item">
-        <summary>What if my item arrives damaged?</summary>
-        <p style="margin-top:8px;">Contact us within 7 days of delivery with photos of the item, and we'll arrange a replacement or refund under the 1-year warranty.</p>
-      </details>
+      <!-- ===== SECTION 3: FOR SELLERS ===== -->
+      <h2 class="about-section-title">
+        <i class="fa-solid fa-store"></i> For Sellers — Grow Your Business
+        <span class="section-badge seller-badge">Seller</span>
+      </h2>
+
+      <div class="accordion-grid">
+        <!-- Card: Becoming a Seller -->
+        <div class="accordion-card">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <div class="left">
+              <div class="icon"><i class="fa-solid fa-user-plus"></i></div>
+              <span class="title">Becoming a Seller</span>
+              <span class="badge seller">Seller</span>
+            </div>
+            <span class="toggle-icon"><i class="fa-solid fa-chevron-down"></i></span>
+          </div>
+          <div class="accordion-body">
+            <div class="content">
+              <p><strong>To become a seller, you must:</strong></p>
+              <ul>
+                <li>Complete the Marketplace registration process</li>
+                <li>Successfully complete Know Your Customer (KYC) verification</li>
+                <li>Provide all required business documentation</li>
+                <li>Maintain all licenses and permits required for your business</li>
+                <li>Comply with all applicable laws and regulations</li>
+                <li>Accept these Terms and all Marketplace policies</li>
+                <li>Maintain accurate business information at all times</li>
+              </ul>
+
+              <p><strong>Required documentation for sellers:</strong></p>
+              <ul>
+                <li>Registered business name</li>
+                <li>Certificate of incorporation or registration</li>
+                <li>Business license(s), where applicable</li>
+                <li>Tax Identification Number (TIN)</li>
+                <li>VAT registration details (if applicable)</li>
+                <li>Bank account details</li>
+                <li>Physical business address and warehouse address(es)</li>
+                <li>Contact information</li>
+                <li>Identity documents for authorized representatives</li>
+                <li>Product categories</li>
+                <li>Brand ownership or authorization documents, where required</li>
+              </ul>
+
+              <p>The Company reserves the right to reject any seller application without providing reasons where permitted by law. Only sellers approved by Six Star Suppliers Ltd may offer products or services through the Marketplace.</p>
+
+              <span class="legal-ref">Source: Terms &amp; Conditions § 11, § 38</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card: Seller Responsibilities -->
+        <div class="accordion-card">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <div class="left">
+              <div class="icon"><i class="fa-solid fa-list-check"></i></div>
+              <span class="title">Seller Responsibilities</span>
+              <span class="badge seller">Seller</span>
+            </div>
+            <span class="toggle-icon"><i class="fa-solid fa-chevron-down"></i></span>
+          </div>
+          <div class="accordion-body">
+            <div class="content">
+              <p><strong>Every seller agrees to conduct business professionally, ethically, and lawfully. Sellers are responsible for:</strong></p>
+              <ul>
+                <li>Listing only lawful products and services</li>
+                <li>Maintaining accurate inventory records</li>
+                <li>Providing truthful and accurate product descriptions</li>
+                <li>Setting accurate and transparent pricing</li>
+                <li>Processing orders promptly</li>
+                <li>Packaging products securely to minimize damage during transportation</li>
+                <li>Shipping within stated timelines</li>
+                <li>Responding to customer inquiries in a timely manner</li>
+                <li>Honouring warranties and after-sales support</li>
+                <li>Processing approved returns and refunds</li>
+                <li>Cooperating during investigations and audits</li>
+                <li>Protecting customer data</li>
+                <li>Paying all applicable marketplace fees</li>
+                <li>Complying with all marketplace policies</li>
+              </ul>
+
+              <p><strong>Product compliance:</strong> Sellers warrant that all products offered for sale are lawful, authentic, meet applicable safety standards, comply with import and export regulations, meet consumer protection requirements, are properly labelled, and have all required certifications.</p>
+
+              <div class="highlight-box seller-box">
+                <p><strong>Prohibited products include:</strong> Counterfeit goods, stolen property, illegal drugs, controlled substances without authorization, hazardous materials without permits, expired products, recalled products, weapons prohibited by law, offensive or obscene material, products infringing intellectual property rights, and fraudulent financial instruments.</p>
+              </div>
+
+              <span class="legal-ref">Source: Terms &amp; Conditions § 39, § 45-47</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card: Own a Shop -->
+        <div class="accordion-card full-width">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <div class="left">
+              <div class="icon"><i class="fa-solid fa-shop"></i></div>
+              <span class="title">Own a Branded Shop — Storefront Feature</span>
+              <span class="badge seller">Seller</span>
+            </div>
+            <span class="toggle-icon"><i class="fa-solid fa-chevron-down"></i></span>
+          </div>
+          <div class="accordion-body">
+            <div class="content">
+              <p>Beyond listing individual products, approved sellers can run their own branded storefront inside Six Star Suppliers — a dedicated page with your own name, logo, banner and description, showing every product you've listed in one place.</p>
+
+              <p><strong>How to activate and customize your shop:</strong></p>
+              <ul>
+                <li><strong>Register as a retailer or wholesaler:</strong> Shop ownership is only available to approved sellers — create a free retailer or wholesaler account to get started. Complete KYC verification with your business documents.</li>
+                <li><strong>Activate your shop in the seller dashboard:</strong> Once logged in, head to your seller dashboard and activate your shop — give it a name, category and description. It goes live once our team approves it.</li>
+                <li><strong>Customize it to match your brand:</strong> Upload a logo and banner, set your business hours, and every approved product you list is automatically pulled into your storefront.</li>
+                <li><strong>Track performance with shop analytics:</strong> See views, orders and ratings for your shop right from the dashboard, so you know what's working and what to restock.</li>
+              </ul>
+
+              <p><strong>Seller conduct:</strong> Sellers shall not manipulate Marketplace search results, create fake customer accounts, submit fake reviews, buy positive reviews, harass customers, circumvent Marketplace systems, divert customers to external websites, request payment outside approved payment methods, misuse customer data, or interfere with competitor listings. Violations may result in suspension or permanent removal from the Marketplace.</p>
+
+              <span class="legal-ref">Source: Seller Dashboard Features, Terms &amp; Conditions § 54</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card: Fees & Payments -->
+        <div class="accordion-card">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <div class="left">
+              <div class="icon"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+              <span class="title">Fees, Commissions &amp; Settlements</span>
+              <span class="badge seller">Seller</span>
+            </div>
+            <span class="toggle-icon"><i class="fa-solid fa-chevron-down"></i></span>
+          </div>
+          <div class="accordion-body">
+            <div class="content">
+              <p><strong>Marketplace fees may include:</strong></p>
+              <ul>
+                <li><strong>Seller commissions</strong> — vary by product category, seller subscription plan, promotional campaigns, sales volume, geographic region, and fulfilment method</li>
+                <li><strong>Subscription fees</strong> — for premium seller accounts</li>
+                <li><strong>Listing fees</strong> — for certain product categories or premium placement</li>
+                <li><strong>Advertising fees</strong> — for promoted listings and sponsored products</li>
+                <li><strong>Fulfilment fees</strong> — for orders fulfilled by Six Star Suppliers</li>
+                <li><strong>Storage fees</strong> — for inventory stored in Company warehouses</li>
+                <li><strong>Payment processing fees</strong> — for transaction processing</li>
+                <li><strong>Withdrawal fees and currency conversion fees</strong></li>
+                <li><strong>Late payment charges and premium service fees</strong></li>
+              </ul>
+
+              <p><strong>Payment settlements:</strong> Payments received from buyers may be held temporarily before settlement to sellers. Settlement schedules may depend on successful delivery confirmation, return periods, fraud screening, regulatory requirements, outstanding disputes, and chargeback risks. The Company reserves the right to delay settlement where reasonably necessary to protect buyers, sellers, or the Marketplace.</p>
+
+              <p><strong>Tax obligations:</strong> Sellers are responsible for registering for taxes where required, collecting taxes, filing tax returns, paying taxes to relevant authorities, and maintaining tax records. Sellers shall ensure that prices are accurate, transparent, competitive, clearly displayed, and free from deceptive pricing practices.</p>
+
+              <span class="legal-ref">Source: Terms &amp; Conditions § 57-60</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card: Audits & Enforcement -->
+        <div class="accordion-card">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <div class="left">
+              <div class="icon"><i class="fa-solid fa-gavel"></i></div>
+              <span class="title">Audits, Enforcement &amp; Suspension</span>
+              <span class="badge seller">Seller</span>
+            </div>
+            <span class="toggle-icon"><i class="fa-solid fa-chevron-down"></i></span>
+          </div>
+          <div class="accordion-body">
+            <div class="content">
+              <p><strong>Marketplace audits:</strong> The Company reserves the right to conduct periodic audits of sellers to verify compliance with these Terms and Marketplace policies. Audits may include verification of business information, product authenticity checks, inventory inspections, documentation reviews, quality assurance assessments, customer service evaluations, and compliance reviews.</p>
+
+              <p>Sellers shall cooperate fully with any audit and provide requested information within the specified timeframe. <strong>Failure to cooperate may result in enforcement actions, including suspension, withholding of payments, or termination of the seller account.</strong></p>
+
+              <p><strong>Enforcement actions may include:</strong></p>
+              <ul>
+                <li>Issuing a warning</li>
+                <li>Removing content or product listings</li>
+                <li>Restricting account functionality</li>
+                <li>Suspending transactions</li>
+                <li>Withholding settlements where contractually or legally permitted</li>
+                <li>Suspending the account (temporary or permanent)</li>
+                <li>Reporting unlawful conduct to the appropriate authorities</li>
+                <li>Pursuing civil remedies where appropriate</li>
+              </ul>
+
+              <p><strong>Account suspension may occur where there is reasonable belief that:</strong> Fraud has occurred, identity cannot be verified, false information was submitted, Marketplace policies were violated, payment fraud occurred, intellectual property infringement occurred, counterfeit products were listed, illegal products were offered, security threats were identified, or court orders or regulatory authorities require suspension.</p>
+
+              <span class="legal-ref">Source: Terms &amp; Conditions § 18-19, § 55, § 90</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== SECTION 4: LEGAL & COMPLIANCE ===== -->
+      <h2 class="about-section-title">
+        <i class="fa-solid fa-gavel"></i> Legal &amp; Compliance
+        <span class="section-badge">Legal</span>
+      </h2>
+
+      <div class="accordion-grid">
+        <!-- Card: Governing Law -->
+        <div class="accordion-card">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <div class="left">
+              <div class="icon"><i class="fa-solid fa-book"></i></div>
+              <span class="title">Governing Law &amp; Jurisdiction</span>
+              <span class="badge legal">Legal</span>
+            </div>
+            <span class="toggle-icon"><i class="fa-solid fa-chevron-down"></i></span>
+          </div>
+          <div class="accordion-body">
+            <div class="content">
+              <p><strong>Governing Law:</strong> These Terms shall be governed by and interpreted in accordance with the laws of the <strong>Republic of Kenya</strong>, without regard to its conflict of law principles, unless mandatory laws of another jurisdiction require otherwise. Nothing in these Terms limits statutory rights that users may have under applicable consumer protection legislation.</p>
+
+              <p><strong>Jurisdiction:</strong> Subject to any mandatory legal rights or agreed alternative dispute resolution procedures, disputes arising out of or relating to these Terms shall be submitted to the <strong>competent courts of Kenya</strong>. The Company may also seek interim or injunctive relief in any court of competent jurisdiction where necessary to protect its rights or property.</p>
+
+              <p><strong>Dispute Resolution:</strong> The Company encourages buyers and sellers to resolve disputes amicably through the Marketplace's dispute resolution process before initiating legal proceedings. Disputes may include order issues, payment disagreements, delivery disputes, product quality concerns, warranty claims, and intellectual property complaints. The Company may facilitate communication but is not required to adjudicate every dispute unless expressly stated in Marketplace policies.</p>
+
+              <p><strong>Mediation:</strong> Where appropriate and agreed by the parties, disputes may be referred to mediation before court proceedings. Participation in mediation does not prevent either party from pursuing legal remedies if the dispute is not resolved.</p>
+
+              <span class="legal-ref">Source: Terms &amp; Conditions § 96-100</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card: Data Protection -->
+        <div class="accordion-card">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <div class="left">
+              <div class="icon"><i class="fa-solid fa-database"></i></div>
+              <span class="title">Data Protection &amp; Privacy</span>
+              <span class="badge legal">Legal</span>
+            </div>
+            <span class="toggle-icon"><i class="fa-solid fa-chevron-down"></i></span>
+          </div>
+          <div class="accordion-body">
+            <div class="content">
+              <p><strong>Data protection compliance:</strong> The Company is committed to protecting personal data in accordance with applicable legislation, including the <strong>Kenya Data Protection Act, 2019</strong>, and the General Data Protection Regulation (GDPR) where applicable. The Company implements appropriate technical and organizational measures to protect personal data from unauthorized access, disclosure, alteration, or destruction.</p>
+
+              <p><strong>Personal information may be processed for:</strong></p>
+              <ul>
+                <li>Account administration and management</li>
+                <li>Order processing and fulfilment</li>
+                <li>Fraud prevention and security monitoring</li>
+                <li>Customer support and communication</li>
+                <li>Regulatory compliance and legal obligations</li>
+                <li>Analytics, service improvement, and business operations</li>
+              </ul>
+
+              <p><strong>Record retention:</strong> The Company may retain account information, transaction records, communications, and related data for the period required by applicable law, regulatory requirements, dispute resolution needs, fraud prevention, and legitimate business purposes. Users acknowledge that certain records may continue to be retained after account closure where legally required or necessary to protect the rights and interests of the Company, buyers, sellers, or other users.</p>
+
+              <p><strong>Confidentiality:</strong> Users may obtain confidential information through their use of the Marketplace, including business strategies, pricing structures, customer information, supplier information, sales reports, financial information, technical documentation, security procedures, and proprietary algorithms. Users agree not to disclose confidential information except with prior written authorization, where required by law, or where disclosure is necessary to exercise legal rights.</p>
+
+              <span class="legal-ref">Source: Terms &amp; Conditions § 22, § 82-84</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card: Liability -->
+        <div class="accordion-card">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <div class="left">
+              <div class="icon"><i class="fa-solid fa-scale-balanced"></i></div>
+              <span class="title">Limitation of Liability &amp; Indemnification</span>
+              <span class="badge legal">Legal</span>
+            </div>
+            <span class="toggle-icon"><i class="fa-solid fa-chevron-down"></i></span>
+          </div>
+          <div class="accordion-body">
+            <div class="content">
+              <p><strong>Limitation of Liability:</strong> To the maximum extent permitted by applicable law, Six Star Suppliers Ltd shall not be liable for indirect, incidental, consequential, punitive, or special damages, including loss of profits, goodwill, business opportunities, anticipated savings, reputation, business interruption, or data loss not caused by the Company's failure to implement reasonable security measures. The Company is not liable for loss arising from user negligence, delays caused by third parties, or force majeure events. Nothing in these Terms excludes or limits liability that cannot be excluded or limited under applicable law, including mandatory consumer protection rights.</p>
+
+              <p><strong>Indemnification:</strong> Users agree to defend, indemnify, and hold harmless Six Star Suppliers Ltd, its directors, officers, employees, agents, affiliates, contractors, and representatives from claims, losses, damages, liabilities, costs, and reasonable legal expenses arising out of or relating to breach of these Terms, violation of Marketplace policies, infringement of intellectual property rights, fraudulent or unlawful conduct, misuse of the Marketplace, breach of applicable laws by the user, or misrepresentation made by the user. This obligation survives termination of these Terms to the extent permitted by law.</p>
+
+              <p><strong>Insurance:</strong> The Company may require certain sellers, particularly those dealing in high-risk products or services, to maintain appropriate insurance coverage, including product liability insurance, professional indemnity insurance, public liability insurance, employer liability insurance (where applicable), and cyber liability insurance. Failure to maintain required insurance may result in restrictions or suspension of Marketplace activities.</p>
+
+              <span class="legal-ref">Source: Terms &amp; Conditions § 92-95</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card: Force Majeure -->
+        <div class="accordion-card">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <div class="left">
+              <div class="icon"><i class="fa-solid fa-cloud-bolt"></i></div>
+              <span class="title">Force Majeure &amp; Business Continuity</span>
+              <span class="badge legal">Legal</span>
+            </div>
+            <span class="toggle-icon"><i class="fa-solid fa-chevron-down"></i></span>
+          </div>
+          <div class="accordion-body">
+            <div class="content">
+              <p><strong>Force Majeure:</strong> Neither Six Star Suppliers Ltd nor any seller shall be liable for delays or failures in performance resulting from events beyond reasonable control, including but not limited to:</p>
+              <ul>
+                <li>Natural disasters, floods, earthquakes, and fires</li>
+                <li>Epidemics or pandemics</li>
+                <li>Acts of war, terrorist attacks, and civil unrest</li>
+                <li>Government actions, trade embargoes, and sanctions</li>
+                <li>Power outages, internet disruptions, and cybersecurity incidents</li>
+                <li>Labour disputes and transportation failures</li>
+              </ul>
+              <p>Affected parties shall use reasonable efforts to resume performance as soon as practicable after the event has ceased.</p>
+
+              <p><strong>Business continuity:</strong> The Company maintains reasonable business continuity and disaster recovery measures to support Marketplace operations. However, uninterrupted availability cannot be guaranteed due to circumstances beyond the Company's reasonable control. The Company may temporarily suspend Marketplace services to protect security, perform maintenance, restore systems, upgrade infrastructure, or address emergencies. Reasonable efforts will be made to minimize disruption.</p>
+
+              <p><strong>Changes to the Marketplace:</strong> The Company reserves the right to modify marketplace features, add or remove services, suspend functionality, introduce subscription services, change commission structures, introduce new verification requirements, improve security controls, update technical standards, perform scheduled maintenance, or discontinue products or services. Where practical, advance notice will be provided for material changes affecting users.</p>
+
+              <span class="legal-ref">Source: Terms &amp; Conditions § 8, § 73, § 112</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card: Amendments -->
+        <div class="accordion-card">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <div class="left">
+              <div class="icon"><i class="fa-solid fa-file-pen"></i></div>
+              <span class="title">Amendments &amp; Incorporated Policies</span>
+              <span class="badge legal">Legal</span>
+            </div>
+            <span class="toggle-icon"><i class="fa-solid fa-chevron-down"></i></span>
+          </div>
+          <div class="accordion-body">
+            <div class="content">
+              <p><strong>Amendments:</strong> The Company reserves the right to amend these Terms to reflect legal or regulatory changes, improve Marketplace operations, introduce new services, address security risks, or clarify existing provisions. Material changes will be communicated through appropriate channels before taking effect where required by law. Continued use of the Marketplace after the effective date of revised Terms constitutes acceptance of those revisions.</p>
+
+              <p><strong>Incorporated policies:</strong> The following policies form an integral part of these Terms and are incorporated by reference:</p>
+              <ul>
+                <li>Seller Agreement, Privacy Policy, Cookie Policy</li>
+                <li>Data Protection Agreement, Product Listing Policy</li>
+                <li>Prohibited Products Policy, Anti-Counterfeit Policy</li>
+                <li>Returns Policy, Refund Policy, Shipping Policy</li>
+                <li>Payments &amp; Commission Policy, Seller Performance Policy</li>
+                <li>Cosmetics Compliance Policy, Seller Code of Conduct</li>
+                <li>Intellectual Property Policy, Account Suspension &amp; Termination Policy</li>
+                <li>Seller Fees Schedule, Advertising &amp; Promotions Policy</li>
+                <li>Seller Verification (KYC) Policy, Community Guidelines</li>
+              </ul>
+              <p>Where a conflict exists between these Terms and a policy specifically governing a subject matter, the more specific policy shall prevail to the extent of the conflict.</p>
+
+              <p><strong>Entire agreement:</strong> These Terms, together with all Marketplace policies expressly incorporated by reference, constitute the entire agreement between Six Star Suppliers Ltd and the user regarding use of the Marketplace. These documents supersede all prior understandings, representations, or agreements relating to the same subject matter, except where a separate written agreement (such as a Seller Agreement) expressly provides otherwise.</p>
+
+              <span class="legal-ref">Source: Terms &amp; Conditions § 103, § 107, § 116</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card: Contact -->
+        <div class="accordion-card">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <div class="left">
+              <div class="icon"><i class="fa-solid fa-envelope"></i></div>
+              <span class="title">Contact Information &amp; Legal Notices</span>
+              <span class="badge legal">Legal</span>
+            </div>
+            <span class="toggle-icon"><i class="fa-solid fa-chevron-down"></i></span>
+          </div>
+          <div class="accordion-body">
+            <div class="content">
+              <p><strong>General Enquiries:</strong></p>
+              <ul>
+                <li>Customer Support Portal (available on the Marketplace)</li>
+                <li>Official Company Email Address</li>
+                <li>Official Telephone Number</li>
+                <li>Company Head Office</li>
+              </ul>
+
+              <p><strong>Legal &amp; Compliance:</strong> For legal notices, intellectual property complaints, regulatory matters, or compliance issues, users should submit written communications through the designated Legal and Compliance Department. The Company may publish updated contact details on the Marketplace from time to time. Users are responsible for referring to the latest published information.</p>
+
+              <p><strong>Copyright complaints:</strong> Rights holders who believe their intellectual property has been infringed may submit a written complaint containing:</p>
+              <ul>
+                <li>Identification of the copyrighted work</li>
+                <li>Identification of the allegedly infringing material</li>
+                <li>Evidence of ownership or authorization</li>
+                <li>Contact details</li>
+                <li>A statement made in good faith</li>
+                <li>A declaration that the information provided is accurate</li>
+              </ul>
+              <p>The Company may remove or disable access to allegedly infringing material while conducting an investigation. Repeated infringement may result in permanent account termination.</p>
+
+              <p><strong>Notices:</strong> Official notices may be provided through email, Marketplace notifications, registered mail, courier, publication on the Marketplace website, or other legally recognized electronic communication methods. Notices are deemed received immediately when delivered through the Marketplace account, upon successful transmission by email (unless a delivery failure notice is received), or upon confirmed delivery by courier or registered mail.</p>
+
+              <span class="legal-ref">Source: Terms &amp; Conditions § 80, § 102, § 108</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== CTA BANNER ===== -->
+      <div class="cta-banner">
+        <h2>Ready to get started?</h2>
+        <p>Join thousands of buyers and sellers who trust Six Star Suppliers for secure, transparent, and reliable marketplace transactions. Every transaction is protected by our Terms and Conditions.</p>
+        <div class="btn-group">
+          <a href="/register.html" class="btn btn-primary">
+            <i class="fa-solid fa-user-plus"></i> Create Your Account
+          </a>
+          <a href="/product.html" class="btn btn-outline">
+            <i class="fa-solid fa-shop"></i> Browse Products
+          </a>
+          
+        </div>
+      </div>
+
     </div>
   </div>
 </main>
@@ -113,29 +1084,26 @@
 <script src="js/cart.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/ui.js"></script>
+
 <script>
-  // Swaps the "Own a Shop" CTA based on the visitor's actual auth/role state,
-  // so the About page never tells a logged-in seller to "register" again.
-  document.addEventListener("DOMContentLoaded", () => {
-    const { loggedIn, user } = ssAuthState();
-    const primary = document.getElementById("shopCtaPrimary");
-    const secondary = document.getElementById("shopCtaSecondary");
-    if (!primary || !secondary) return;
+  // ============================================================
+  // ACCORDION TOGGLE
+  // ============================================================
+  function toggleAccordion(headerElement) {
+    const card = headerElement.closest('.accordion-card');
+    if (!card) return;
+    card.classList.toggle('open');
+  }
 
-    const isSeller = loggedIn && user && (user.role === "wholesaler" || user.role === "retailer");
+  // ============================================================
+  // SHOP CTA - AUTH STATE (if needed)
+  // ============================================================
+  document.addEventListener('DOMContentLoaded', function() {
+    // Optional auth state handling for CTA buttons
+    // The CTA buttons in the banner are generic and work for all users
 
-    if (isSeller) {
-      primary.href = "/seller-dashboard.html";
-      primary.innerHTML = `<i class="fa-solid fa-gauge"></i> Go to Seller Dashboard`;
-      secondary.href = "/seller-dashboard.html#shop";
-      secondary.innerHTML = `<i class="fa-solid fa-store"></i> Manage My Shop`;
-    } else if (loggedIn) {
-      // logged in as a buyer — invite them to add a seller account
-      primary.href = "/register.html";
-      primary.innerHTML = `<i class="fa-solid fa-store"></i> Become a Seller`;
-      secondary.style.display = "none";
-    }
-    // else: leave the logged-out defaults (Register / Seller Login) as-is
+    // Open first accordion by default (already has .open class on "What We Do")
+    // All good
   });
 </script>
 </body>

@@ -1,0 +1,200 @@
+/* ============================================================
+   ABOUT PAGE — additive stylesheet
+   Load this AFTER css/style.css in about.html. It only adds new
+   classes (about-*, role-*, feature-*, mv-*, cta-banner, reveal,
+   faq-filter, faq-caret) and touches nothing that already exists
+   in style.css, so it's safe to drop in without side effects.
+   Uses the same design tokens already defined in style.css
+   (--brand, --pop, --font-display, --radius-*, --shadow-*, etc).
+   ============================================================ */
+
+/* ---- Stat strip ---- */
+.about-stats{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:12px;
+  margin:-30px auto 6px;
+  position:relative;
+  z-index:2;
+}
+@media(min-width:700px){ .about-stats{ grid-template-columns:repeat(4,1fr); gap:16px; } }
+
+.stat-card{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--radius-lg);
+  padding:20px 14px;
+  text-align:center;
+  box-shadow:var(--shadow-card);
+}
+.stat-card__num{
+  font-family:var(--font-mono);
+  font-weight:800;
+  font-size:1.6rem;
+  color:var(--brand-dark);
+  line-height:1.1;
+}
+.stat-card__num::after{ content:attr(data-suffix); }
+.stat-card__label{
+  font-size:.74rem;
+  color:var(--ink-soft);
+  font-weight:700;
+  margin-top:5px;
+  letter-spacing:.02em;
+}
+
+/* ---- Mission / Vision / Promise cards ---- */
+.mv-grid{ display:grid; gap:14px; margin:18px 0 8px; }
+@media(min-width:700px){ .mv-grid{ grid-template-columns:repeat(3,1fr); } }
+.mv-card{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--radius-md);
+  padding:18px;
+  transition:.2s var(--ease-out);
+}
+.mv-card:hover{ transform:translateY(-3px); box-shadow:var(--shadow-soft); border-color:var(--brand); }
+.mv-card__ico{
+  width:38px; height:38px; border-radius:10px;
+  background:var(--paper-dim); color:var(--brand-dark);
+  display:flex; align-items:center; justify-content:center;
+  margin-bottom:10px; font-size:15px;
+}
+.mv-card h3{ font-family:var(--font-display); font-size:1rem; font-weight:600; color:var(--ink); margin-bottom:6px; }
+.mv-card p{ font-size:.85rem; color:var(--ink-soft); line-height:1.6; margin:0; }
+
+/* ---- Buyer / Seller role tabs ---- */
+.role-tabs{
+  display:inline-flex;
+  gap:6px;
+  background:var(--paper-dim);
+  padding:5px;
+  border-radius:999px;
+  margin:16px 0 22px;
+  flex-wrap:wrap;
+}
+.role-tab{
+  border:none;
+  background:transparent;
+  padding:10px 20px;
+  border-radius:999px;
+  font-weight:700;
+  font-size:.85rem;
+  color:var(--ink-soft);
+  cursor:pointer;
+  transition:.2s var(--ease-out);
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+}
+.role-tab:hover{ color:var(--brand-dark); }
+.role-tab.active{ background:var(--grad-brand-deep); color:#fff; box-shadow:var(--shadow-pop); }
+.role-tab[data-role-tab="seller"].active{ background:var(--grad-pop); color:#fff; box-shadow:var(--shadow-glow-pop); }
+
+.role-panel{ display:none; }
+.role-panel.active{ display:block; animation:ssAboutFadeUp .35s var(--ease-out); }
+@keyframes ssAboutFadeUp{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:translateY(0); } }
+
+.role-tab-hint{
+  font-size:.78rem;
+  color:var(--ink-faint);
+  margin:-14px 0 18px;
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.role-tab-hint i{ color:var(--brand); }
+
+/* ---- Feature grids (buyer protections / seller benefits) ---- */
+.feature-grid{ display:grid; gap:14px; margin:16px 0 8px; }
+@media(min-width:640px){ .feature-grid{ grid-template-columns:repeat(2,1fr); } }
+@media(min-width:960px){ .feature-grid{ grid-template-columns:repeat(3,1fr); } }
+
+.feature-card{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--radius-md);
+  padding:18px;
+  transition:.2s var(--ease-out);
+}
+.feature-card:hover{ transform:translateY(-3px); border-color:var(--brand); box-shadow:var(--shadow-soft); }
+.feature-card--seller:hover{ border-color:var(--pop); }
+
+.feature-card__ico{
+  width:38px; height:38px; border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  margin-bottom:10px; font-size:15px; color:#fff;
+  background:var(--grad-brand-deep);
+}
+.feature-card--seller .feature-card__ico{ background:var(--grad-pop); }
+
+.feature-card h3{ font-size:.95rem; font-family:var(--font-display); font-weight:600; color:var(--ink); margin-bottom:5px; }
+.feature-card p{ font-size:.82rem; color:var(--ink-soft); line-height:1.6; margin:0; }
+
+/* ---- FAQ: audience filter + animated caret ---- */
+.faq-filter{ display:flex; gap:8px; margin:16px 0 12px; flex-wrap:wrap; }
+.faq-filter button{
+  padding:7px 15px;
+  border-radius:999px;
+  border:1px solid var(--line);
+  background:var(--surface);
+  font-size:.78rem;
+  font-weight:700;
+  color:var(--ink-soft);
+  cursor:pointer;
+  transition:.2s ease;
+}
+.faq-filter button:hover{ border-color:var(--brand); color:var(--brand-dark); }
+.faq-filter button.active{ background:var(--ink); color:#fff; border-color:var(--ink); }
+
+.faq-item[hidden]{ display:none; }
+.faq-item summary{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  list-style:none;
+}
+.faq-item summary::-webkit-details-marker{ display:none; }
+.faq-item summary .faq-summary-text{ display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+.faq-caret{ transition:transform .25s var(--ease-out); color:var(--ink-faint); flex-shrink:0; font-size:.75rem; }
+.faq-item[open] .faq-caret{ transform:rotate(180deg); color:var(--brand); }
+
+.faq-audience-tag{
+  display:inline-block;
+  font-size:9.5px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.4px;
+  padding:2px 8px;
+  border-radius:999px;
+  background:var(--paper-dim);
+  color:var(--brand-dark);
+}
+.faq-audience-tag--seller{ background:var(--wholesale-bg, #F5F0FF); color:var(--pop); }
+
+/* ---- Generic scroll-reveal (IntersectionObserver driven) ---- */
+.reveal{ opacity:0; transform:translateY(16px); transition:opacity .5s var(--ease-out), transform .5s var(--ease-out); }
+.reveal.is-visible{ opacity:1; transform:translateY(0); }
+
+/* ---- Closing CTA banner ---- */
+.cta-banner{
+  margin:46px 0 10px;
+  padding:34px 26px;
+  border-radius:var(--radius-lg);
+  background:linear-gradient(135deg,var(--brand-dark),var(--brand) 60%,var(--sun));
+  color:#fff;
+  text-align:center;
+}
+.cta-banner h2{ font-family:var(--font-display); font-size:1.4rem; color:#fff; margin:0 0 8px; }
+.cta-banner p{ color:rgba(255,255,255,.85); margin:0 0 18px; max-width:52ch; margin-inline:auto; }
+.cta-banner .shop-cta{ justify-content:center; margin:0; }
+.cta-banner .btn-outline{ border-color:rgba(255,255,255,.7); color:#fff; }
+.cta-banner .btn-outline:hover{ background:#fff; color:var(--brand-dark); border-color:#fff; }
+
+@media(max-width:599px){
+  .about-stats{ margin-top:-20px; }
+  .stat-card{ padding:16px 10px; }
+  .stat-card__num{ font-size:1.3rem; }
+  .cta-banner{ padding:26px 18px; }
+}
