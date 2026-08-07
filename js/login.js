@@ -1,11 +1,16 @@
 /* ============================================================
    SIX STAR SUPPLIERS — Login
    Cookie-based authentication.
-   Two-step for sellers whose verification is APPROVED: the backend
-   responds with { otpRequired: true, otpToken, maskedEmail } instead
-   of a session, and this page swaps in a 6-digit OTP stage before
-   completing login. Everyone else (buyers, admins, unverified/pending
-   sellers, Google sign-ins) logs in exactly as before, in one step.
+
+   Three possible outcomes of POST /auth/login, checked in this order
+   (matching the backend's own priority):
+     1. emailVerificationRequired -> account exists & password is right,
+        but the email was never OTP-verified (new buyer who hasn't
+        finished onboarding, OR a pre-existing account from before this
+        feature shipped). Sent to verify-email.html before anything else.
+     2. otpRequired                -> seller whose verification is
+        APPROVED gets a 6-digit login 2FA stage, same as before.
+     3. normal success             -> straight through.
    ============================================================ */
 
 (() => {
@@ -98,29 +103,32 @@
     resendCooldownTimer = setInterval(tick, 250);
   }
 
-  function redirectForUser(user) {
-    const redirect = new URLSearchParams(location.search).get("redirect");
-    let target;
-
-    if (redirect) {
-      target = redirect;
-    } else {
-      switch (user.role) {
-        case "wholesaler":
-        case "retailer":
-          target = "/six-star-suppliers/seller-dashboard.html";
-          break;
-        case "buyer":
-          target = "/index.html";
-          break;
-        case "admin":
-          target = "/site/admin-dashboard.html";
-          break;
-        default:
-          target = "/index.html";
-      }
+  // Single source of truth for "where does this role land after a fully
+  // completed login" — used for the normal-success redirect AND to build
+  // the ?next= param when we have to detour through verify-email.html
+  // first. Normalized to plain relative filenames to match every other
+  // page in the app (register.html, seller-dashboard.js, etc.) — see the
+  // note above if /six-star-suppliers/ and /site/ were actually intentional.
+  function destinationForUser(user) {
+    switch (user.role) {
+      case "wholesaler":
+      case "retailer":
+        return "seller-dashboard.html";
+      case "admin":
+        return "admin.html";
+      case "buyer":
+      default:
+        return "index.html";
     }
-    location.href = target;
+  }
+
+  function targetForUser(user) {
+    const redirect = new URLSearchParams(location.search).get("redirect");
+    return redirect || destinationForUser(user);
+  }
+
+  function redirectForUser(user) {
+    location.href = targetForUser(user);
   }
 
   function completeLogin(user) {
@@ -130,6 +138,17 @@
     SS_AUTH.set(user);
     ssToast("Logged in successfully", "fa-circle-check");
     redirectForUser(user);
+  }
+
+  // Password was correct but the account's email was never OTP-verified —
+  // could be a brand-new buyer mid-onboarding, or an account that predates
+  // this feature. The backend already issued a session cookie for this
+  // case (see authController.loginUser), so we just cache the user and
+  // detour through verify-email.html before letting them any further in.
+  function goToVerifyEmail(user) {
+    SS_AUTH.set(user);
+    const next = encodeURIComponent(targetForUser(user));
+    location.href = `verify-email.html?next=${next}`;
   }
 
   // ---------- Stage 1: credentials ----------
@@ -151,7 +170,13 @@
 
       console.log("Login response:", res);
 
-      // ---- Sellers with an approved verification get stopped here for OTP ----
+      // ---- Unverified email (any role) gets stopped here first ----
+      if (res.emailVerificationRequired) {
+        goToVerifyEmail(res.user);
+        return;
+      }
+
+      // ---- Sellers with an approved verification get stopped here for 2FA OTP ----
       if (res.otpRequired) {
         btn.disabled = false;
         btn.textContent = "Log in";

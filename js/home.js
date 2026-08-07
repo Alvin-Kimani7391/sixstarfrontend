@@ -1,4 +1,27 @@
 document.addEventListener("DOMContentLoaded", async () => {
+  // ---------------------------------------------------------------
+  // Email-verification guard.
+  // In the normal flow nobody reaches index.html unverified —
+  // register.html and login.js both detour through verify-email.html
+  // first. This is the safety net for the edge case: an existing
+  // session cookie from before that flow shipped, a bookmark, or a
+  // back-button bypass landing someone here with a stale-but-valid
+  // session and isVerified still false.
+  //
+  // Reads the locally cached SS_AUTH user only — no network round
+  // trip — so guests (no session at all) pay zero extra cost and
+  // never hit this branch. Requires SS_AUTH to expose a getter; if
+  // your auth.js doesn't have one under this name, ask me to wire it
+  // to whatever it's actually called.
+  // ---------------------------------------------------------------
+  if (window.SS_AUTH && typeof SS_AUTH.get === "function") {
+    const cachedUser = SS_AUTH.get();
+    if (cachedUser && cachedUser.isVerified === false) {
+      location.href = `verify-email.html?next=${encodeURIComponent("index.html")}`;
+      return; // stop here — don't fetch or render anything, we're navigating away
+    }
+  }
+
   ssRenderSubcategoryGrid("categoryGrid", 9);
   ssRenderMegaMenu("megaMenu");
   ssRenderAdSlot("heroAd", "homepage_hero", { interval: 5000, aspect: "21/9" });

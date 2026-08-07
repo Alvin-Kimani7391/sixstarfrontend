@@ -57,7 +57,8 @@ const SS_API = (() => {
     if (response.status === 401) {
       if (
         !window.location.pathname.includes("login.html") &&
-        !window.location.pathname.includes("register.html")
+        !window.location.pathname.includes("register.html") &&
+        !window.location.pathname.includes("verify-email.html")
       ) {
         SS_AUTH.clear();
         const redirect = encodeURIComponent(window.location.pathname + window.location.search);
@@ -118,6 +119,19 @@ const SS_API = (() => {
     },
     getMe() {
       return request("/auth/me", { method: "GET" });
+    },
+
+    // Email OTP verification — buyers + sellers, any locally-registered
+    // account. Fired right after registration, and again at login if the
+    // account is still unverified (see emailVerificationRequired in
+    // login()'s response — handled by login.js).
+    // Returns { success, email, expiresInSeconds } or { success, alreadyVerified: true }.
+    sendEmailOtp() {
+      return request("/auth/email/send-code", { method: "POST", requiresAuth: true });
+    },
+    // Returns { success, verified, email }.
+    verifyEmailOtp(code) {
+      return request("/auth/email/verify-code", { method: "POST", body: { code }, requiresAuth: true });
     },
 
 

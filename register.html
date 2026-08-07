@@ -189,8 +189,18 @@
       const res = await SS_API.register(payload);
       const user = res.user || res;
       SS_AUTH.set(user); // keeps businessName/shopName/location etc. for the dashboard
-      ssToast("Account created", "fa-circle-check");
-      location.href = role === "buyer" ? "index.html" : "seller-dashboard.html";
+
+      // Every new account — buyer or seller — starts unverified, and the
+      // backend already fired the first OTP code in the background right
+      // after creating it (see authController.registerUser). Route
+      // everyone through the code-entry screen before letting them any
+      // further in; verify-email.html forwards on to the right place
+      // (index.html for buyers, seller-dashboard.html for sellers, which
+      // itself redirects into seller-verification.html if not yet approved)
+      // once the code is confirmed.
+      const dest = role === "buyer" ? "index.html" : "seller-dashboard.html";
+      ssToast("Account created — let's verify your email", "fa-circle-check");
+      location.href = `verify-email.html?next=${encodeURIComponent(dest)}`;
     } catch (err) {
       errBox.textContent = err.message || "Couldn't create your account. Please try again.";
       errBox.classList.add("show");
