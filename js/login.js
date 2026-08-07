@@ -113,12 +113,12 @@
     switch (user.role) {
       case "wholesaler":
       case "retailer":
-        return "seller-dashboard.html";
+        return "/six-star-suppliers/seller-dashboard.html";
       case "admin":
-        return "admin.html";
+        return "/site/admin.html";
       case "buyer":
       default:
-        return "index.html";
+        return "/index.html";
     }
   }
 
