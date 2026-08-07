@@ -181,9 +181,9 @@
   }
 
   function roleDefaultPage(role) {
-    if (role === "buyer") return "index.html";
-    if (role === "admin") return "admin.html";
-    return "seller-dashboard.html"; // retailer / wholesaler
+    if (role === "buyer") return "/index.html";
+    if (role === "admin") return "/site/admin.html";
+    return "/six-star-suppliers/seller-dashboard.html"; // retailer / wholesaler
   }
 
   const params = new URLSearchParams(location.search);
