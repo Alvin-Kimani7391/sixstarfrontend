@@ -5,7 +5,7 @@
   const loadMoreLabel = document.getElementById("loadMoreLabel");
   const loadMoreCount = document.getElementById("loadMoreCount");
   const resultCount = document.getElementById("resultCount");
-  const catSelect = document.getElementById("f-category");
+  const catCascadeEl = document.getElementById("catCascade");
   const minInput = document.getElementById("f-min");
   const maxInput = document.getElementById("f-max");
   const hotChip = document.getElementById("f-hotdeals");
@@ -16,7 +16,7 @@
   function readParams() {
     const p = new URLSearchParams(location.search);
     return {
-      category: p.get("category") || "", // category _id, not a slug
+      category: p.get("category") || "", // category _id, not a slug — always the deepest node picked
       search: p.get("search") || "",
       minPrice: p.get("minPrice") || "",
       maxPrice: p.get("maxPrice") || "",
@@ -26,7 +26,11 @@
   }
 
   let state = readParams();
-  let allCategories = []; // cached so we can look up the display name for the active category
+
+  // Full category TREE (parent -> children -> grandchildren...), used to
+  // drive the cascading Category/Sub-category/Sub-sub-category selects in
+  // the sidebar and to resolve the category banner's display name + path.
+  let categoryTree = [];
 
   // Pagination/load-more bookkeeping — separate from `state` (which only
   // holds filters) so switching filters can freely reset it.
@@ -36,12 +40,12 @@
   let isLoadingMore = false;
 
   function syncFormToState() {
-    catSelect.value = state.category || "";
     minInput.value = state.minPrice || "";
     maxInput.value = state.maxPrice || "";
     sortSelect.value = state.sort || "";
     hotChip.dataset.active = state.hotDeals ? "true" : "false";
     hotChip.classList.toggle("active", state.hotDeals);
+    renderCascade();
   }
 
   function pushURL() {
@@ -52,32 +56,51 @@
     history.pushState({}, "", "product.html" + (p.toString() ? "?" + p.toString() : ""));
   }
 
-  function categoryId(c) {
-    // Category documents from the API come back as _id (Mongo) or occasionally id
-    // depending on toJSON transforms — support both.
-    return c._id || c.id;
+  // Renders the cascading category selects (main -> sub -> sub-sub, however
+  // deep a given branch actually goes) from the cached tree. Safe to call
+  // any time — it's a no-op until the tree has loaded.
+  function renderCascade() {
+    if (!catCascadeEl || !categoryTree.length) return;
+    ssRenderCategoryCascade(catCascadeEl, categoryTree, {
+      selectedId: state.category || "",
+      onChange: (id) => {
+        // A cascade pick is a complete, intentional choice — filter
+        // immediately rather than waiting on "Apply filters" (that button
+        // now only governs price range).
+        state.category = id;
+        pushURL();
+        load();
+      }
+    });
   }
 
   async function populateCategories() {
-    const cats = await ssLoadCategories();
-    allCategories = cats;
-    catSelect.innerHTML = `<option value="">All categories</option>` +
-      cats.map(c => `<option value="${categoryId(c)}">${c.name}</option>`).join("");
-    catSelect.value = state.category || "";
+    try {
+      const data = await SS_API.getCategoryTree();
+      categoryTree = Array.isArray(data) ? data : (data.categories || data.tree || []);
+    } catch (_) {
+      categoryTree = [];
+    }
+    renderCascade();
     renderCategoryBanner();
   }
 
   // Shows a small heading + "clear filter" link when arriving with a category
   // pre-selected (e.g. from the homepage mega menu), so it doesn't just look
-  // like a plain, unfiltered product grid.
+  // like a plain, unfiltered product grid. Shows the full drill-down path
+  // (e.g. "Electronics > Phones & Tablets > Smartphones") when the tree has
+  // loaded, so the user can see exactly how specific the current filter is.
   function renderCategoryBanner() {
     let banner = document.getElementById("categoryBanner");
     if (!state.category) {
       if (banner) banner.remove();
       return;
     }
-    const match = allCategories.find(c => categoryId(c) === state.category);
-    const label = match ? match.name : "Selected category";
+
+    const path = ssFindCategoryPath(categoryTree, state.category);
+    const label = path && path.length
+      ? path.map(n => n.name).join(" <i class=\"fa-solid fa-chevron-right\"></i> ")
+      : "Selected category";
 
     if (!banner) {
       banner = document.createElement("div");
@@ -194,8 +217,10 @@
 
   loadMoreBtn.addEventListener("click", loadMore);
 
+  // "Apply filters" now only governs price range + sort — category
+  // filtering happens immediately as the cascade is used (see
+  // renderCascade()'s onChange above).
   document.getElementById("f-apply").addEventListener("click", () => {
-    state.category = catSelect.value;
     state.minPrice = minInput.value;
     state.maxPrice = maxInput.value;
     state.sort = sortSelect.value;

@@ -42,7 +42,8 @@ function ssToast(message, icon = "fa-circle-check") {
 }
 
 // Small reusable HTML-escape helper (kept top-level so both the search
-// suggestions box and the drawer user card can use it safely).
+// suggestions box, the drawer user card, and the drawer category
+// accordion can use it safely).
 function ssEscapeHtml(str = "") {
   return String(str)
     .replace(/&/g, "&amp;")
@@ -312,6 +313,22 @@ function ssRenderHeader(active = "") {
     <div class="drawer-links">
       ${link("/index.html", "Home", "fa-house")}
       ${link("/product.html", "All Products", "fa-bag-shopping")}
+
+      <!-- ---- Expandable "Shop by Category" accordion ----
+           Collapsed by default. First tap fetches the real category
+           tree (SS_API.getCategoryTree()) and lazily builds the
+           accordion — see ssRenderDrawerCategories() below. Each
+           leaf/category name is a direct link into product.html
+           pre-filtered by that category id; the chevrons only expand
+           the next level, they never navigate. -->
+      <button type="button" class="drawer-cat-toggle" id="drawerCatToggle">
+        <span><i class="fa-solid fa-layer-group"></i> Shop by Category</span>
+        <i class="fa-solid fa-chevron-down drawer-cat-toggle__chevron"></i>
+      </button>
+      <div class="drawer-cat-list" id="drawerCatList">
+        <div class="drawer-cat-list__inner"></div>
+      </div>
+
       ${link("/shop.html", "Shops", "fa-solid fa-shop")}
       ${link("/wholesale.html", "Wholesale", "fa-boxes-stacked")}
       ${link("/about.html", "About", "fa-circle-info")}
@@ -352,6 +369,24 @@ function ssRenderHeader(active = "") {
       e.preventDefault();
       close();
       ssLogout();
+    });
+  }
+
+  /* ---------- wire up the category accordion toggle ----------
+     Lazy-loads the tree only the first time it's opened, so the
+     drawer never fires an extra API call for shoppers who don't
+     touch this section. */
+  const catToggleBtn = document.getElementById("drawerCatToggle");
+  const catListPanel = document.getElementById("drawerCatList");
+  if (catToggleBtn && catListPanel) {
+    catToggleBtn.addEventListener("click", () => {
+      const opening = !catListPanel.classList.contains("open");
+      catListPanel.classList.toggle("open", opening);
+      catToggleBtn.classList.toggle("open", opening);
+      if (opening && !catListPanel.dataset.loaded) {
+        catListPanel.dataset.loaded = "1";
+        ssRenderDrawerCategories("drawerCatList");
+      }
     });
   }
 
@@ -570,6 +605,111 @@ async function ssLoadCategories() {
   return window.SS_CONFIG.FALLBACK_CATEGORIES;
 }
 
+/* ---------- cascading category tree (used by product.html's sidebar filter) ----------
+   Two building blocks:
+
+   1. ssFindCategoryPath(tree, id) — walks the full category tree and
+      returns the ancestor chain (root ... target, inclusive) for a given
+      category id, or null if it isn't in the tree. Used to pre-select the
+      cascade correctly when a user lands with a category already in the
+      URL (mega-menu click, drawer accordion link, category banner,
+      browser back/forward).
+
+   2. ssRenderCategoryCascade(container, tree, opts) — renders ONE <select>
+      per tree depth actually in use: main category, then (only if the
+      chosen one has children) its sub-categories, then (only if THAT has
+      children) its sub-sub-categories. Nothing beyond the deepest node
+      the user has drilled into is ever shown, and it adapts automatically
+      to however many levels a given branch actually has — 1, 2, 3, or
+      more — with zero hardcoded depth.
+
+   These are separate from ssRenderDrawerCategories() below (the mobile
+   nav's tap-to-expand accordion) — that one is for browsing/navigating
+   into a category from the drawer, this one is for filtering the already-
+   open product.html listing without leaving the page.
+------------------------------------------------- */
+function ssFindCategoryPath(tree, id, trail = []) {
+  if (!id) return null;
+  for (const node of (tree || [])) {
+    const nodeId = node._id || node.id;
+    const nextTrail = trail.concat([node]);
+    if (nodeId === id) return nextTrail;
+    if (node.children && node.children.length) {
+      const found = ssFindCategoryPath(node.children, id, nextTrail);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+function ssRenderCategoryCascade(container, tree, opts = {}) {
+  if (!container) return;
+  const { selectedId = "", onChange = () => {} } = opts;
+
+  const catId = (c) => c._id || c.id;
+
+  // Figure out which node is selected at each depth, so re-renders
+  // (e.g. after a URL/back-nav change) restore the full drill-down path.
+  let path = selectedId ? (ssFindCategoryPath(tree, selectedId) || []) : [];
+
+  function levelLabel(depth, parentName) {
+    if (depth === 0) return "All categories";
+    return `All in ${parentName}`;
+  }
+
+  function render() {
+    container.innerHTML = "";
+    let levelNodes = tree || [];
+    let depth = 0;
+    let parentName = "";
+
+    while (levelNodes && levelNodes.length) {
+      const selectedNode = path[depth] || null;
+
+      const select = document.createElement("select");
+      select.className = "cat-cascade__select";
+      select.dataset.depth = String(depth);
+
+      const options = [`<option value="">${levelLabel(depth, parentName)}</option>`]
+        .concat(levelNodes.map(n => {
+          const id = catId(n);
+          const isSelected = selectedNode && catId(selectedNode) === id;
+          return `<option value="${id}" ${isSelected ? "selected" : ""}>${n.name}</option>`;
+        }));
+      select.innerHTML = options.join("");
+
+      select.addEventListener("change", () => {
+        const val = select.value;
+        // Keep the path up to (not including) this depth, then extend it
+        // with the newly chosen node — anything deeper is now stale and
+        // gets rebuilt by render().
+        const truncated = path.slice(0, depth);
+        if (val) {
+          const chosen = levelNodes.find(n => catId(n) === val);
+          if (chosen) truncated.push(chosen);
+        }
+        path = truncated;
+        render();
+        const leaf = path[path.length - 1];
+        onChange(leaf ? catId(leaf) : "");
+      });
+
+      container.appendChild(select);
+
+      if (!selectedNode) break; // nothing chosen at this depth yet — stop, don't guess further
+      parentName = selectedNode.name;
+      levelNodes = selectedNode.children || [];
+      depth++;
+    }
+
+    if (!container.children.length) {
+      container.innerHTML = `<p class="cat-cascade__empty">No categories available</p>`;
+    }
+  }
+
+  render();
+}
+
 // Renders the "Shop by category" tile grid in a fresh random order
 // every time the page loads. Pass `limit` to cap how many show.
 // Each tile now sends the shopper straight into product.html pre-filtered
@@ -667,6 +807,118 @@ async function ssRenderMegaMenu(targetId) {
   items.forEach(item => {
     item.addEventListener("mouseenter", () => activate(item.dataset.index));
     item.addEventListener("focus", () => activate(item.dataset.index));
+  });
+}
+
+/* ============================================================
+   DRAWER CATEGORY ACCORDION — mobile-menu only.
+   Mirrors the same 3-level category tree used by ssRenderMegaMenu
+   (Parent -> Category -> Sub-category), but rendered as a nested,
+   tap-to-expand accordion instead of a hover flyout, since hover
+   doesn't exist on touch devices.
+
+   Behaviour:
+   - Top-level categories: name is a direct link into product.html
+     (?category=id); the chevron button next to it only expands/
+     collapses that category's sub-categories — it never navigates.
+   - Sub-categories: same pattern one level deeper, expanding to the
+     leaf sub-categories.
+   - Leaf items are plain links (nothing left to expand).
+   - Falls back to the flat category list (ssLoadCategories) if the
+     tree endpoint has nothing yet, so the accordion is never empty.
+   ============================================================ */
+async function ssRenderDrawerCategories(targetId) {
+  const wrap = document.getElementById(targetId);
+  if (!wrap) return;
+  const inner = wrap.querySelector(".drawer-cat-list__inner");
+  if (!inner) return;
+
+  // Skeleton while the tree loads
+  inner.innerHTML = Array.from({ length: 5 })
+    .map(() => `<div class="drawer-cat-skel"></div>`)
+    .join("");
+
+  let tree = [];
+  try {
+    const data = await SS_API.getCategoryTree();
+    tree = Array.isArray(data) ? data : (data.categories || data.tree || []);
+  } catch (_) {
+    tree = [];
+  }
+
+  // Fallback: flat category list with no nested levels, so the
+  // accordion still shows *something* browsable.
+  if (!tree.length) {
+    try {
+      const flat = await ssLoadCategories();
+      tree = flat.map(c => ({ _id: c._id || c.id || c.slug, name: c.name, children: [] }));
+    } catch (_) {
+      tree = [];
+    }
+  }
+
+  if (!tree.length) {
+    inner.innerHTML = `<div class="drawer-cat-empty">No categories available right now</div>`;
+    return;
+  }
+
+  const catLink = (cat) => `/product.html?category=${encodeURIComponent(cat._id || cat.id)}`;
+
+  inner.innerHTML = tree.map((cat, i) => {
+    const kids = cat.children || [];
+    const hasKids = kids.length > 0;
+    const panelId = `drawer-cat-${i}`;
+
+    return `
+      <div class="drawer-cat-item">
+        <div class="drawer-cat-item__row">
+          <a href="${catLink(cat)}" class="drawer-cat-item__link">${ssEscapeHtml(cat.name)}</a>
+          ${hasKids ? `
+            <button type="button" class="drawer-cat-item__expand" data-target="${panelId}" aria-label="Expand ${ssEscapeHtml(cat.name)}" aria-expanded="false">
+              <i class="fa-solid fa-chevron-down"></i>
+            </button>` : ""}
+        </div>
+        ${hasKids ? `
+          <div class="drawer-cat-item__sub" id="${panelId}">
+            <div class="drawer-cat-item__sub-inner">
+              ${kids.map((sub, j) => {
+                const leaves = sub.children || [];
+                const hasLeaves = leaves.length > 0;
+                const leafPanelId = `${panelId}-${j}`;
+                return `
+                  <div class="drawer-subcat-item">
+                    <div class="drawer-subcat-item__row">
+                      <a href="${catLink(sub)}" class="drawer-subcat-item__link">${ssEscapeHtml(sub.name)}</a>
+                      ${hasLeaves ? `
+                        <button type="button" class="drawer-subcat-item__expand" data-target="${leafPanelId}" aria-label="Expand ${ssEscapeHtml(sub.name)}" aria-expanded="false">
+                          <i class="fa-solid fa-chevron-down"></i>
+                        </button>` : ""}
+                    </div>
+                    ${hasLeaves ? `
+                      <div class="drawer-subcat-item__leaf" id="${leafPanelId}">
+                        <div class="drawer-subcat-item__leaf-inner">
+                          ${leaves.map(leaf => `<a href="${catLink(leaf)}" class="drawer-leaf-link">${ssEscapeHtml(leaf.name)}</a>`).join("")}
+                        </div>
+                      </div>` : ""}
+                  </div>`;
+              }).join("")}
+            </div>
+          </div>` : ""}
+      </div>`;
+  }).join("");
+
+  // Event delegation for every expand chevron (both nesting levels)
+  inner.querySelectorAll(".drawer-cat-item__expand, .drawer-subcat-item__expand").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const panel = document.getElementById(btn.dataset.target);
+      if (!panel) return;
+      const opening = !panel.classList.contains("open");
+      panel.classList.toggle("open", opening);
+      btn.classList.toggle("rotated", opening);
+      btn.setAttribute("aria-expanded", opening ? "true" : "false");
+    });
   });
 }
 

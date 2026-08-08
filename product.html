@@ -21,10 +21,17 @@
       <h3>Filters</h3>
 
       <div class="filter-group">
-        <label for="f-category">Category</label>
-        <select id="f-category">
-          <option value="">All categories</option>
-        </select>
+        <label>Category</label>
+        <!-- Cascading category selects are injected dynamically here by
+             ssRenderCategoryCascade() in ui.js. It builds one <select> per
+             tree level (main category -> sub-category -> sub-sub-category),
+             only ever showing the next level once its parent has been
+             chosen, and only if that parent actually HAS children. -->
+        <div class="cat-cascade" id="catCascade">
+          <select class="cat-cascade__select cat-cascade__select--loading" disabled>
+            <option>Loading categories…</option>
+          </select>
+        </div>
       </div>
 
       <div class="filter-group">
