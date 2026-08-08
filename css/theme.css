@@ -1702,3 +1702,101 @@ img{ max-width:100%; display:block; }
 
 .cat-cascade__select--loading { opacity: .6; cursor: wait; }
 .cat-cascade__empty { font-size: 13px; color: var(--muted, #777); margin: 0; }
+
+
+
+
+
+
+/* ============================================================
+   FLASH SALE — live daily event rail (2:00 PM - midnight).
+   Deliberately its own orange->gold gradient so it reads as the
+   "real" urgency rail, distinct from the red Hot Deals bar and the
+   purple Top Selling bar.
+   ============================================================ */
+
+.rail--flash{ box-shadow:0 10px 30px rgba(255,138,0,.18); }
+
+.sec-head--flash{
+  background:linear-gradient(90deg,#FF5A1F,#FF8A00 55%,#FFC93C);
+  color:#1E1400;
+  border-bottom:none;
+}
+.sec-head--flash h2{ color:#1E1400; }
+.sec-head--flash h2 i{ color:#fff; text-shadow:0 0 8px rgba(255,255,255,.55); }
+.sec-head--flash .see-all{
+  color:#1E1400;
+  background:rgba(255,255,255,.35);
+  border:1px solid rgba(30,20,0,.15);
+  padding:6px 13px;
+  border-radius:20px;
+}
+.sec-head--flash .see-all:hover{ background:#1E1400; color:#FFC93C; }
+
+/* countdown badge, "starts in" state (no live sale right now) */
+.deal-timer--pending{
+  background:rgba(30,20,0,.12);
+  color:#1E1400;
+}
+
+/* ---- Flash Sale card add-ons (stock progress bar, urgency labels) ---- */
+.fs-card{ border-radius:var(--radius-md); }
+.fs-card__discount{ background:linear-gradient(135deg,var(--brand),var(--brand-dark)); }
+.fs-card__flash-badge{ background:#1E1400; color:var(--sun); }
+.fs-card__price{ color:var(--brand-dark); }
+
+.fs-card__stockbar{
+  height:6px;
+  border-radius:6px;
+  background:var(--line-soft);
+  overflow:hidden;
+  margin-top:7px;
+}
+.fs-card__stockbar-fill{
+  height:100%;
+  background:linear-gradient(90deg,var(--brand),var(--sun));
+  border-radius:6px;
+  transition:width .3s ease;
+}
+.fs-card__stocklabel{
+  font-size:10.5px;
+  font-weight:700;
+  color:var(--ink-faint);
+  margin-top:5px;
+}
+.fs-card__lowstock-label{
+  color:var(--danger);
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+}
+.fs-card__lowstock-label i{ font-size:9px; }
+.fs-card__soldout-label{ color:var(--ink-faint); }
+
+@media(max-width:599px){
+  .sec-head--flash{ padding:13px 14px; }
+}
+
+
+
+
+/* ---- locked (not-yet-started) Flash Sale card ---- */
+.fs-card--locked .p-card__img img{ filter:grayscale(.15) brightness(.92); }
+.fs-card--locked .p-card__name,
+.fs-card--locked .fs-card__price,
+.fs-card--locked .p-card__old{ opacity:.65; }
+.fs-card__lock-overlay{
+  background:rgba(30,20,0,.5);
+  color:#fff;
+  font-weight:800;
+  display:flex;
+  align-items:center;
+  gap:7px;
+}
+.fs-card__lock-overlay i{ color:var(--sun); }
+.fs-card__pending-label{
+  color:var(--ink-faint);
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+}

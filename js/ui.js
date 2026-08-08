@@ -1064,6 +1064,207 @@ function ssRenderCountdown(targetId) {
 
 
 
+/* ============================================================
+   FLASH SALE — real backend-driven rail.
+   Talks to GET /api/flash-sales/active (SS_API.getActiveFlashSales),
+   which already re-derives "is this live right now?" server-side on
+   every call. This function:
+     - shows live products with a real "ends in" countdown to the
+       shared midnight endAt when something is active
+     - shows an empty state with a real "starts in" countdown to the
+       next 2:00 PM when nothing is
+     - re-fetches itself automatically the instant either countdown
+       hits zero, so the rail flips live/ends without a page reload
+   ============================================================ */
+
+window.__ssFlashSaleCache = window.__ssFlashSaleCache || {};
+window.__ssFlashSaleCountdownTimer = window.__ssFlashSaleCountdownTimer || null;
+
+// Formats a millisecond duration as "HHh : MMm : SSs", floored at 0.
+function ssFmtCountdown(diffMs) {
+  const totalSec = Math.max(0, Math.floor(diffMs / 1000));
+  const h = String(Math.floor(totalSec / 3600)).padStart(2, "0");
+  const m = String(Math.floor((totalSec % 3600) / 60)).padStart(2, "0");
+  const s = String(totalSec % 60).padStart(2, "0");
+  return `${h}h : ${m}m : ${s}s`;
+}
+
+// Next occurrence of 2:00 PM local time (today if we haven't hit it yet,
+// otherwise tomorrow). Mirrors FLASH_SALE_START_HOUR = 14 on the backend.
+function ssNextFlashSaleStart() {
+  const now = new Date();
+  const start = new Date(now);
+  start.setHours(14, 0, 0, 0);
+  if (now >= start) start.setDate(start.getDate() + 1);
+  return start;
+}
+
+// Renders one Flash Sale product card. Distinct from ssProductCard() —
+// Flash Sale pricing/stock lives on the FlashSale document, not the
+// Product document, so this reads flashSalePrice/originalPrice/
+// discountPercent/stockAllocated/stockSold instead.
+// Renders one Flash Sale product card. isLive=false renders a locked card:
+// same visual language as out-of-stock (dimmed image, overlay, disabled +
+// button) but the overlay reads "Starts at 2:00 PM" instead of "Sold out",
+// so shoppers can browse and plan without being able to buy yet.
+// Renders one Flash Sale product card. isLive=false renders a locked card:
+// same visual language as out-of-stock (dimmed image, overlay, disabled +
+// button) but the overlay reads "Starts at 2:00 PM" instead of "Sold out",
+// so shoppers can browse and plan without being able to buy yet.
+function ssFlashSaleCard(fs) {
+  window.__ssFlashSaleCache = window.__ssFlashSaleCache || {};
+  const fsId = fs.id || fs._id;
+  if (fsId) window.__ssFlashSaleCache[fsId] = fs;
+
+  const product = fs.product || {};
+  const productId = product.id || product._id || "";
+  const allocated = Number(fs.stockAllocated) || 0;
+  const sold = Number(fs.stockSold) || 0;
+  const remaining = fs.remainingStock != null ? Number(fs.remainingStock) : Math.max(0, allocated - sold);
+  const isLive = fs.isLive !== undefined ? !!fs.isLive : true; // /active items are always live
+  const soldOut = isLive && remaining <= 0;
+  const locked = !isLive;
+  const claimedPct = allocated ? Math.min(100, Math.round((sold / allocated) * 100)) : 0;
+  const lowStock = isLive && !soldOut && remaining <= Math.max(3, Math.round(allocated * 0.1));
+
+  let overlay = "";
+  if (locked) overlay = `<div class="p-card__oos-overlay fs-card__lock-overlay"><i class="fa-solid fa-lock"></i> Starts at 2:00 PM</div>`;
+  else if (soldOut) overlay = `<div class="p-card__oos-overlay">Sold out</div>`;
+
+  let stockLabel;
+  if (locked) {
+    stockLabel = `<span class="fs-card__pending-label"><i class="fa-regular fa-clock"></i> Not started yet</span>`;
+  } else if (soldOut) {
+    stockLabel = `<span class="fs-card__soldout-label">Sold out</span>`;
+  } else if (lowStock) {
+    stockLabel = `<span class="fs-card__lowstock-label"><i class="fa-solid fa-fire"></i> Only ${remaining} left</span>`;
+  } else {
+    stockLabel = `<span>${claimedPct}% claimed</span>`;
+  }
+
+  const disabled = locked || soldOut;
+
+  return `
+    <div class="p-card fs-card ${soldOut ? "out-of-stock" : ""} ${locked ? "fs-card--locked" : ""}" data-fsid="${fsId}">
+      <div class="p-card__badges">
+        <div class="p-card__discount fs-card__discount">-${fs.discountPercent}%</div>
+        <div class="p-card__hot fs-card__flash-badge"><i class="fa-solid fa-bolt"></i> Flash</div>
+      </div>
+      <div class="p-card__img">
+        <img src="${ssImg(product)}" alt="${product.name || "Product"}" loading="lazy" onclick="location.href='/product-detail.html?id=${productId}'">
+        ${overlay}
+      </div>
+      <div class="p-card__body">
+        <div class="p-card__name">${product.name || ""}</div>
+        <div class="p-card__old">${ssFmtPrice(fs.originalPrice)}</div>
+        <div class="p-card__foot">
+          <span class="price-tag fs-card__price">${ssFmtPrice(fs.flashSalePrice)}</span>
+          <button class="p-card__add" title="${locked ? "Available at 2:00 PM" : "Add to cart"}" ${disabled ? "disabled" : ""} onclick="event.stopPropagation(); ssQuickAddFlashSale('${fsId}')">
+            <i class="fa-solid ${locked ? "fa-lock" : "fa-plus"}"></i>
+          </button>
+        </div>
+        <div class="fs-card__stockbar"><div class="fs-card__stockbar-fill" style="width:${locked ? 0 : claimedPct}%"></div></div>
+        <div class="fs-card__stocklabel">${stockLabel}</div>
+      </div>
+    </div>`;
+}
+
+function ssQuickAddFlashSale(fsId) {
+  const fs = (window.__ssFlashSaleCache || {})[fsId];
+  if (!fs) return;
+  if (fs.isLive === false) { ssToast("This Flash Sale hasn't started yet — come back at 2:00 PM", "fa-lock"); return; }
+
+  const product = fs.product || {};
+  const allocated = Number(fs.stockAllocated) || 0;
+  const sold = Number(fs.stockSold) || 0;
+  const remaining = fs.remainingStock != null ? Number(fs.remainingStock) : Math.max(0, allocated - sold);
+
+  if (remaining <= 0) { ssToast("This Flash Sale item is sold out", "fa-circle-exclamation"); return; }
+
+  const cartProduct = {
+    ...product,
+    id: product.id || product._id,
+    finalPrice: fs.flashSalePrice,
+    displayPrice: fs.flashSalePrice,
+    discountPercent: fs.discountPercent,
+    stock: remaining,
+    isFlashDeal: true,
+    flashSaleId: fsId,
+  };
+
+  window.__ssProductCache = window.__ssProductCache || {};
+  window.__ssProductCache[cartProduct.id] = cartProduct;
+
+  SS_CART.add(cartProduct, 1);
+  ssToast(`${product.name || "Item"} added to cart`, "fa-cart-shopping");
+}
+
+// Fetches /flash-sales/today (live + locked-upcoming) and renders the rail.
+// Section shows whenever ANYTHING is scheduled for today, live or not.
+// Countdown badge: "Ends in" (to midnight) if anything is live right now,
+// otherwise "Starts in" (to the earliest startAt among today's items).
+async function ssRenderFlashSale(sectionId, listId, timerId) {
+  const section = document.getElementById(sectionId);
+  const list = document.getElementById(listId);
+  const timerEl = document.getElementById(timerId);
+  if (!section || !list) return;
+
+  if (window.__ssFlashSaleCountdownTimer) {
+    clearInterval(window.__ssFlashSaleCountdownTimer);
+    window.__ssFlashSaleCountdownTimer = null;
+  }
+
+  list.innerHTML = ssSkeletonCards(4);
+  section.style.display = "block";
+
+  let flashSales = [];
+  try {
+    const res = await SS_API.getTodayFlashSales();
+    flashSales = res.flashSales || res.data || res || [];
+    console.debug("[flash-sale] /flash-sales/today ->", res);
+  } catch (err) {
+    console.error("[flash-sale] fetch failed:", err);
+    section.style.display = "none";
+    return;
+  }
+
+  if (!flashSales.length) {
+    console.debug("[flash-sale] endpoint reachable but returned 0 items for today");
+    section.style.display = "none";
+    return;
+  }
+
+  flashSales.forEach(fs => { const p = fs.product; if (p && (p.id || p._id)) window.__ssProductCache[p.id || p._id] = p; });
+  list.innerHTML = flashSales.map(ssFlashSaleCard).join("");
+
+  const liveOnes = flashSales.filter(fs => fs.isLive);
+
+  if (timerEl) {
+    if (liveOnes.length) {
+      timerEl.classList.remove("deal-timer--pending");
+      const endAt = new Date(liveOnes[0].endAt);
+      const tick = () => {
+        const diff = endAt - new Date();
+        if (diff <= 0) { ssRenderFlashSale(sectionId, listId, timerId); return; }
+        timerEl.innerHTML = `<i class="fa-regular fa-clock"></i> Ends in ${ssFmtCountdown(diff)}`;
+      };
+      tick();
+      window.__ssFlashSaleCountdownTimer = setInterval(tick, 1000);
+    } else {
+      timerEl.classList.add("deal-timer--pending");
+      const startAt = new Date(flashSales[0].startAt); // sorted by startAt from backend
+      const tick = () => {
+        const diff = startAt - new Date();
+        if (diff <= 0) { ssRenderFlashSale(sectionId, listId, timerId); return; }
+        timerEl.innerHTML = `<i class="fa-regular fa-clock"></i> Starts in ${ssFmtCountdown(diff)}`;
+      };
+      tick();
+      window.__ssFlashSaleCountdownTimer = setInterval(tick, 1000);
+    }
+  }
+}
+
+
 // Flattens the full Parent Category -> Category -> Sub Category tree down to
 // just the leaf-level sub-categories (the actual "children.children" nodes),
 // so the homepage can show real sub-categories instead of broad parent

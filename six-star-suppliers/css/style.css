@@ -2214,3 +2214,118 @@ section.block.tint{ background:var(--paper-dim); }
     font-size: 1rem;
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+/* ============================================================
+   FLASH SALE FORM - FIX SUBMIT BUTTON VISIBILITY
+   ============================================================ */
+
+/* Ensure the submit button is always visible */
+#saveFlashSaleBtn {
+  display: inline-flex !important;
+}
+
+/* Make sure the wizard-footer stays visible */
+#flashSaleForm .wizard-footer {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--line, #e4d6bd);
+  background: var(--white, #fffdf8);
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+}
+
+/* If the button is being hidden by a display:none from JS */
+#flashSaleForm #saveFlashSaleBtn {
+  display: inline-flex !important;
+}
+
+/* Mobile fix - ensure buttons stack properly */
+@media (max-width: 640px) {
+  #flashSaleForm .wizard-footer {
+    flex-direction: column;
+    padding: 12px 16px;
+  }
+  
+  #flashSaleForm .wizard-footer .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  #flashSaleForm .wizard-footer__spacer {
+    display: none;
+  }
+}
+
+/* If the button is being hidden by the wizard logic */
+#flashSaleForm .wizard-footer #saveFlashSaleBtn {
+  display: inline-flex !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Extra safety - if the button is inside a hidden parent */
+#flashSaleForm .wizard-footer {
+  display: flex !important;
+}
+
+/* Ensure the modal footer is always at the bottom */
+#flashSaleFormModal .modal-sheet {
+  max-height: 92vh;
+}
+
+#flashSaleFormModal #flashSaleForm {
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* Fix for the case where the button might be hidden by a parent */
+#flashSaleFormModal .wizard-footer {
+  flex-shrink: 0;
+  background: var(--white, #fffdf8);
+  border-top: 1px solid var(--line, #e4d6bd);
+}
+
+/* If the button has display:none from inline styles */
+#saveFlashSaleBtn[style*="display: none"] {
+  display: inline-flex !important;
+}
+
+/* Debug helper - if the button is still hidden, this will show it */
+#saveFlashSaleBtn {
+  background: var(--marigold, #f2a93b) !important;
+  color: var(--navy-deep, #16324f) !important;
+  padding: 13px 22px !important;
+  border-radius: 999px !important;
+  border: 2px solid transparent !important;
+  font-weight: 700 !important;
+  font-size: 0.95rem !important;
+  letter-spacing: 0.01em !important;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.2s ease !important;
+  box-shadow: 0 8px 18px -8px rgba(217, 143, 31, 0.6) !important;
+  cursor: pointer !important;
+  min-height: 44px !important;
+}
+
+#saveFlashSaleBtn:hover {
+  background: var(--marigold-deep, #d98c1f) !important;
+  transform: translateY(-1px);
+}
+
+#saveFlashSaleBtn:disabled {
+  opacity: 0.55 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+}

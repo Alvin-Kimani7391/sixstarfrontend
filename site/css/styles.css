@@ -1433,3 +1433,49 @@ table.dtable img.thumb{ width:38px; height:38px; border-radius:6px; object-fit:c
   .od-card .od-row{ font-size:.78rem; }
   .od-items-wrap h5{ padding:12px 14px; font-size:.88rem; }
 }
+
+
+
+
+
+/* ============================================================
+   FLASH SALE — admin panel
+   ============================================================ */
+.pill-scheduled{ background:#E6DEF7; color:#4B2E83; }
+.pill-sold_out{ background:#FDE7CF; color:#94530E; }
+.pill-ended{ background:#E4D6BD; color:#5B564C; }
+
+.fs-price-cell{ display:flex; flex-direction:column; gap:2px; }
+.fs-price-cell .fs-new{ font-family:var(--font-mono); font-weight:700; color:var(--navy-deep); }
+.fs-price-cell .fs-old{ font-family:var(--font-mono); font-size:.72rem; color:var(--ink-soft); text-decoration:line-through; }
+
+.fs-discount-badge{
+  display:inline-block; background:var(--brick); color:#fff; font-family:var(--font-mono);
+  font-size:.68rem; font-weight:700; padding:3px 9px; border-radius:999px; white-space:nowrap;
+}
+
+.fs-mini-progress{ display:flex; flex-direction:column; gap:4px; min-width:120px; }
+.fs-mini-progress__track{ height:6px; background:var(--paper-dim); border-radius:999px; overflow:hidden; }
+.fs-mini-progress__fill{ height:100%; background:var(--marigold-deep); border-radius:999px; }
+.fs-mini-progress__label{ font-size:.68rem; color:var(--ink-soft); font-family:var(--font-mono); white-space:nowrap; }
+
+/* review modal */
+.fs-review-top{ display:flex; align-items:center; gap:16px; padding-bottom:16px; border-bottom:1px solid var(--line); }
+.fs-review-img{ width:76px; height:76px; border-radius:var(--radius-m); object-fit:cover; border:1px solid var(--line); flex-shrink:0; background:var(--paper-dim); }
+.fs-review-top__info{ display:flex; flex-direction:column; gap:8px; }
+.fs-review-seller{ font-weight:700; color:var(--navy-deep); font-size:.9rem; }
+
+.fs-stock-progress{ display:flex; flex-direction:column; gap:6px; }
+.fs-stock-progress__track{ height:10px; background:var(--paper-dim); border-radius:999px; overflow:hidden; }
+.fs-stock-progress__fill{ height:100%; background:var(--marigold-deep); border-radius:999px; transition:width .3s ease; }
+.fs-stock-progress__label{ font-size:.78rem; color:var(--ink-soft); font-family:var(--font-mono); }
+
+/* let the overview stat grid absorb a 5th card gracefully if you add one */
+@media(min-width:700px){
+  .stat-grid{ grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); }
+}
+
+@media (max-width:480px){
+  .fs-mini-progress{ min-width:90px; }
+  .fs-review-img{ width:60px; height:60px; }
+}

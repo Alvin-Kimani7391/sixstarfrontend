@@ -142,6 +142,7 @@
       <button data-tab="verification"><i class="fa-solid fa-id-card-clip"></i> Seller Verification</button>
       <button data-tab="legal"><i class="fa-solid fa-file-contract"></i> Legal Documents</button>
       <button data-tab="ads"><i class="fa-solid fa-rectangle-ad"></i> Ads</button>
+      <button data-tab="flashsales"><i class="fa-solid fa-bolt"></i> Flash Sale</button>
       <button data-tab="orders"><i class="fa-solid fa-receipt"></i> Orders &amp; Payments</button>
       <button data-tab="users"><i class="fa-solid fa-users"></i> Users</button>
       <button data-tab="agents"><i class="fa-solid fa-user-tie"></i> Agents</button>
@@ -166,7 +167,7 @@
         <div class="dash-card">
           <div class="dash-card__head"><h3>Welcome</h3></div>
           <div style="padding:18px;">
-            <p class="text-muted">Use the sidebar to review pending products and set final prices, manage the category tree and its attributes, review and approve seller shops and seller verification, manage legal documents, manage ad banners, verify M-Pesa payments, manage sales agents, and suspend or reactivate any wholesaler, retailer, or buyer account.</p>
+            <p class="text-muted">Use the sidebar to review pending products and set final prices, manage the category tree and its attributes, review and approve seller shops and seller verification, manage legal documents, manage ad banners, review Flash Sale submissions, verify M-Pesa payments, manage sales agents, and suspend or reactivate any wholesaler, retailer, or buyer account.</p>
           </div>
         </div>
       </div>
@@ -332,6 +333,38 @@
             <table class="dtable">
               <thead><tr><th>Image</th><th>Title</th><th>Placement</th><th>Clicks</th><th>Active</th><th>Actions</th></tr></thead>
               <tbody id="adsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== FLASH SALE ===== -->
+      <div class="tab-panel" id="panel-flashsales">
+        <div class="tabbar order-subtab" id="fsSubtabBar">
+          <button class="active" data-fs-subtab="pending_review">Pending Review</button>
+          <button data-fs-subtab="live">Scheduled &amp; Live</button>
+          <button data-fs-subtab="history">History</button>
+        </div>
+
+        <div class="dash-card">
+          <div class="dash-card__head">
+            <h3 id="fsPanelTitle">Pending Review</h3>
+            <div class="dash-toolbar">
+              <input type="text" id="fsSearchInput" placeholder="Search by product or seller...">
+            </div>
+          </div>
+          <p class="text-muted" style="padding:0 18px;">
+            Flash Sale runs daily 2:00 PM – midnight. Sellers submit at least 24 hours before the next 2:00 PM slot with
+            their price, discount, stock allocation, and product details. Approving here schedules the product to go live
+            automatically at 2:00 PM; it comes down at midnight or the moment its allocated stock sells out — whichever
+            comes first — with no further admin action needed after approval.
+          </p>
+          <div class="table-scroll">
+            <table class="dtable">
+              <thead>
+                <tr><th>Image</th><th>Product</th><th>Seller</th><th>Price</th><th>Discount</th><th>Stock</th><th>Sale Date</th><th>Status</th><th>Actions</th></tr>
+              </thead>
+              <tbody id="flashSalesBody"></tbody>
             </table>
           </div>
         </div>
@@ -946,6 +979,59 @@
         <input type="file" id="adImageInput" accept="image/*">
       </div>
       <button type="submit" class="btn btn-primary btn-block">Save Ad</button>
+    </form>
+  </div>
+</div>
+
+<!-- Flash Sale review modal -->
+<div class="modal-overlay" id="flashSaleModal">
+  <div class="modal modal-lg">
+    <div class="modal-head">
+      <h3>Flash Sale — <span id="fsModalProductName"></span></h3>
+      <button class="modal-close" data-close-modal="flashSaleModal">&times;</button>
+    </div>
+
+    <div class="fs-review-top">
+      <img id="fsModalImage" class="fs-review-img" src="" alt="">
+      <div class="fs-review-top__info">
+        <div class="fs-review-seller" id="fsModalSeller"></div>
+        <span id="fsModalStatusPill" class="pill"></span>
+      </div>
+    </div>
+
+    <div class="verif-field-grid" style="margin:18px 0;">
+      <div class="verif-field"><span class="vf-label">Regular Price</span><span class="vf-value" id="fsModalOriginalPrice"></span></div>
+      <div class="verif-field"><span class="vf-label">Flash Sale Price</span><span class="vf-value" id="fsModalFlashPrice"></span></div>
+      <div class="verif-field"><span class="vf-label">Discount</span><span class="vf-value" id="fsModalDiscount"></span></div>
+      <div class="verif-field"><span class="vf-label">Stock Allocated</span><span class="vf-value" id="fsModalStock"></span></div>
+      <div class="verif-field"><span class="vf-label">Sale Window</span><span class="vf-value" id="fsModalWindow"></span></div>
+      <div class="verif-field"><span class="vf-label">Submitted</span><span class="vf-value" id="fsModalSubmitted"></span></div>
+    </div>
+
+    <div class="fs-stock-progress">
+      <div class="fs-stock-progress__track"><div class="fs-stock-progress__fill" id="fsModalStockFill"></div></div>
+      <div class="fs-stock-progress__label" id="fsModalStockLabel"></div>
+    </div>
+
+    <div id="fsModalRejectionNote" class="alert alert-error" style="display:none; margin-top:16px;"></div>
+
+    <div class="shop-modal-actions" id="fsModalActions" style="margin-top:20px;"></div>
+  </div>
+</div>
+
+<!-- Flash Sale reject modal -->
+<div class="modal-overlay" id="flashSaleRejectModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Reject Flash Sale Submission</h3>
+      <button class="modal-close" data-close-modal="flashSaleRejectModal">&times;</button>
+    </div>
+    <form id="flashSaleRejectForm" class="form-grid">
+      <div class="form-field">
+        <label for="fsRejectReason">Reason (shown to the seller)</label>
+        <textarea id="fsRejectReason" required placeholder="e.g. Discount too small to qualify, please resubmit with at least 20% off"></textarea>
+      </div>
+      <button type="submit" class="btn btn-dark btn-block">Reject Submission</button>
     </form>
   </div>
 </div>

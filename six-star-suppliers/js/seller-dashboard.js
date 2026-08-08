@@ -34,6 +34,23 @@
      total views, a 14-day trend bar chart, and a per-product view
      breakdown, powered by GET /api/products/analytics.
 
+   Flash Sale (daily 2:00 PM – midnight deals):
+   - A header bolt-icon button opens a full-page "Flash Sale" overlay
+     listing the seller's own submissions (any status) via
+     GET /api/flash-sales/my, each with a live stock progress bar and
+     status badge (Pending review / Scheduled / Live now / Sold out /
+     Ended / Rejected / Cancelled).
+   - "Submit a product" opens a form limited to the seller's currently
+     LIVE (active) products; picking a price live-previews the discount
+     percentage against the product's current selling price.
+   - Only a product with no pending/approved/scheduled/active Flash
+     Sale already in flight can be submitted again (enforced server-side).
+   - A submission can be cancelled from the list while it's still
+     pending/approved/scheduled — once it's live/ended/sold_out it's
+     locked in.
+   - Live (active) product cards also get a small "⚡ Flash Sale" quick
+     button that opens the same form pre-selecting that product.
+
    My Shop:
    - A header button opens a full-page "My Shop" overlay.
    - If the seller has no shop yet, shows an explainer + "Create my
@@ -75,6 +92,9 @@
      POST   /api/shops
      PUT    /api/shops/my-shop
      PATCH  /api/shops/my-shop/toggle-active
+     POST   /api/flash-sales
+     GET    /api/flash-sales/my
+     PATCH  /api/flash-sales/:id/cancel
    ============================================================ */
 
 (async () => {
@@ -141,6 +161,28 @@ try {
     suspended: "Suspended",
   };
 
+  const FLASH_SALE_STATUS_LABEL = {
+    pending_review: "Pending review",
+    approved: "Approved",
+    scheduled: "Scheduled",
+    active: "Live now",
+    sold_out: "Sold out",
+    ended: "Ended",
+    rejected: "Rejected",
+    cancelled: "Cancelled",
+  };
+
+  const FLASH_SALE_STATUS_ICON = {
+    pending_review: "fa-hourglass-half",
+    approved: "fa-circle-check",
+    scheduled: "fa-calendar-check",
+    active: "fa-bolt",
+    sold_out: "fa-box-open",
+    ended: "fa-flag-checkered",
+    rejected: "fa-circle-xmark",
+    cancelled: "fa-ban",
+  };
+
   // ---------- wizard step config ----------
   let currentStepIdx = 0;
 
@@ -182,6 +224,9 @@ try {
   // file chosen" — on edit that means "keep whatever the shop already has".
   let shopLogoFile = null;
   let shopBannerFile = null;
+
+  // ---------- flash sale state ----------
+  let myFlashSales = []; // this seller's own submissions, any status
 
   // ---------- category / attribute / variant state ----------
   let categoryTree = [];
@@ -334,6 +379,28 @@ try {
     analyticsTrend: document.getElementById("analyticsTrend"),
     analyticsProductList: document.getElementById("analyticsProductList"),
 
+    // Flash Sale "page"
+    flashSaleToggleBtn: document.getElementById("flashSaleToggleBtn"),
+    flashSaleOverlay: document.getElementById("flashSaleOverlay"),
+    flashSaleBack: document.getElementById("flashSaleBack"),
+    flashSaleLoading: document.getElementById("flashSaleLoading"),
+    flashSaleEmpty: document.getElementById("flashSaleEmpty"),
+    flashSaleList: document.getElementById("flashSaleList"),
+    openFlashSaleFormBtn: document.getElementById("openFlashSaleFormBtn"),
+
+    // Submit-to-Flash-Sale modal
+    flashSaleFormModal: document.getElementById("flashSaleFormModal"),
+    closeFlashSaleFormModal: document.getElementById("closeFlashSaleFormModal"),
+    flashSaleForm: document.getElementById("flashSaleForm"),
+    flashSaleFormError: document.getElementById("flashSaleFormError"),
+    fsProductSelect: document.getElementById("fsProductSelect"),
+    fsPrice: document.getElementById("fsPrice"),
+    fsStock: document.getElementById("fsStock"),
+    fsSaleDate: document.getElementById("fsSaleDate"),
+    fsDiscountPreview: document.getElementById("fsDiscountPreview"),
+    cancelFlashSaleForm: document.getElementById("cancelFlashSaleForm"),
+    saveFlashSaleBtn: document.getElementById("saveFlashSaleBtn"),
+
     // My Shop "page"
     myShopToggleBtn: document.getElementById("myShopToggleBtn"),
     myShopOverlay: document.getElementById("myShopOverlay"),
@@ -422,6 +489,7 @@ try {
   setInterval(() => {
     loadSellerOrders();
     loadMyProducts({ silent: true });
+    if (els.flashSaleOverlay?.classList.contains("active")) loadMyFlashSales();
   }, POLL_INTERVAL_MS);
 
   // ---------- products ----------
@@ -1281,6 +1349,7 @@ try {
     if (
       !els.orderDetailOverlay?.classList.contains("active") &&
       !els.analyticsOverlay?.classList.contains("active") &&
+      !els.flashSaleOverlay?.classList.contains("active") &&
       !els.myShopOverlay?.classList.contains("active")
     ) {
       document.body.style.overflow = "";
@@ -1364,6 +1433,7 @@ try {
     if (
       !els.ordersListOverlay?.classList.contains("active") &&
       !els.orderDetailOverlay?.classList.contains("active") &&
+      !els.flashSaleOverlay?.classList.contains("active") &&
       !els.myShopOverlay?.classList.contains("active")
     ) {
       document.body.style.overflow = "";
@@ -1452,6 +1522,257 @@ try {
   }
 
   // =========================================================
+  // ---------- FLASH SALE "page" (opened by the header bolt icon) ----------
+  // =========================================================
+  function openFlashSaleOverlay() {
+    if (!els.flashSaleOverlay) return;
+    els.flashSaleOverlay.classList.add("active");
+    document.body.style.overflow = "hidden";
+    loadMyFlashSales();
+  }
+
+  function closeFlashSaleOverlay() {
+    if (els.flashSaleOverlay) els.flashSaleOverlay.classList.remove("active");
+    if (
+      !els.ordersListOverlay?.classList.contains("active") &&
+      !els.orderDetailOverlay?.classList.contains("active") &&
+      !els.analyticsOverlay?.classList.contains("active") &&
+      !els.myShopOverlay?.classList.contains("active")
+    ) {
+      document.body.style.overflow = "";
+    }
+  }
+
+  async function loadMyFlashSales() {
+    if (els.flashSaleLoading) els.flashSaleLoading.style.display = "block";
+    if (els.flashSaleEmpty) els.flashSaleEmpty.style.display = "none";
+
+    try {
+      const res = await SS_API.getMyFlashSales();
+      myFlashSales = res.flashSales || [];
+      renderFlashSaleList();
+    } catch (err) {
+      console.error("FLASH SALE LOAD FAILED:", err);
+      if (els.flashSaleList) els.flashSaleList.innerHTML = "";
+      if (els.flashSaleEmpty) {
+        els.flashSaleEmpty.style.display = "block";
+        els.flashSaleEmpty.innerHTML = `
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <h3>Couldn't load your Flash Sale submissions</h3>
+          <p>${escapeHtml(err.message || "Please try again shortly.")}</p>`;
+      }
+    } finally {
+      if (els.flashSaleLoading) els.flashSaleLoading.style.display = "none";
+    }
+  }
+
+  function renderFlashSaleList() {
+    if (!els.flashSaleList) return;
+
+    if (!myFlashSales.length) {
+      els.flashSaleList.innerHTML = "";
+      if (els.flashSaleEmpty) {
+        els.flashSaleEmpty.style.display = "block";
+        els.flashSaleEmpty.innerHTML = `
+          <i class="fa-solid fa-bolt"></i>
+          <h3>No Flash Sale submissions yet</h3>
+          <p>Submit one of your live products at least 24 hours before the next 2:00 PM slot.</p>`;
+      }
+      return;
+    }
+
+    if (els.flashSaleEmpty) els.flashSaleEmpty.style.display = "none";
+    els.flashSaleList.innerHTML = myFlashSales.map(flashSaleCardHtml).join("");
+
+    els.flashSaleList.querySelectorAll("[data-fs-cancel]").forEach((btn) => {
+      btn.addEventListener("click", () => cancelFlashSaleSubmission(btn.dataset.fsCancel));
+    });
+  }
+
+  function formatSaleWindow(startAt) {
+    const start = new Date(startAt);
+    const dateLabel = start.toLocaleDateString("en-KE", { weekday: "short", day: "numeric", month: "short" });
+    return `${dateLabel}, 2:00 PM \u2013 Midnight`;
+  }
+
+  function flashSaleCardHtml(fs) {
+    const product = fs.product || {};
+    const cover = (product.images && product.images[0]) || "https://placehold.co/80x80/E4D6BD/5B564C?text=%20";
+    const remaining = Math.max(0, (fs.stockAllocated || 0) - (fs.stockSold || 0));
+    const pct = fs.stockAllocated ? Math.min(100, Math.round((fs.stockSold / fs.stockAllocated) * 100)) : 0;
+    const cancellable = ["pending_review", "approved", "scheduled"].includes(fs.status);
+
+    return `
+      <div class="fs-card">
+        <img src="${cover}" alt="${escapeHtml(product.name || "")}" />
+        <div class="fs-card__body">
+          <div class="fs-card__top">
+            <div class="fs-card__name">${escapeHtml(product.name || "Product")}</div>
+            <span class="fs-status-badge ${fs.status}"><i class="fa-solid ${FLASH_SALE_STATUS_ICON[fs.status] || "fa-circle"}"></i> ${FLASH_SALE_STATUS_LABEL[fs.status] || fs.status}</span>
+          </div>
+          <div class="fs-card__prices">
+            <span class="fs-card__price-new">KES ${Number(fs.flashSalePrice || 0).toLocaleString()}</span>
+            <span class="fs-card__price-old">KES ${Number(fs.originalPrice || 0).toLocaleString()}</span>
+            <span class="fs-card__discount">${fs.discountPercent || 0}% off</span>
+          </div>
+          <div class="fs-card__meta">
+            <span><i class="fa-solid fa-calendar"></i> ${formatSaleWindow(fs.startAt)}</span>
+            <span><i class="fa-solid fa-boxes-stacked"></i> ${remaining} of ${fs.stockAllocated} left</span>
+          </div>
+          <div class="fs-stock-track"><div class="fs-stock-fill" style="width:${pct}%"></div></div>
+          <div class="fs-stock-label">${fs.stockSold || 0} sold so far</div>
+          ${
+            fs.status === "rejected" && fs.rejectionReason
+              ? `<div class="fs-card__reject"><i class="fa-solid fa-circle-info"></i> ${escapeHtml(fs.rejectionReason)}</div>`
+              : ""
+          }
+          ${
+            cancellable
+              ? `<div class="fs-card__actions"><button class="btn btn-outline btn-sm" data-fs-cancel="${fs._id}"><i class="fa-solid fa-ban"></i> Cancel submission</button></div>`
+              : ""
+          }
+        </div>
+      </div>`;
+  }
+
+  async function cancelFlashSaleSubmission(id) {
+    if (!confirm("Cancel this Flash Sale submission?")) return;
+    try {
+      await SS_API.cancelFlashSale(id);
+      ssToast("Flash Sale submission cancelled", "fa-circle-check");
+      loadMyFlashSales();
+    } catch (err) {
+      ssToast(err.message || "Couldn't cancel this submission", "fa-triangle-exclamation");
+    }
+  }
+
+  // ---- Submit-to-Flash-Sale modal ----
+  function getEarliestFlashSaleDate() {
+    const minStart = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    let candidate = new Date(minStart.getFullYear(), minStart.getMonth(), minStart.getDate(), 14, 0, 0, 0);
+    if (candidate < minStart) candidate.setDate(candidate.getDate() + 1);
+    return candidate;
+  }
+
+  function toDateInputValue(d) {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function populateFlashSaleProductSelect(preselectId) {
+    if (!els.fsProductSelect) return;
+    const eligible = allProducts.filter((p) => p.status === "active");
+    if (!eligible.length) {
+      els.fsProductSelect.innerHTML = `<option value="">No live products available</option>`;
+      return;
+    }
+    els.fsProductSelect.innerHTML =
+      `<option value="">Select a live product</option>` +
+      eligible
+        .map(
+          (p) =>
+            `<option value="${p._id || p.id}" ${(p._id || p.id) === preselectId ? "selected" : ""}>${escapeHtml(p.name)} — KES ${Number(p.sellerPrice ?? p.finalPrice ?? 0).toLocaleString()}</option>`
+        )
+        .join("");
+  }
+
+  function updateFlashSaleDiscountPreview() {
+    if (!els.fsDiscountPreview || !els.fsProductSelect || !els.fsPrice) return;
+    const product = allProducts.find((p) => (p._id || p.id) === els.fsProductSelect.value);
+    const price = Number(els.fsPrice.value);
+    if (!product || !price) {
+      els.fsDiscountPreview.classList.remove("show");
+      return;
+    }
+    const reference = Number(product.finalPrice ?? product.sellerPrice ?? 0);
+    if (!reference || price >= reference) {
+      els.fsDiscountPreview.classList.remove("show");
+      return;
+    }
+    const pct = Math.round(((reference - price) / reference) * 100);
+    els.fsDiscountPreview.textContent = `That's ${pct}% off the current KES ${reference.toLocaleString()} price.`;
+    els.fsDiscountPreview.classList.add("show");
+  }
+
+  function openFlashSaleForm(preselectId) {
+    if (els.flashSaleFormError) els.flashSaleFormError.classList.remove("show");
+    if (els.flashSaleForm) els.flashSaleForm.reset();
+    if (els.fsDiscountPreview) els.fsDiscountPreview.classList.remove("show");
+
+    populateFlashSaleProductSelect(preselectId);
+
+    const earliest = getEarliestFlashSaleDate();
+    if (els.fsSaleDate) {
+      els.fsSaleDate.min = toDateInputValue(earliest);
+      els.fsSaleDate.value = toDateInputValue(earliest);
+    }
+
+    if (els.flashSaleFormModal) els.flashSaleFormModal.classList.add("active");
+  }
+
+  function closeFlashSaleForm() {
+    if (els.flashSaleFormModal) els.flashSaleFormModal.classList.remove("active");
+  }
+
+  if (els.flashSaleToggleBtn) els.flashSaleToggleBtn.addEventListener("click", openFlashSaleOverlay);
+  if (els.flashSaleBack) els.flashSaleBack.addEventListener("click", closeFlashSaleOverlay);
+  if (els.openFlashSaleFormBtn) els.openFlashSaleFormBtn.addEventListener("click", () => openFlashSaleForm());
+  if (els.closeFlashSaleFormModal) els.closeFlashSaleFormModal.addEventListener("click", closeFlashSaleForm);
+  if (els.cancelFlashSaleForm) els.cancelFlashSaleForm.addEventListener("click", closeFlashSaleForm);
+  if (els.flashSaleFormModal) {
+    els.flashSaleFormModal.addEventListener("click", (e) => {
+      if (e.target === els.flashSaleFormModal) closeFlashSaleForm();
+    });
+  }
+  if (els.fsProductSelect) els.fsProductSelect.addEventListener("change", updateFlashSaleDiscountPreview);
+  if (els.fsPrice) els.fsPrice.addEventListener("input", updateFlashSaleDiscountPreview);
+
+  function showFlashSaleFormError(msg) {
+    if (els.flashSaleFormError) {
+      els.flashSaleFormError.textContent = msg;
+      els.flashSaleFormError.classList.add("show");
+    }
+  }
+
+  if (els.flashSaleForm) {
+    els.flashSaleForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (els.flashSaleFormError) els.flashSaleFormError.classList.remove("show");
+
+      const productId = els.fsProductSelect?.value;
+      const flashSalePrice = els.fsPrice?.value;
+      const stock = els.fsStock?.value;
+      const saleDate = els.fsSaleDate?.value;
+
+      if (!productId) return showFlashSaleFormError("Please select a product.");
+      if (!flashSalePrice || Number(flashSalePrice) <= 0) return showFlashSaleFormError("Please enter a valid Flash Sale price.");
+      if (!stock || Number(stock) < 1) return showFlashSaleFormError("Please enter a valid stock allocation.");
+      if (!saleDate) return showFlashSaleFormError("Please pick a sale date.");
+
+      if (els.saveFlashSaleBtn) {
+        els.saveFlashSaleBtn.disabled = true;
+        els.saveFlashSaleBtn.textContent = "Submitting…";
+      }
+
+      try {
+        await SS_API.submitFlashSale({ productId, flashSalePrice, stock, saleDate });
+        ssToast("Submitted for Flash Sale review", "fa-bolt");
+        closeFlashSaleForm();
+        loadMyFlashSales();
+      } catch (err) {
+        showFlashSaleFormError(err.message || "Couldn't submit this product. Please try again.");
+      } finally {
+        if (els.saveFlashSaleBtn) {
+          els.saveFlashSaleBtn.disabled = false;
+          els.saveFlashSaleBtn.textContent = "Submit for review";
+        }
+      }
+    });
+  }
+
+  // =========================================================
   // ---------- MY SHOP "page" (opened by the header icon) ----------
   // =========================================================
   function openMyShop() {
@@ -1466,7 +1787,8 @@ try {
     if (
       !els.ordersListOverlay?.classList.contains("active") &&
       !els.orderDetailOverlay?.classList.contains("active") &&
-      !els.analyticsOverlay?.classList.contains("active")
+      !els.analyticsOverlay?.classList.contains("active") &&
+      !els.flashSaleOverlay?.classList.contains("active")
     ) {
       document.body.style.overflow = "";
     }
@@ -2090,6 +2412,9 @@ try {
           if (product) openProductModal(product);
         });
       });
+      els.productGrid.querySelectorAll("[data-flashsale-id]").forEach((btn) => {
+        btn.addEventListener("click", () => openFlashSaleForm(btn.dataset.flashsaleId));
+      });
     }
   }
 
@@ -2109,7 +2434,9 @@ try {
     } else if (status === "pending_review") {
       actionHtml = `<button class="btn btn-outline btn-sm" disabled><i class="fa-solid fa-hourglass-half"></i> Awaiting admin</button>`;
     } else if (status === "active") {
-      actionHtml = `<button class="btn btn-outline btn-sm" data-edit-id="${id}"><i class="fa-solid fa-pen"></i> Edit Live Product</button>`;
+      actionHtml = `
+        <button class="btn btn-outline btn-sm" data-edit-id="${id}"><i class="fa-solid fa-pen"></i> Edit Live Product</button>
+        <button class="btn btn-outline btn-sm" data-flashsale-id="${id}" title="Submit to Flash Sale"><i class="fa-solid fa-bolt"></i> Flash Sale</button>`;
     } else {
       actionHtml = `<button class="btn btn-outline btn-sm" disabled><i class="fa-solid fa-ban"></i> Suspended by admin</button>`;
     }

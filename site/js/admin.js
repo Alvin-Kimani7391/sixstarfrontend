@@ -42,6 +42,47 @@ const LEGAL_DOC_TYPES = [
   'seller_verification_policy', 'community_guidelines', 'other',
 ];
 
+// flash sale state
+let flashSaleFilters = { subtab: 'pending_review', search: '' };
+let flashSalesCache = [];
+
+const FS_SUBTAB_STATUSES = {
+  pending_review: ['pending_review'],
+  live: ['approved', 'scheduled', 'active', 'sold_out'],
+  history: ['ended', 'rejected', 'cancelled'],
+};
+
+const FLASH_SALE_STATUS_LABEL = {
+  pending_review: 'Pending review',
+  approved: 'Approved',
+  scheduled: 'Scheduled',
+  active: 'Live now',
+  sold_out: 'Sold out',
+  ended: 'Ended',
+  rejected: 'Rejected',
+  cancelled: 'Cancelled',
+};
+const FLASH_SALE_STATUS_ICON = {
+  pending_review: 'fa-hourglass-half',
+  approved: 'fa-circle-check',
+  scheduled: 'fa-calendar-check',
+  active: 'fa-bolt',
+  sold_out: 'fa-box-open',
+  ended: 'fa-flag-checkered',
+  rejected: 'fa-circle-xmark',
+  cancelled: 'fa-ban',
+};
+const FLASH_SALE_PILL_CLASS = {
+  pending_review: 'pill-pending_review',
+  approved: 'pill-approved',
+  scheduled: 'pill-scheduled',
+  active: 'pill-active',
+  sold_out: 'pill-sold_out',
+  ended: 'pill-ended',
+  rejected: 'pill-rejected',
+  cancelled: 'pill-cancelled',
+};
+
 const CATEGORY_LABELS = {
   phones: 'Phones', electronics: 'Electronics', fashion: 'Fashion', beauty: 'Beauty',
   groceries: 'Groceries', home_living: 'Home & Living', industrial: 'Industrial',
@@ -172,6 +213,7 @@ function switchTab(tab) {
   if (tab === 'verification') loadVerifications();
   if (tab === 'legal') loadLegalDocuments();
   if (tab === 'ads') loadAds();
+  if (tab === 'flashsales') loadFlashSales();
   if (tab === 'orders') loadOrdersTab();
   if (tab === 'users') loadUsers();
   if (tab === 'agents') loadAgents();
@@ -182,19 +224,22 @@ function switchTab(tab) {
 // ===================================================================
 async function loadOverview() {
   const grid = document.getElementById('statGrid');
-  grid.innerHTML = `<div class="stat-card"><div class="spinner"></div></div>`.repeat(4);
+  grid.innerHTML = `<div class="stat-card"><div class="spinner"></div></div>`.repeat(5);
 
   try {
-    const [pending, payments, products, users] = await Promise.all([
+    const [pending, payments, products, users, pendingFlash] = await Promise.all([
       apiGet('/admin/products/pending'),
       apiGet('/admin/orders/pending-payment'),
       apiGet('/admin/products?limit=1'),
       apiGet('/admin/users'),
+      apiGet('/admin/flash-sales/pending').catch(() => ({ count: 0, flashSales: [] })),
     ]);
 
     const wholesalers = users.users.filter((u) => u.role === 'wholesaler').length;
     const retailers = users.users.filter((u) => u.role === 'retailer').length;
     const buyers = users.users.filter((u) => u.role === 'buyer').length;
+
+    const pendingFlashCount = pendingFlash.count ?? (pendingFlash.flashSales || []).length;
 
     grid.innerHTML = `
       <div class="stat-card">
@@ -206,6 +251,11 @@ async function loadOverview() {
         <div class="stat-label">Pending Payments</div>
         <div class="stat-value">${payments.count}</div>
         <div class="stat-sub">M-Pesa needs verification</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Flash Sale Review</div>
+        <div class="stat-value">${pendingFlashCount}</div>
+        <div class="stat-sub">Awaiting Flash Sale approval</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Total Products</div>
@@ -462,6 +512,38 @@ function wireStaticButtons() {
   // legal documents
   document.getElementById('addLegalDocBtn').addEventListener('click', () => openLegalDocModal(null));
   document.getElementById('legalDocForm').addEventListener('submit', submitLegalDocForm);
+
+  // flash sales
+  document.querySelectorAll('#fsSubtabBar button').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#fsSubtabBar button').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      flashSaleFilters.subtab = btn.dataset.fsSubtab;
+      document.getElementById('fsPanelTitle').textContent = btn.textContent.trim();
+      renderFlashSalesTable();
+    });
+  });
+
+  document.getElementById('fsSearchInput').addEventListener('input', debounce(() => {
+    flashSaleFilters.search = document.getElementById('fsSearchInput').value.trim().toLowerCase();
+    renderFlashSalesTable();
+  }, 300));
+
+  document.getElementById('flashSaleRejectForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('flashSaleRejectModal').dataset.fsId;
+    const reason = document.getElementById('fsRejectReason').value.trim();
+    try {
+      await apiPatch(`/admin/flash-sales/${id}/reject`, { reason });
+      showToast('Flash Sale submission rejected');
+      closeModal('flashSaleRejectModal');
+      closeModal('flashSaleModal');
+      loadFlashSales();
+      loadOverview();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
 }
 
 function openRejectModal(productId) {
@@ -1976,6 +2058,173 @@ async function submitAdForm(e) {
     }
     closeModal('adModal');
     loadAds();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+// ===================================================================
+// FLASH SALE (daily 2:00 PM – midnight deals: review / approve / reject)
+// ===================================================================
+async function loadFlashSales() {
+  const tbody = document.getElementById('flashSalesBody');
+  tbody.innerHTML = `<tr><td colspan="9"><div class="spinner"></div></td></tr>`;
+  try {
+    const { flashSales } = await apiGet('/admin/flash-sales?limit=200');
+    flashSalesCache = flashSales || [];
+    renderFlashSalesTable();
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="9"><div class="dash-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>${err.message}</p></div></td></tr>`;
+  }
+}
+
+function renderFlashSalesTable() {
+  const tbody = document.getElementById('flashSalesBody');
+  const allowedStatuses = FS_SUBTAB_STATUSES[flashSaleFilters.subtab] || [];
+
+  let list = flashSalesCache.filter((fs) => allowedStatuses.includes(fs.status));
+
+  if (flashSaleFilters.search) {
+    const q = flashSaleFilters.search;
+    list = list.filter((fs) =>
+      (fs.product?.name || '').toLowerCase().includes(q) ||
+      (fs.seller?.businessName || fs.seller?.shopName || fs.seller?.name || '').toLowerCase().includes(q)
+    );
+  }
+
+  // Most urgent first: pending review oldest-first, everything else newest-first
+  list = [...list].sort((a, b) =>
+    flashSaleFilters.subtab === 'pending_review'
+      ? new Date(a.submittedAt || a.createdAt) - new Date(b.submittedAt || b.createdAt)
+      : new Date(b.createdAt) - new Date(a.createdAt)
+  );
+
+  if (list.length === 0) {
+    const emptyCopy = {
+      pending_review: 'Nothing waiting for Flash Sale review right now.',
+      live: 'No scheduled or currently live Flash Sale products.',
+      history: 'No past Flash Sale submissions yet.',
+    }[flashSaleFilters.subtab];
+    tbody.innerHTML = `<tr><td colspan="9"><div class="dash-empty"><i class="fa-solid fa-bolt"></i><p>${emptyCopy}</p></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = list.map(flashSaleRowHtml).join('');
+
+  tbody.querySelectorAll('[data-fs-view]').forEach((btn) =>
+    btn.addEventListener('click', () => openFlashSaleModal(flashSalesCache.find((fs) => fs._id === btn.dataset.fsView)))
+  );
+  tbody.querySelectorAll('[data-fs-approve]').forEach((btn) =>
+    btn.addEventListener('click', () => approveFlashSaleRow(btn.dataset.fsApprove))
+  );
+  tbody.querySelectorAll('[data-fs-reject]').forEach((btn) =>
+    btn.addEventListener('click', () => openFlashSaleRejectModal(btn.dataset.fsReject))
+  );
+}
+
+function flashSaleRowHtml(fs) {
+  const product = fs.product || {};
+  const seller = fs.seller || {};
+  const remaining = Math.max(0, (fs.stockAllocated || 0) - (fs.stockSold || 0));
+  const pct = fs.stockAllocated ? Math.min(100, Math.round((fs.stockSold / fs.stockAllocated) * 100)) : 0;
+  const pillClass = FLASH_SALE_PILL_CLASS[fs.status] || '';
+
+  const actions = fs.status === 'pending_review'
+    ? `<button class="act-approve" data-fs-approve="${fs._id}">Approve</button>
+       <button class="act-reject" data-fs-reject="${fs._id}">Reject</button>
+       <button class="act-edit" data-fs-view="${fs._id}">View</button>`
+    : `<button class="act-edit" data-fs-view="${fs._id}">View</button>`;
+
+  return `
+    <tr>
+      <td>${product.images?.[0] ? `<img class="thumb" src="${product.images[0]}" alt="">` : ''}</td>
+      <td class="wrap-cell"><strong>${escapeHtml(product.name || '-')}</strong></td>
+      <td>${escapeHtml(seller.businessName || seller.shopName || seller.name || '-')}</td>
+      <td class="fs-price-cell">
+        <span class="fs-new">KSh ${Number(fs.flashSalePrice || 0).toLocaleString()}</span>
+        <span class="fs-old">KSh ${Number(fs.originalPrice || 0).toLocaleString()}</span>
+      </td>
+      <td><span class="fs-discount-badge">${fs.discountPercent || 0}% off</span></td>
+      <td>
+        <div class="fs-mini-progress">
+          <div class="fs-mini-progress__track"><div class="fs-mini-progress__fill" style="width:${pct}%"></div></div>
+          <span class="fs-mini-progress__label">${remaining} of ${fs.stockAllocated} left</span>
+        </div>
+      </td>
+      <td>${fs.saleDate ? new Date(fs.saleDate).toLocaleDateString() : '-'}</td>
+      <td><span class="pill ${pillClass}"><i class="fa-solid ${FLASH_SALE_STATUS_ICON[fs.status] || 'fa-circle'}"></i> ${FLASH_SALE_STATUS_LABEL[fs.status] || fs.status}</span></td>
+      <td><div class="row-actions">${actions}</div></td>
+    </tr>`;
+}
+
+function formatFsWindow(fs) {
+  if (!fs.startAt) return '-';
+  const d = new Date(fs.startAt);
+  const dateLabel = d.toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  return `${dateLabel}, 2:00 PM – Midnight`;
+}
+
+function openFlashSaleModal(fs) {
+  if (!fs) return;
+  const product = fs.product || {};
+  const seller = fs.seller || {};
+
+  document.getElementById('flashSaleModal').dataset.fsId = fs._id;
+  document.getElementById('fsModalProductName').textContent = product.name || '-';
+  document.getElementById('fsModalImage').src = product.images?.[0] || 'https://placehold.co/80x80/E4D6BD/5B564C?text=%20';
+  document.getElementById('fsModalSeller').textContent =
+    seller.businessName || seller.shopName || seller.name || '-';
+
+  const statusPill = document.getElementById('fsModalStatusPill');
+  statusPill.className = `pill ${FLASH_SALE_PILL_CLASS[fs.status] || ''}`;
+  statusPill.innerHTML = `<i class="fa-solid ${FLASH_SALE_STATUS_ICON[fs.status] || 'fa-circle'}"></i> ${FLASH_SALE_STATUS_LABEL[fs.status] || fs.status}`;
+
+  document.getElementById('fsModalOriginalPrice').textContent = `KSh ${Number(fs.originalPrice || 0).toLocaleString()}`;
+  document.getElementById('fsModalFlashPrice').textContent = `KSh ${Number(fs.flashSalePrice || 0).toLocaleString()}`;
+  document.getElementById('fsModalDiscount').textContent = `${fs.discountPercent || 0}% off`;
+  document.getElementById('fsModalStock').textContent = `${fs.stockAllocated || 0} units allocated`;
+  document.getElementById('fsModalWindow').textContent = formatFsWindow(fs);
+  document.getElementById('fsModalSubmitted').textContent = fs.submittedAt ? new Date(fs.submittedAt).toLocaleString() : '-';
+
+  const remaining = Math.max(0, (fs.stockAllocated || 0) - (fs.stockSold || 0));
+  const pct = fs.stockAllocated ? Math.min(100, Math.round((fs.stockSold / fs.stockAllocated) * 100)) : 0;
+  document.getElementById('fsModalStockFill').style.width = `${pct}%`;
+  document.getElementById('fsModalStockLabel').textContent = `${fs.stockSold || 0} sold · ${remaining} of ${fs.stockAllocated} remaining`;
+
+  const rejNote = document.getElementById('fsModalRejectionNote');
+  if (fs.status === 'rejected' && fs.rejectionReason) {
+    rejNote.style.display = 'block';
+    rejNote.textContent = `Rejected: ${fs.rejectionReason}`;
+  } else {
+    rejNote.style.display = 'none';
+  }
+
+  const actionsWrap = document.getElementById('fsModalActions');
+  actionsWrap.innerHTML = fs.status === 'pending_review'
+    ? `<button type="button" class="btn btn-primary act-approve" id="fsModalApproveBtn">Approve Submission</button>
+       <button type="button" class="btn btn-dark act-reject" id="fsModalRejectBtn">Reject</button>`
+    : '';
+
+  document.getElementById('fsModalApproveBtn')?.addEventListener('click', () => approveFlashSaleRow(fs._id));
+  document.getElementById('fsModalRejectBtn')?.addEventListener('click', () => openFlashSaleRejectModal(fs._id));
+
+  openModal('flashSaleModal');
+}
+
+function openFlashSaleRejectModal(id) {
+  document.getElementById('fsRejectReason').value = '';
+  document.getElementById('flashSaleRejectModal').dataset.fsId = id;
+  openModal('flashSaleRejectModal');
+}
+
+async function approveFlashSaleRow(id) {
+  if (!confirm('Approve this Flash Sale submission? It will automatically go live at 2:00 PM on the sale date.')) return;
+  try {
+    await apiPatch(`/admin/flash-sales/${id}/approve`);
+    showToast('Flash Sale submission approved and scheduled');
+    closeModal('flashSaleModal');
+    loadFlashSales();
+    loadOverview();
   } catch (err) {
     showToast(err.message, 'error');
   }

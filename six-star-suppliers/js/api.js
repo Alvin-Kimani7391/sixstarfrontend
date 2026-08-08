@@ -15,6 +15,8 @@
    - Seller verification (identity/business/tax onboarding gate, now
      preceded by a mandatory email-OTP step — see sendEmailOtp/verifyEmailOtp)
    - Legal documents (Terms, Seller Agreement, policies) + seller acceptance
+   - Flash Sale (daily 2:00 PM – midnight deals): seller submission,
+     seller's own submission list/cancel, and the public "active now" feed
    ============================================================ */
 
 const SS_API = (() => {
@@ -101,7 +103,7 @@ const SS_API = (() => {
       return request("/auth/google", { method: "POST", body: { credential }, requiresAuth: false });
     },
 
-   
+
     // Second step of a seller login gated by a login OTP.
     verifyLoginOtp({ otpToken, code }) {
       return request("/auth/login/verify-otp", { method: "POST", body: { otpToken, code }, requiresAuth: false });
@@ -193,6 +195,27 @@ const SS_API = (() => {
     // Analytics screen.
     getMyProductAnalytics() {
       return request("/products/analytics", { requiresAuth: true });
+    },
+
+    // ============================================================
+    // FLASH SALE (daily 2:00 PM – midnight deals)
+    // ============================================================
+    // Public feed of everything currently live right now, with stock left.
+    getActiveFlashSales() {
+      return request("/flash-sales/active", { requiresAuth: false });
+    },
+    // Seller submits a live product — { productId, flashSalePrice, stock, saleDate }.
+    // saleDate is a plain "YYYY-MM-DD"; the backend derives the 2:00 PM–midnight window.
+    submitFlashSale(payload) {
+      return request("/flash-sales", { method: "POST", body: payload, requiresAuth: true });
+    },
+    // Seller's own submissions, any status (pending/approved/scheduled/active/ended/etc).
+    getMyFlashSales() {
+      return request("/flash-sales/my", { requiresAuth: true });
+    },
+    // Cancel a submission that hasn't gone live yet.
+    cancelFlashSale(id) {
+      return request(`/flash-sales/${id}/cancel`, { method: "PATCH", requiresAuth: true });
     },
 
     // ============================================================
@@ -313,6 +336,22 @@ const SS_API = (() => {
     },
     getDocumentAcceptances(id) {
       return request(`/admin/legal-documents/${id}/acceptances`, { requiresAuth: true });
+    },
+
+    // ============================================================
+    // ADMIN — FLASH SALE REVIEW
+    // ============================================================
+    getPendingFlashSalesAdmin() {
+      return request("/admin/flash-sales/pending", { requiresAuth: true });
+    },
+    getAllFlashSalesAdmin(params = {}) {
+      return request("/admin/flash-sales", { query: params, requiresAuth: true });
+    },
+    approveFlashSaleAdmin(id) {
+      return request(`/admin/flash-sales/${id}/approve`, { method: "PATCH", requiresAuth: true });
+    },
+    rejectFlashSaleAdmin(id, reason) {
+      return request(`/admin/flash-sales/${id}/reject`, { method: "PATCH", body: { reason }, requiresAuth: true });
     },
 
     // ============================================================

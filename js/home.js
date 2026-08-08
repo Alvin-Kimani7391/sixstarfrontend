@@ -1,24 +1,12 @@
 document.addEventListener("DOMContentLoaded", async () => {
   // ---------------------------------------------------------------
   // Email-verification guard.
-  // In the normal flow nobody reaches index.html unverified —
-  // register.html and login.js both detour through verify-email.html
-  // first. This is the safety net for the edge case: an existing
-  // session cookie from before that flow shipped, a bookmark, or a
-  // back-button bypass landing someone here with a stale-but-valid
-  // session and isVerified still false.
-  //
-  // Reads the locally cached SS_AUTH user only — no network round
-  // trip — so guests (no session at all) pay zero extra cost and
-  // never hit this branch. Requires SS_AUTH to expose a getter; if
-  // your auth.js doesn't have one under this name, ask me to wire it
-  // to whatever it's actually called.
   // ---------------------------------------------------------------
   if (window.SS_AUTH && typeof SS_AUTH.get === "function") {
     const cachedUser = SS_AUTH.get();
     if (cachedUser && cachedUser.isVerified === false) {
       location.href = `verify-email.html?next=${encodeURIComponent("index.html")}`;
-      return; // stop here — don't fetch or render anything, we're navigating away
+      return;
     }
   }
 
@@ -26,7 +14,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   ssRenderMegaMenu("megaMenu");
   ssRenderAdSlot("heroAd", "homepage_hero", { interval: 5000, aspect: "21/9" });
   ssRenderAdSlot("bannerAd", "homepage_banner", { interval: 6000, aspect: "5/1" });
-  ssRenderCountdown("hotDealsTimer");
+
+  // Real, backend-driven Flash Sale rail — live countdown to midnight when
+  // something's active, countdown to the next 2:00 PM when nothing is.
+  ssRenderFlashSale("flashSaleSection", "flashSaleProducts", "flashSaleTimer");
 
   const hot = document.getElementById("hotDeals");
   const fresh = document.getElementById("newArrivals");
@@ -48,8 +39,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     el.innerHTML = products.map(ssProductCard).join("");
   }
 
-  // Pulls a product's stock count regardless of which field name the
-  // backend used for it (stock / stockQuantity / quantity / qty).
   function ssStockOf(p) {
     return Number(p.stock ?? p.stockQuantity ?? p.quantity ?? p.qty ?? 0) || 0;
   }
@@ -64,7 +53,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     cacheAndRender(fresh, (newRes.products || newRes.data || newRes || []).slice(0, 10), "No new arrivals yet.");
   } catch (_) { fresh.innerHTML = `<p class="form-hint">Couldn't load new arrivals.</p>`; }
 
-  // ---- Wholesale Products Preview (like Hot Deals) ----
   if (wholesalePreview) {
     try {
       const wholesaleRes = await SS_API.getProducts({
@@ -74,7 +62,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
       let wholesaleProducts = wholesaleRes.products || wholesaleRes.data || wholesaleRes || [];
 
-      // If no products with sellerRole filter, try without and filter client-side
       if (!wholesaleProducts.length) {
         const allRes = await SS_API.getProducts({ status: 'active', limit: 50 });
         const allProducts = allRes.products || allRes.data || (Array.isArray(allRes) ? allRes : []);
@@ -94,21 +81,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  // ---- Top Selling: high-stock products, shuffled into a fresh random
-  // order every time the page loads (so it's not the same 10 every visit).
   try {
     const topRes = await SS_API.getProducts({ page: 1, limit: 40 });
     let list = topRes.products || topRes.data || topRes || [];
-    list = list.slice().sort((a, b) => ssStockOf(b) - ssStockOf(a)); // highest stock first
-    list = list.slice(0, 20);          // take the top 20 highest-stock movers
-    list = ssShuffle(list).slice(0, 10); // randomize which 10 of those show, and their order
+    list = list.slice().sort((a, b) => ssStockOf(b) - ssStockOf(a));
+    list = list.slice(0, 20);
+    list = ssShuffle(list).slice(0, 10);
     cacheAndRender(topSelling, list, "No top-selling products right now.");
   } catch (_) { topSelling.innerHTML = `<p class="form-hint">Couldn't load top-selling products.</p>`; }
 
-  // ---- Catalog preview: first 8 products, then a Load More button that
-  // sends the shopper into the full product.html listing (this rail never
-  // paginates in place — index.html is a preview, product.html is the
-  // real infinite-loading grid).
   const catalogLoadMoreWrap = document.getElementById("catalogLoadMoreWrap");
   const catalogLoadMoreBtn = document.getElementById("catalogLoadMoreBtn");
 

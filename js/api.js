@@ -170,6 +170,26 @@ getShopBySlug(slug) {
       return request(`/products/${productId}/view`, { method: "PATCH", requiresAuth: false });
     },
 
+
+// ============================================================
+    // FLASH SALES - PUBLIC
+    // ============================================================
+    // Everything currently live in today's 2:00 PM - midnight window,
+    // with stock still remaining. Re-derived server-side on every call,
+    // so it's correct even between scheduler ticks.
+  
+
+
+    getActiveFlashSales() {
+      return request("/flash-sales/active", { requiresAuth: false });
+    },
+    // Today's full window — live AND upcoming (still-locked) items, so the
+    // storefront can preview what's coming at 2:00 PM instead of showing
+    // nothing until the window opens.
+    getTodayFlashSales() {
+      return request("/flash-sales/today", { requiresAuth: false });
+    },
+
     // ============================================================
     // PRODUCTS - PUBLIC
     // ============================================================

@@ -67,16 +67,34 @@
     </div>
   </section>
 
-  <!-- ===== Hot deals — red flash-sale bar with live countdown ===== -->
+  <!-- ===== FLASH SALE — real backend-driven daily event (2PM-midnight) =====
+       Hidden by default; home.js shows it once the /flash-sales/active
+       fetch resolves (whether or not anything is live right now — the
+       "starts in" countdown still needs a home). -->
+  <section class="block" style="display:none;" id="flashSaleSection">
+    <div class="wrap">
+      <div class="rail rail--flash">
+        <div class="sec-head sec-head--flash">
+          <h2><i class="fa-solid fa-bolt-lightning"></i> Flash Sale</h2>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span class="deal-timer" id="flashSaleTimer"><i class="fa-regular fa-clock"></i> --h : --m : --s</span>
+            <a href="product.html?flashSale=true" class="see-all">See all</a>
+          </div>
+        </div>
+        <div class="p-scroll" id="flashSaleProducts"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Hot deals — red flash-sale-style bar. No live counter anymore:
+       "Hot Deals" is now just a merchandising rail (isHotDeal flag on a
+       product), the real ticking countdown belongs to Flash Sale above. -->
   <section class="block" style="background: rgb(245, 201, 188); border: 1px solid #e5e5e5; border-radius: 4px; ">
     <div class="wrap">
       <div class="rail">
         <div class="sec-head sec-head--hot">
-          <h2><i class="fa-solid fa-bolt"></i> Hot Deals</h2>
-          <div style="display:flex;align-items:center;gap:12px;">
-            <span class="deal-timer" id="hotDealsTimer"><i class="fa-regular fa-clock"></i> --h : --m : --s</span>
-            <a href="product.html?hotDeals=true" class="see-all">See all</a>
-          </div>
+          <h2><i class="fa-solid fa-fire"></i> Hot Deals</h2>
+          <a href="product.html?hotDeals=true" class="see-all">See all</a>
         </div>
         <div class="p-scroll" id="hotDeals"></div>
       </div>
@@ -132,9 +150,6 @@
         </div>
         <div class="p-grid" id="catalogPreview"></div>
 
-        <!-- Load More here always sends the shopper into the full
-             product.html listing — this rail is a preview, not the
-             real infinite-loading grid. -->
         <div class="load-more-wrap" id="catalogLoadMoreWrap" style="display:none;">
           <button class="btn-loadmore" id="catalogLoadMoreBtn" type="button">
             <span class="btn-loadmore__label">Browse All Products</span>

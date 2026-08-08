@@ -174,6 +174,227 @@
     border-radius: 14px; padding: 20px;
   }
 
+  /* ============================================================
+     ---- Flash Sale — redesigned ----
+     Signature idea: each submission reads like a countdown ticket —
+     a bold corner discount stamp on the photo, a die-cut price tag
+     (matching the storefront's own price-tag motif) and a slim
+     "hazard" edge on the how-it-works banner to signal urgency
+     without tipping into gimmick territory.
+     ============================================================ */
+
+  .flash-page-body{ --fs-urgent:#c23e0f; }
+
+  /* ---- how-it-works banner ---- */
+  .flash-hero-banner{
+    position:relative; display:flex; align-items:flex-start; gap:16px;
+    padding:20px 22px 20px 24px; border-radius:18px; overflow:hidden;
+    background:linear-gradient(135deg,#ffc169 0%,#f2a93b 46%,#d9821f 100%);
+    color:#3a2705; margin-bottom:24px;
+    box-shadow:0 14px 30px -16px rgba(217,130,31,.55);
+  }
+  .flash-hero-banner::before{
+    content:""; position:absolute; inset:0 0 auto 0; height:5px;
+    background:repeating-linear-gradient(-45deg,#3a2705 0 10px,transparent 10px 20px);
+    opacity:.16;
+  }
+  .flash-hero-banner__ico{
+    flex-shrink:0; width:46px; height:46px; border-radius:50%;
+    background:rgba(58,39,5,.14); backdrop-filter:blur(2px);
+    display:flex; align-items:center; justify-content:center;
+    font-size:19px; color:#3a2705; box-shadow:inset 0 0 0 1.5px rgba(58,39,5,.18);
+  }
+  .flash-hero-banner h3{ margin:0 0 5px; font-size:16.5px; font-family:var(--font-display,serif); }
+  .flash-hero-banner p{ margin:0; font-size:12.5px; opacity:.88; line-height:1.6; max-width:62ch; }
+
+  /* ---- quick stat strip ---- */
+  .fs-stats{
+    display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:22px;
+  }
+  .fs-stat{
+    background:var(--white,#fff); border:1px solid var(--line,#e4d6bd); border-radius:12px;
+    padding:12px 14px; text-align:left;
+  }
+  .fs-stat__num{ font-family:var(--font-mono,monospace); font-weight:800; font-size:20px; color:var(--navy-deep,#16324f); line-height:1.1; }
+  .fs-stat__label{ font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft,#7a7268); margin-top:4px; font-weight:700; }
+  .fs-stat.tone-live .fs-stat__num{ color:var(--fs-urgent,#c23e0f); }
+  .fs-stat.tone-live{ border-color:rgba(194,62,15,.3); }
+
+  /* ---- submissions grid ---- */
+  #flashSaleList{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:16px;
+  }
+
+  .fs-card{
+    position:relative;
+    border:1px solid var(--line,#e4d6bd); border-radius:16px; padding:14px;
+    background:var(--white,#fff); display:flex; gap:14px;
+    box-shadow:0 1px 0 rgba(27,31,35,.03), 0 10px 20px -16px rgba(22,50,79,.35);
+    transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+  .fs-card:hover{
+    transform:translateY(-2px);
+    box-shadow:0 2px 0 rgba(27,31,35,.04), 0 16px 30px -16px rgba(22,50,79,.4);
+    border-color:#e0cca3;
+  }
+  /* left status rail */
+  .fs-card::before{
+    content:""; position:absolute; left:0; top:14px; bottom:14px; width:4px; border-radius:4px;
+    background:var(--line,#e4d6bd);
+  }
+  .fs-card:has(.fs-status-badge.active)::before{ background:var(--fs-urgent,#c23e0f); }
+  .fs-card:has(.fs-status-badge.pending_review)::before{ background:var(--marigold,#f2a93b); }
+  .fs-card:has(.fs-status-badge.approved)::before,
+  .fs-card:has(.fs-status-badge.scheduled)::before{ background:#3b82f6; }
+  .fs-card:has(.fs-status-badge.rejected)::before,
+  .fs-card:has(.fs-status-badge.cancelled)::before{ background:#e05050; }
+  .fs-card:has(.fs-status-badge.ended)::before,
+  .fs-card:has(.fs-status-badge.sold_out)::before{ background:#a89f92; }
+
+  .fs-card__img-wrap{ position:relative; flex-shrink:0; }
+  .fs-card img{
+    width:78px; height:78px; border-radius:12px; object-fit:cover;
+    border:1px solid var(--line,#e4d6bd); background:var(--paper-dim,#f1e4ce); display:block;
+  }
+  .fs-card__discount-chip{
+    position:absolute; top:-7px; left:-7px; background:var(--fs-urgent,#c23e0f); color:#fff;
+    font-family:var(--font-mono,monospace); font-weight:700; font-size:10.5px;
+    padding:2px 6px; border-radius:6px; box-shadow:0 2px 6px rgba(194,62,15,.4);
+    border:2px solid var(--white,#fff);
+  }
+
+  .fs-card__body{ flex:1; min-width:0; display:flex; flex-direction:column; }
+  .fs-card__top{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+  .fs-card__name{ font-weight:700; font-size:14px; line-height:1.35; color:var(--ink,#1b1f23); }
+
+  .fs-status-badge{
+    display:inline-flex; align-items:center; gap:5px; font-size:10px; font-weight:700;
+    padding:4px 9px; border-radius:999px; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap;
+    flex-shrink:0;
+  }
+  .fs-status-badge.pending_review{ background: rgba(242,169,59,.16); color:#a86a12; }
+  .fs-status-badge.approved, .fs-status-badge.scheduled{ background: rgba(59,130,246,.14); color:#1d4ed8; }
+  .fs-status-badge.active{
+    background: rgba(194,62,15,.14); color:var(--fs-urgent,#c23e0f); position:relative; padding-left:16px;
+  }
+  .fs-status-badge.active::before{
+    content:""; position:absolute; left:8px; top:50%; width:6px; height:6px; margin-top:-3px;
+    border-radius:50%; background:var(--fs-urgent,#c23e0f);
+    box-shadow:0 0 0 0 rgba(194,62,15,.6); animation:fsPulse 1.6s ease-out infinite;
+  }
+  @keyframes fsPulse{
+    0%{ box-shadow:0 0 0 0 rgba(194,62,15,.5); }
+    70%{ box-shadow:0 0 0 6px rgba(194,62,15,0); }
+    100%{ box-shadow:0 0 0 0 rgba(194,62,15,0); }
+  }
+  .fs-status-badge.ended, .fs-status-badge.sold_out{ background: rgba(120,120,120,.14); color:#5c5c5c; }
+  .fs-status-badge.rejected, .fs-status-badge.cancelled{ background: rgba(224,80,80,.14); color:#b13a3a; }
+
+  .fs-card__prices{ display:flex; align-items:baseline; gap:10px; margin:8px 0 10px; flex-wrap:wrap; }
+  .fs-card__price-new{
+    font-family:var(--font-mono,monospace); font-weight:800; color:var(--navy-deep,#16324f); font-size:16.5px;
+    background:var(--paper,#fbf3e7); border:1px solid var(--ink,#1b1f23); border-left:none;
+    padding:4px 10px 4px 15px; clip-path:polygon(9px 0,100% 0,100% 100%,9px 100%,0 50%);
+    position:relative; line-height:1.4; display:inline-block;
+  }
+  .fs-card__price-new::before{
+    content:""; position:absolute; left:4px; top:50%; transform:translateY(-50%);
+    width:3px; height:3px; border-radius:50%; background:var(--ink,#1b1f23);
+  }
+  .fs-card__price-old{ text-decoration:line-through; color:var(--ink-faint,#a89f92); font-size:12px; font-family:var(--font-mono,monospace); }
+  .fs-card__discount{ font-size:11px; font-weight:700; color:#1f7a44; background:rgba(31,122,68,.1); padding:2px 8px; border-radius:999px; }
+
+  .fs-card__meta{
+    font-size:12px; color:var(--ink-soft,#7a7268); display:flex; flex-wrap:wrap; gap:8px 16px; margin-bottom:10px;
+  }
+  .fs-card__meta span{ display:inline-flex; align-items:center; gap:5px; }
+  .fs-card__meta i{ color:var(--marigold-deep,#d98c1f); width:13px; text-align:center; }
+
+  .fs-stock-track{
+    height:7px; border-radius:999px; background:rgba(242,169,59,.14); overflow:hidden; margin-bottom:5px; position:relative;
+  }
+  .fs-stock-fill{
+    height:100%; border-radius:999px; position:relative; overflow:hidden;
+    background:linear-gradient(90deg,var(--marigold,#f2a93b),var(--marigold-deep,#d98c1f));
+    transition:width .3s ease;
+  }
+  .fs-card:has(.fs-status-badge.active) .fs-stock-fill{
+    background:linear-gradient(90deg,var(--fs-urgent,#c23e0f),#e8622f);
+  }
+  .fs-stock-label{ font-size:11px; color:var(--ink-soft,#7a7268); font-weight:600; }
+
+  .fs-card__reject{
+    display:flex; gap:8px; align-items:flex-start; background: rgba(224,80,80,.08);
+    border:1px solid rgba(224,80,80,.22); color:#a33; padding:9px 11px; border-radius:10px;
+    font-size:12px; margin-top:8px; line-height:1.5;
+  }
+  .fs-card__reject i{ margin-top:1px; flex-shrink:0; }
+
+  .fs-card__actions{ margin-top:auto; padding-top:10px; }
+  .fs-card__actions .btn{ width:auto; }
+
+  .fs-discount-preview{
+    display:none; align-items:center; gap:9px;
+    font-size:12.5px; font-weight:700; padding:10px 13px; border-radius:12px;
+    background: rgba(31,122,68,.09); border:1px solid rgba(31,122,68,.22); color:#1f7a44; margin-top:2px;
+  }
+  .fs-discount-preview::before{
+    content:"\f0d6"; font-family:"Font Awesome 6 Free"; font-weight:900; font-size:13px;
+  }
+  .fs-discount-preview.show{ display:flex; }
+
+  /* ---- empty state accent ---- */
+  #flashSaleEmpty i.fa-bolt{ color:var(--marigold,#f2a93b); }
+
+  /* ---- Submit-to-Flash-Sale modal ---- */
+  #flashSaleFormModal .modal-head{
+    background:linear-gradient(135deg,#fff3de,#ffe4bd 120%);
+  }
+  #flashSaleFormModal .modal-head h2::before{
+    content:"\f0e7"; font-family:"Font Awesome 6 Free"; font-weight:900;
+    color:var(--marigold-deep,#d98c1f); margin-right:8px; font-size:15px;
+  }
+  #fsProductSelect{
+    appearance:none; -webkit-appearance:none;
+    background-image:linear-gradient(45deg,transparent 50%,var(--ink-soft,#7a7268) 50%),
+                      linear-gradient(135deg,var(--ink-soft,#7a7268) 50%,transparent 50%);
+    background-position:calc(100% - 18px) calc(50% - 3px), calc(100% - 13px) calc(50% - 3px);
+    background-size:5px 5px, 5px 5px; background-repeat:no-repeat;
+    padding-right:34px;
+  }
+  #flashSaleForm .form-row-2{
+    background:var(--paper-dim,#f1e4ce); border-radius:12px; padding:12px; gap:10px;
+  }
+  #flashSaleForm .form-row-2 .form-field input{ background:var(--white,#fff); }
+  #fsSaleDate{ font-family:var(--font-mono,monospace); }
+
+  /* ---- Flash Sale responsiveness ---- */
+  .fs-head-actions{ display:flex; margin-left:auto; }
+  @media (max-width:860px){
+    .fs-stats{ grid-template-columns:repeat(2,1fr); }
+  }
+  @media (max-width:640px){
+    .flash-hero-banner{ flex-direction:column; align-items:flex-start; padding:18px; }
+    .flash-hero-banner__ico{ margin-bottom:2px; }
+    #flashSaleList{ grid-template-columns:1fr; }
+    #flashSaleOverlay .orders-page__head{ flex-wrap:wrap; }
+    .fs-head-actions{ width:100%; margin-left:0; margin-top:12px; }
+    .fs-head-actions .btn{ width:100%; }
+  }
+  @media (max-width:480px){
+    .fs-stats{ grid-template-columns:repeat(2,1fr); gap:8px; }
+    .fs-stat{ padding:10px 12px; }
+    .fs-stat__num{ font-size:17px; }
+    .fs-card{ padding:12px; gap:11px; }
+    .fs-card img{ width:60px; height:60px; border-radius:10px; }
+    .fs-card__name{ font-size:13px; }
+    .fs-card__price-new{ font-size:14.5px; }
+    .fs-card__top{ flex-wrap:wrap; }
+    .fs-card__actions .btn{ width:100%; justify-content:center; }
+    #flashSaleFormModal .modal-head h2{ font-size:16px; }
+    #flashSaleForm .form-row-2{ grid-template-columns:1fr; }
+  }
+
 
   /* ============================================================
    SHOP ENHANCEMENTS - Drop-in styles
@@ -339,6 +560,9 @@
     </button>
     <button class="iconbtn" id="analyticsToggleBtn" title="Analytics">
       <i class="fa-solid fa-chart-line"></i>
+    </button>
+    <button class="iconbtn" id="flashSaleToggleBtn" title="Flash Sale">
+      <i class="fa-solid fa-bolt"></i>
     </button>
     <button class="iconbtn orders-bell" id="ordersToggleBtn" title="Orders" aria-expanded="false">
       <i class="fa-solid fa-bell"></i>
@@ -773,6 +997,51 @@
   </div>
 </div>
 
+<!-- ============ FLASH SALE "PAGE" ============ -->
+<div class="orders-page-overlay" id="flashSaleOverlay">
+  <div class="orders-page">
+    <div class="orders-page__head">
+      <button type="button" class="order-detail-back" id="flashSaleBack">
+        <i class="fa-solid fa-arrow-left"></i>
+      </button>
+      <div class="orders-page__title">
+        <h2>Flash Sale</h2>
+        <p>Daily 2:00 PM – midnight deals</p>
+      </div>
+      <div class="orders-page__actions fs-head-actions">
+        <button class="btn btn-primary btn-sm" id="openFlashSaleFormBtn">
+          <i class="fa-solid fa-bolt"></i> Submit a product
+        </button>
+      </div>
+    </div>
+
+    <div class="orders-page__body">
+      <div class="flash-hero-banner">
+        <span class="flash-hero-banner__ico"><i class="fa-solid fa-bolt"></i></span>
+        <div>
+          <h3>How the Flash Sale works</h3>
+          <p>Runs daily 2:00 PM–midnight. Submit at least 24 hours ahead with your Flash Sale price, stock allocation, and product details — the platform reviews and approves it, then it goes live automatically at 2:00 PM and ends the moment its stock sells out or midnight hits, whichever comes first.</p>
+        </div>
+      </div>
+
+      <div id="flashSaleLoading" class="orders-skel-wrap">
+        <div class="skel orders-skel"></div>
+        <div class="skel orders-skel"></div>
+      </div>
+
+      <div id="fsStats" class="fs-stats"></div>
+
+      <div id="flashSaleEmpty" class="analytics-empty" style="display:none;">
+        <i class="fa-solid fa-bolt"></i>
+        <h3>No Flash Sale submissions yet</h3>
+        <p>Submit one of your live products at least 24 hours before the next 2:00 PM slot.</p>
+      </div>
+
+      <div id="flashSaleList"></div>
+    </div>
+  </div>
+</div>
+
 <!-- ============ MY SHOP "PAGE" (ENHANCED) ============ -->
 <div class="orders-page-overlay" id="myShopOverlay">
   <div class="orders-page">
@@ -969,6 +1238,55 @@
         <div class="wizard-footer__spacer"></div>
         <button type="button" class="btn btn-outline" id="cancelShopForm">Cancel</button>
         <button type="submit" class="btn btn-primary" id="saveShopBtn">Create shop</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ SUBMIT TO FLASH SALE MODAL ============ -->
+<div class="modal-overlay" id="flashSaleFormModal">
+  <div class="modal-sheet">
+    <div class="modal-head">
+      <div>
+        <h2>Submit to Flash Sale</h2>
+        <p>Must be submitted at least 24 hours before the sale's 2:00 PM start.</p>
+      </div>
+      <button class="modal-close" id="closeFlashSaleFormModal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+
+    <div id="flashSaleFormError" class="alert alert-error"></div>
+
+    <form id="flashSaleForm" class="form-grid" novalidate>
+      <div class="form-field">
+        <label for="fsProductSelect">Product <span class="label-soft">(must be live)</span></label>
+        <select id="fsProductSelect" required>
+          <option value="">Select a live product</option>
+        </select>
+      </div>
+
+      <div class="form-row-2">
+        <div class="form-field">
+          <label for="fsPrice">Flash Sale price (KES)</label>
+          <input type="number" id="fsPrice" min="1" step="0.01" required placeholder="e.g. 3500" />
+        </div>
+        <div class="form-field">
+          <label for="fsStock">Stock to allocate</label>
+          <input type="number" id="fsStock" min="1" step="1" required placeholder="e.g. 20" />
+        </div>
+      </div>
+
+      <div id="fsDiscountPreview" class="fs-discount-preview"></div>
+
+      <div class="form-field">
+        <label for="fsSaleDate">Sale date</label>
+        <input type="date" id="fsSaleDate" required />
+        <p class="form-hint">The sale runs 2:00 PM–midnight on this date. The earliest available date is pre-filled below.</p>
+      </div>
+
+      <div class="wizard-footer">
+        <div class="wizard-footer__spacer"></div>
+        <button type="button" class="btn btn-outline" id="cancelFlashSaleForm">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="saveFlashSaleBtn">Submit for review</button>
       </div>
     </form>
   </div>
