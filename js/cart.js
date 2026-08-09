@@ -84,8 +84,6 @@ const SS_CART = (() => {
   }
 
   function add(product, qty = 1, variantArg = null) {
-    // Normalize: variant may arrive as an explicit 3rd argument OR embedded
-    // on the product object by product-detail.js as `selectedVariant`.
     const variant = variantArg || product.selectedVariant || null;
 
     const pId = productId(product);
@@ -93,11 +91,60 @@ const SS_CART = (() => {
     const key = lineKey(pId, vId);
     const lines = read();
 
+    // ============================================================
+    // FLASH SALE LINE — always treated as a simple, single-price,
+    // standard-delivery line, regardless of the underlying seller's usual
+    // wholesale terms. ssQuickAddFlashSale() (ui.js) already sets
+    // finalPrice/displayPrice to the discounted flashSalePrice and stock
+    // to the Flash Sale's own remainingStock before calling add() — this
+    // branch just makes sure that data lands in the stored line correctly
+    // and never gets treated as a wholesale line by computeDeliveryForLine.
+    // ============================================================
+    if (product.isFlashDeal && product.flashSaleId) {
+      const existing = lines.find((l) => l.lineId === key);
+      const stockAvailable = product.stock != null ? product.stock : null;
+
+      if (existing) {
+        let nextQty = existing.qty + qty;
+        if (stockAvailable != null) nextQty = Math.min(nextQty, stockAvailable);
+        existing.qty = Math.max(nextQty, 1);
+        existing.unitPrice = product.displayPrice ?? product.finalPrice ?? existing.unitPrice;
+        existing.stockAvailable = stockAvailable;
+        write(lines);
+        return existing;
+      }
+
+      const line = {
+        lineId: key,
+        productId: pId,
+        variantId: null,
+        variantLabel: "",
+        name: product.name,
+        image: Array.isArray(product.images) && product.images.length ? product.images[0] : (product.image || ""),
+        category: product.category?.name || "",
+        sellerRole: "retailer", // forced — Flash Sale lines always ride standard delivery
+        deliveryType: "simple",
+        unitPrice: product.displayPrice ?? product.finalPrice ?? 0,
+        qty: Math.max(qty, 1),
+        stockAvailable,
+        minOrderQuantity: 1,
+        pricingTiers: [],
+        freeDelivery: false,
+        deliveryCharge: null,
+        isFlashDeal: true,
+        flashSaleId: product.flashSaleId,
+      };
+
+      lines.push(line);
+      write(lines);
+      return line;
+    }
+
+    const pIdRegular = pId;
+    const vIdRegular = vId;
+
     const basePrice = product.displayPrice ?? product.finalPrice ?? 0;
     const unitPrice = basePrice + (variant?.priceAdjustment || 0);
-    // variant.stock is present on a full ProductVariant doc; the lightweight
-    // selectedVariant snapshot may or may not carry it — fall back to the
-    // product's own stock rather than treating it as "unlimited" (null).
     const stockAvailable = variant && variant.stock != null ? variant.stock : product.stock;
     const isWholesale = product.sellerRole === "wholesaler";
     const moq = isWholesale ? Math.max(1, Number(product.minOrderQuantity) || 1) : 1;
@@ -113,16 +160,13 @@ const SS_CART = (() => {
 
     const line = {
       lineId: key,
-      productId: pId,
-      variantId: vId,
+      productId: pIdRegular,
+      variantId: vIdRegular,
       variantLabel: variantLabelOf(variant),
       name: product.name,
       image: Array.isArray(product.images) && product.images.length ? product.images[0] : (product.image || ""),
       category: product.category?.name || "",
       sellerRole: product.sellerRole || "retailer",
-      // 'heavy' | 'simple' — only meaningful for wholesale lines, but stored
-      // regardless so cart.html/checkout.html don't need to re-fetch just to
-      // classify delivery type before the first live enrichment completes.
       deliveryType: product.deliveryType || "heavy",
       unitPrice,
       qty: Math.max(qty, moq),
@@ -133,6 +177,8 @@ const SS_CART = (() => {
       deliveryCharge: isWholesale
         ? (product.deliveryCharge || { chargeType: "fixed", amount: 0, perUnitAmount: 0, notes: "" })
         : null,
+      isFlashDeal: false,
+      flashSaleId: null,
     };
 
     lines.push(line);

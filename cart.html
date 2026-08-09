@@ -225,6 +225,46 @@ function isWholesaleLine(e) { return e.isWholesale; }
 function isHeavyWholesale(e) { return e.isWholesale && e.deliveryType === "heavy"; }
 
 async function enrichLine(line) {
+  // ============================================================
+  // FLASH SALE LINE — re-fetch the FlashSale doc itself (price/stock live
+  // there), not the product. Falls into the same `enriched` shape the
+  // renderer already expects, with isFlashDeal:true carrying the extra
+  // fields the UI needs for its badge/urgency copy.
+  // ============================================================
+  if (line.isFlashDeal && line.flashSaleId) {
+    let fs;
+    try {
+      const res = await SS_API.getFlashSale(line.flashSaleId);
+      fs = res.flashSale || res;
+    } catch (e) {
+      return { line, product: null, error: "This Flash Sale is no longer available.", isFlashDeal: true };
+    }
+
+    if (!fs.isLive) {
+      return { line, product: fs.product || null, error: "This Flash Sale has ended.", isFlashDeal: true };
+    }
+
+    const remaining = fs.remainingStock != null
+      ? fs.remainingStock
+      : Math.max(0, (fs.stockAllocated || 0) - (fs.stockSold || 0));
+
+    const qty = Math.min(Math.max(1, Number(line.qty) || 1), Math.max(remaining, 1));
+
+    return {
+      line,
+      product: fs.product || { name: line.name, images: line.image ? [line.image] : [] },
+      variantDefs: [], variants: [], requiresVariant: false,
+      selectedVariant: null, selectedAttrs: {},
+      isWholesale: false, deliveryType: "simple", minQty: 1, qty,
+      unitPrice: fs.flashSalePrice,
+      stockAvailable: remaining,
+      error: null,
+      isFlashDeal: true,
+      flashSaleId: fs.id || fs._id,
+      flashSaleMeta: { discountPercent: fs.discountPercent, originalPrice: fs.originalPrice, endAt: fs.endAt },
+    };
+  }
+
   let product, variantDefs = [];
   try {
     const res = await SS_API.getProduct(line.productId);
@@ -265,6 +305,7 @@ async function enrichLine(line) {
     line, product, variantDefs, variants, requiresVariant,
     selectedVariant, selectedAttrs, isWholesale, deliveryType, minQty, qty,
     unitPrice, stockAvailable, error: null,
+    isFlashDeal: false,
   };
 }
 
@@ -306,6 +347,9 @@ function renderCartItems() {
 
     const { product, requiresVariant, variantDefs, variants, selectedVariant, selectedAttrs, isWholesale, minQty, qty, unitPrice, stockAvailable } = e;
     const heavy = isHeavyWholesale(e);
+    const flashBadge = e.isFlashDeal
+      ? `<span class="wholesale-badge" style="background:linear-gradient(135deg,#FF5A1F,#FF8A00);"><i class="fa-solid fa-bolt"></i> Flash Sale</span>`
+      : "";
     const img = Array.isArray(product.images) && product.images.length ? product.images[0] : "";
     const itemTotal = unitPrice * qty;
     const canDecrease = qty > minQty;
@@ -373,7 +417,7 @@ function renderCartItems() {
           <div class="cart-left">
             <img src="${img}" onerror="this.src='images/placeholder.png'" onclick="location.href='product-detail.html?id=${product._id}'">
             <div class="cart-details">
-              <h4 onclick="location.href='product-detail.html?id=${product._id}'">${product.name} ${isWholesale ? '<span class="wholesale-badge">Wholesale</span>' : ""} ${isWholesale && !heavy ? '<span class="standard-delivery-badge">Standard Delivery</span>' : ""} ${heavy ? '<span class="own-delivery-badge">Seller Delivery</span>' : ""}</h4>
+              <h4 onclick="location.href='product-detail.html?id=${product._id}'">${product.name} ${flashBadge} ${isWholesale ? '<span class="wholesale-badge">Wholesale</span>' : ""} ${isWholesale && !heavy ? '<span class="standard-delivery-badge">Standard Delivery</span>' : ""} ${heavy ? '<span class="own-delivery-badge">Seller Delivery</span>' : ""}</h4>
               <div class="price-line">Ksh ${itemTotal.toLocaleString()} <small>(Ksh ${unitPrice.toLocaleString()} × ${qty})</small></div>
               ${wholesaleInfo}
               ${variantPicker}
