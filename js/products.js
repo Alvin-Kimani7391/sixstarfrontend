@@ -10,6 +10,16 @@
   const maxInput = document.getElementById("f-max");
   const hotChip = document.getElementById("f-hotdeals");
   const sortSelect = document.getElementById("f-sort");
+  const filtersAside = document.querySelector(".filters");
+  const wrapEl = document.querySelector(".wrap.listing");
+  const filterBanner = document.getElementById("filterBanner");
+
+  // Flash Sale mode elements
+  const normalSection = document.getElementById("normalListingSection");
+  const flashSection = document.getElementById("flashSaleListingSection");
+  const flashGrid = document.getElementById("flashSaleGrid");
+  const flashResultCount = document.getElementById("flashSaleResultCount");
+  const flashTimer = document.getElementById("flashSaleListingTimer");
 
   const PAGE_SIZE = 8; // products per batch
 
@@ -21,7 +31,8 @@
       minPrice: p.get("minPrice") || "",
       maxPrice: p.get("maxPrice") || "",
       hotDeals: p.get("hotDeals") === "true",
-      sort: p.get("sort") || ""
+      flashSale: p.get("flashSale") === "true",
+      sort: p.get("sort") || "" // "", "newest", "popular", "price_asc", "price_desc"
     };
   }
 
@@ -29,7 +40,7 @@
 
   // Full category TREE (parent -> children -> grandchildren...), used to
   // drive the cascading Category/Sub-category/Sub-sub-category selects in
-  // the sidebar and to resolve the category banner's display name + path.
+  // the sidebar and to resolve the filter banner's category display path.
   let categoryTree = [];
 
   // Pagination/load-more bookkeeping — separate from `state` (which only
@@ -38,6 +49,30 @@
   let totalCount = 0;
   let loadedCount = 0;
   let isLoadingMore = false;
+
+  // "Top Selling" (?sort=popular) has no guaranteed backend meaning — the
+  // homepage's own Top Selling rail (home.js) computes it client-side as
+  // "highest stock, then shuffled", explicitly calling it a stand-in for
+  // real sales data. Rather than gamble on the backend understanding
+  // sort=popular, this page mirrors that same definition but applies it
+  // properly to the full listing: fetch a larger batch (respecting
+  // whatever category/price/search filters are also active), sort by
+  // stock, then paginate through that in memory. topSellingPool is null
+  // whenever a normal backend-paginated sort is in effect.
+  const TOP_SELLING_BATCH_SIZE = 60;
+  let topSellingPool = null;
+
+  // Flash Sale listing's own countdown — separate from ui.js's
+  // window.__ssFlashSaleCountdownTimer (which drives the homepage rail),
+  // since both could theoretically be alive if this page were ever
+  // embedded somewhere unusual. Always cleared on mode exit.
+  let flashSaleCountdownTimer = null;
+
+  function isFlashSaleMode() { return !!state.flashSale; }
+
+  function ssStockOf(p) {
+    return Number(p.stock ?? p.stockQuantity ?? p.quantity ?? p.qty ?? 0) || 0;
+  }
 
   function syncFormToState() {
     minInput.value = state.minPrice || "";
@@ -66,7 +101,7 @@
       onChange: (id) => {
         // A cascade pick is a complete, intentional choice — filter
         // immediately rather than waiting on "Apply filters" (that button
-        // now only governs price range).
+        // now only governs price range + sort).
         state.category = id;
         pushURL();
         load();
@@ -82,36 +117,71 @@
       categoryTree = [];
     }
     renderCascade();
-    renderCategoryBanner();
+    renderFilterBanner();
   }
 
-  // Shows a small heading + "clear filter" link when arriving with a category
-  // pre-selected (e.g. from the homepage mega menu), so it doesn't just look
-  // like a plain, unfiltered product grid. Shows the full drill-down path
-  // (e.g. "Electronics > Phones & Tablets > Smartphones") when the tree has
-  // loaded, so the user can see exactly how specific the current filter is.
-  function renderCategoryBanner() {
-    let banner = document.getElementById("categoryBanner");
-    if (!state.category) {
-      if (banner) banner.remove();
+  // ============================================================
+  // DYNAMIC FILTER BANNER — one removable chip per active filter, so
+  // combinations (e.g. a category PLUS a search term) are all visible at
+  // once. Special filters (Flash Sale / Hot Deals / New Arrivals / Top
+  // Selling) get their own colour + icon, matching the homepage rail they
+  // were clicked from, so the visual language carries through from click
+  // to landing. Replaces the old category-only banner.
+  // ============================================================
+  function renderFilterBanner() {
+    const chips = [];
+
+    if (state.flashSale) {
+      chips.push({ key: "flashSale", type: "flash", icon: "fa-bolt-lightning", label: "Flash Sale", sub: "Today's live flash deals" });
+    }
+    if (state.hotDeals) {
+      chips.push({ key: "hotDeals", type: "hot", icon: "fa-fire", label: "Hot Deals", sub: "Trending right now" });
+    }
+    if (state.sort === "newest") {
+      chips.push({ key: "sort", type: "new", icon: "fa-gift", label: "New Arrivals", sub: "Freshly added" });
+    }
+    if (state.sort === "popular") {
+      chips.push({ key: "sort", type: "top", icon: "fa-crown", label: "Top Selling", sub: "Customer favourites" });
+    }
+    if (state.category) {
+      const path = ssFindCategoryPath(categoryTree, state.category);
+      const label = (path && path.length) ? path.map(n => n.name).join(" › ") : "Selected category";
+      chips.push({ key: "category", type: "category", icon: "fa-layer-group", label, sub: "" });
+    }
+    if (state.search) {
+      chips.push({ key: "search", type: "search", icon: "fa-magnifying-glass", label: `"${state.search}"`, sub: "" });
+    }
+
+    if (!chips.length) {
+      filterBanner.style.display = "none";
+      filterBanner.innerHTML = "";
       return;
     }
 
-    const path = ssFindCategoryPath(categoryTree, state.category);
-    const label = path && path.length
-      ? path.map(n => n.name).join(" <i class=\"fa-solid fa-chevron-right\"></i> ")
-      : "Selected category";
+    filterBanner.style.display = "flex";
+    filterBanner.innerHTML = chips.map(c => `
+      <div class="filter-chip filter-chip--${c.type}">
+        <i class="fa-solid ${c.icon}"></i>
+        <span class="filter-chip__text">
+          <strong>${c.label}</strong>${c.sub ? `<small>${c.sub}</small>` : ""}
+        </span>
+        <button type="button" class="filter-chip__clear" data-clear="${c.key}" aria-label="Remove filter">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+    `).join("");
 
-    if (!banner) {
-      banner = document.createElement("div");
-      banner.id = "categoryBanner";
-      banner.className = "category-banner";
-      resultCount.parentElement.insertBefore(banner, resultCount.parentElement.firstChild);
-    }
-    banner.innerHTML = `
-      <span>Showing: <strong>${label}</strong></span>
-      <a href="product.html" class="category-banner__clear">Clear category <i class="fa-solid fa-xmark"></i></a>
-    `;
+    filterBanner.querySelectorAll("[data-clear]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const key = btn.dataset.clear;
+        if (key === "sort") state.sort = "";
+        else if (key === "category") state.category = "";
+        else if (key === "search") state.search = "";
+        else state[key] = false;
+        pushURL();
+        load();
+      });
+    });
   }
 
   /* ---------- Load More button state ---------- */
@@ -145,25 +215,147 @@
     });
   }
 
-  // Full (re)load — used on first load, filter changes, and back/forward nav.
+  // Fetches a larger batch (respecting the active category/price/search/
+  // hotDeals filters) and sorts it by stock descending — see the
+  // TOP_SELLING_BATCH_SIZE comment above for why this exists instead of
+  // trusting a backend sort=popular.
+  async function fetchTopSellingPool() {
+    const res = await SS_API.getProducts({
+      category: state.category || undefined,
+      search: state.search || undefined,
+      minPrice: state.minPrice || undefined,
+      maxPrice: state.maxPrice || undefined,
+      hotDeals: state.hotDeals || undefined,
+      page: 1,
+      limit: TOP_SELLING_BATCH_SIZE
+    });
+    const products = res.products || res.data || (Array.isArray(res) ? res : []);
+    return products.slice().sort((a, b) => ssStockOf(b) - ssStockOf(a));
+  }
+
+  // ============================================================
+  // FLASH SALE LISTING MODE
+  // Reuses ssFlashSaleCard() and ssFmtCountdown() from ui.js (the exact
+  // same rendering the homepage rail uses) instead of duplicating that
+  // logic here. No pagination — /flash-sales/today already returns the
+  // whole day's set in one call.
+  // ============================================================
+  function stopFlashSaleCountdown() {
+    if (flashSaleCountdownTimer) {
+      clearInterval(flashSaleCountdownTimer);
+      flashSaleCountdownTimer = null;
+    }
+  }
+
+  async function loadFlashSaleListing() {
+    stopFlashSaleCountdown();
+    flashGrid.innerHTML = ssSkeletonCards(PAGE_SIZE);
+    flashResultCount.textContent = "Loading today's Flash Sale…";
+    flashTimer.style.display = "";
+    flashTimer.innerHTML = `<i class="fa-regular fa-clock"></i> --h : --m : --s`;
+
+    let flashSales = [];
+    try {
+      const res = await SS_API.getTodayFlashSales();
+      flashSales = res.flashSales || res.data || res || [];
+    } catch (err) {
+      flashGrid.innerHTML = `<div class="empty-state">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <h3>Couldn't load Flash Sale</h3>
+        <p>${err.message}</p>
+      </div>`;
+      flashResultCount.textContent = "";
+      flashTimer.style.display = "none";
+      return;
+    }
+
+    if (!flashSales.length) {
+      flashGrid.innerHTML = `<div class="empty-state">
+        <i class="fa-solid fa-bolt-lightning"></i>
+        <h3>No Flash Sale scheduled for today</h3>
+        <p>Check back tomorrow at 2:00 PM, or browse the full catalog instead.</p>
+      </div>`;
+      flashResultCount.textContent = "0 items";
+      flashTimer.style.display = "none";
+      return;
+    }
+
+    flashSales.forEach(fs => {
+      const p = fs.product;
+      if (p && (p.id || p._id)) window.__ssProductCache[p.id || p._id] = p;
+    });
+    flashGrid.innerHTML = flashSales.map(ssFlashSaleCard).join("");
+    flashResultCount.textContent = `${flashSales.length} item${flashSales.length === 1 ? "" : "s"} in today's Flash Sale`;
+
+    const liveOnes = flashSales.filter(fs => fs.isLive);
+    if (liveOnes.length) {
+      const endAt = new Date(liveOnes[0].endAt);
+      const tick = () => {
+        const diff = endAt - new Date();
+        if (diff <= 0) { loadFlashSaleListing(); return; }
+        flashTimer.innerHTML = `<i class="fa-regular fa-clock"></i> Ends in ${ssFmtCountdown(diff)}`;
+      };
+      tick();
+      flashSaleCountdownTimer = setInterval(tick, 1000);
+    } else {
+      const startAt = new Date(flashSales[0].startAt); // sorted by startAt from backend
+      const tick = () => {
+        const diff = startAt - new Date();
+        if (diff <= 0) { loadFlashSaleListing(); return; }
+        flashTimer.innerHTML = `<i class="fa-regular fa-clock"></i> Starts in ${ssFmtCountdown(diff)}`;
+      };
+      tick();
+      flashSaleCountdownTimer = setInterval(tick, 1000);
+    }
+  }
+
+  // ============================================================
+  // Full (re)load — used on first load, filter changes, and back/forward
+  // nav. Branches into Flash Sale mode, Top Selling mode, or the normal
+  // backend-paginated listing.
+  // ============================================================
   async function load() {
     syncFormToState();
-    renderCategoryBanner();
+    renderFilterBanner();
+
+    if (isFlashSaleMode()) {
+      filtersAside.style.display = "none";
+      wrapEl.classList.add("listing--full");
+      normalSection.style.display = "none";
+      flashSection.style.display = "block";
+      await loadFlashSaleListing();
+      return;
+    }
+
+    filtersAside.style.display = "";
+    wrapEl.classList.remove("listing--full");
+    flashSection.style.display = "none";
+    normalSection.style.display = "block";
+    stopFlashSaleCountdown();
 
     page = 1;
     loadedCount = 0;
     totalCount = 0;
+    topSellingPool = null;
     loadMoreWrap.style.display = "none";
     grid.innerHTML = ssSkeletonCards(PAGE_SIZE);
     resultCount.textContent = "Loading products…";
 
     try {
-      const res = await fetchPage(page);
-      const products = res.products || res.data || (Array.isArray(res) ? res : []);
-      totalCount = res.total ?? res.count ?? products.length;
+      let products;
+
+      if (state.sort === "popular") {
+        topSellingPool = await fetchTopSellingPool();
+        totalCount = topSellingPool.length;
+        products = topSellingPool.slice(0, PAGE_SIZE);
+      } else {
+        const res = await fetchPage(page);
+        products = res.products || res.data || (Array.isArray(res) ? res : []);
+        totalCount = res.total ?? res.count ?? products.length;
+      }
 
       if (!products.length) {
-        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">
+        grid.innerHTML = `<div class="empty-state">
           <i class="fa-solid fa-box-open"></i>
           <h3>No products match your filters</h3>
           <p>Try clearing a filter or searching a different term.</p>
@@ -178,7 +370,7 @@
       resultCount.textContent = `${totalCount} product${totalCount === 1 ? "" : "s"} found`;
       refreshLoadMoreUI();
     } catch (err) {
-      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">
+      grid.innerHTML = `<div class="empty-state">
         <i class="fa-solid fa-triangle-exclamation"></i>
         <h3>Couldn't load products</h3>
         <p>${err.message}</p>
@@ -189,19 +381,28 @@
   }
 
   // Appends the next batch onto the existing grid instead of replacing it.
+  // In Top Selling mode this slices the next chunk out of the already-
+  // fetched, already-sorted topSellingPool instead of calling the backend
+  // again — the pool covers TOP_SELLING_BATCH_SIZE items in one request.
   async function loadMore() {
     if (isLoadingMore || loadedCount >= totalCount) return;
     setLoadMoreBusy(true);
 
-    const nextPage = page + 1;
     try {
-      const res = await fetchPage(nextPage);
-      const products = res.products || res.data || (Array.isArray(res) ? res : []);
+      let products;
+
+      if (topSellingPool) {
+        products = topSellingPool.slice(loadedCount, loadedCount + PAGE_SIZE);
+      } else {
+        const nextPage = page + 1;
+        const res = await fetchPage(nextPage);
+        products = res.products || res.data || (Array.isArray(res) ? res : []);
+        page = nextPage;
+      }
 
       if (products.length) {
         products.forEach(p => { window.__ssProductCache[p.id] = p; });
         grid.insertAdjacentHTML("beforeend", products.map(ssProductCard).join(""));
-        page = nextPage;
         loadedCount += products.length;
       } else {
         // Backend says there's more (totalCount) but returned nothing — stop asking.
@@ -229,7 +430,7 @@
   });
 
   document.getElementById("f-clear").addEventListener("click", () => {
-    state = { category: "", search: "", minPrice: "", maxPrice: "", hotDeals: false, sort: "" };
+    state = { category: "", search: "", minPrice: "", maxPrice: "", hotDeals: false, flashSale: false, sort: "" };
     pushURL();
     load();
   });

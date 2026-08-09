@@ -9,6 +9,79 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://kit.fontawesome.com/e1426ab85b.js" crossorigin="anonymous"></script>
 <link rel="stylesheet" href="css/style.css">
+<style>
+/* ============================================================
+   PRODUCT LISTING — dynamic "what am I looking at" filter banner,
+   Flash Sale listing mode, and Top Selling styling.
+
+   Kept self-contained here (rather than relying on css/theme.css,
+   which per the homepage-only dual-CSS-file setup is NOT loaded on
+   this page) so the Flash Sale card styling (.fs-card family, used
+   by ssFlashSaleCard() in ui.js) renders correctly here even though
+   this page only links css/style.css.
+   ============================================================ */
+
+.filter-banner {
+  display: none; flex-wrap: wrap; gap: 10px; margin: 0 0 16px;
+}
+.filter-chip {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+  border-radius: 12px; background: var(--surface); border: 1.5px solid var(--line);
+  box-shadow: var(--shadow-soft);
+}
+.filter-chip i:first-child { font-size: 15px; flex-shrink: 0; }
+.filter-chip__text { display: flex; flex-direction: column; line-height: 1.3; }
+.filter-chip__text strong { font-size: 13px; color: var(--ink); }
+.filter-chip__text small { font-size: 10.5px; color: var(--ink-faint); font-weight: 600; }
+.filter-chip__clear {
+  margin-left: 6px; width: 22px; height: 22px; border: none; border-radius: 50%;
+  background: rgba(0,0,0,.05); color: var(--ink-soft); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; font-size: 11px; transition: .2s ease;
+}
+.filter-chip__clear:hover { background: var(--brick); color: #fff; }
+
+.filter-chip--flash { border-color: rgba(124,58,237,.3); }
+.filter-chip--flash i:first-child { color: var(--pop); }
+.filter-chip--hot { border-color: rgba(184,68,46,.3); }
+.filter-chip--hot i:first-child { color: var(--brick); }
+.filter-chip--new { border-color: rgba(18,161,80,.3); }
+.filter-chip--new i:first-child { color: var(--price); }
+.filter-chip--top { border-color: rgba(242,169,59,.35); }
+.filter-chip--top i:first-child { color: var(--marigold-deep); }
+.filter-chip--category i:first-child, .filter-chip--search i:first-child { color: var(--ink-soft); }
+
+/* Flash Sale mode drops the sidebar entirely — its filters (category,
+   price, hot deals) don't apply to a curated daily set — so the grid
+   takes the full width instead of leaving an empty column. */
+.wrap.listing.listing--full { grid-template-columns: 1fr; }
+.wrap.listing.listing--full .filters { display: none; }
+
+.fs-listing-timer {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 800;
+  color: var(--pop); background: rgba(124,58,237,.08); border: 1px solid rgba(124,58,237,.2);
+  padding: 6px 12px; border-radius: 20px;
+}
+
+/* ---- Flash Sale card accents (base .p-card / .p-card__* rules
+   already come from css/style.css since the normal grid uses them
+   too — these only add the flash-sale-specific bits ssFlashSaleCard()
+   expects: discount/flash badges, stock bar, lock overlay states). ---- */
+.fs-card { position: relative; }
+.fs-card--locked { opacity: .75; }
+.fs-card__flash-badge { background: var(--pop) !important; }
+.fs-card__price { color: var(--pop); }
+.fs-card__lock-overlay { background: rgba(20,20,20,.55); }
+.fs-card__stockbar { height: 5px; border-radius: 6px; background: var(--bg-page); overflow: hidden; margin-top: 8px; }
+.fs-card__stockbar-fill { height: 100%; background: linear-gradient(90deg, var(--pop), #9b6bf0); transition: width .3s ease; }
+.fs-card__stocklabel { font-size: 10.5px; color: var(--ink-faint); font-weight: 700; margin-top: 5px; }
+.fs-card__lowstock-label { color: var(--brick); }
+.fs-card__soldout-label { color: var(--ink-faint); }
+.fs-card__pending-label { color: var(--pop); }
+
+.empty-state { text-align: center; padding: 40px 20px; color: var(--ink-soft); grid-column: 1/-1; }
+.empty-state i { font-size: 30px; color: var(--line); display: block; margin-bottom: 10px; }
+.empty-state h3 { font-size: 15px; color: var(--ink); margin-bottom: 6px; }
+</style>
 </head>
 <body data-page="product.html">
 <div id="pageLoader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
@@ -55,28 +128,51 @@
     </aside>
 
     <section>
-      <div class="listing-toolbar">
-        <span class="count" id="resultCount">Loading products…</span>
-        <select class="sort-select" id="f-sort">
-          <option value="">Sort: Relevance</option>
-          <option value="newest">Newest first</option>
-          <option value="price_asc">Price: Low to High</option>
-          <option value="price_desc">Price: High to Low</option>
-        </select>
+      <!-- Dynamic "what am I looking at" banner — one removable chip per
+           active filter (Flash Sale / Hot Deals / New Arrivals / Top
+           Selling / Category / Search), colour-matched to the homepage
+           rail it came from. Hidden entirely when nothing's active. -->
+      <div class="filter-banner" id="filterBanner"></div>
+
+      <!-- ===== FLASH SALE LISTING MODE =====
+           Shown instead of the normal grid when ?flashSale=true. Backed
+           by /flash-sales/today (real FlashSale docs, not Product docs)
+           via the same ssFlashSaleCard()/ssFmtCountdown() helpers the
+           homepage rail already uses — no duplicated rendering logic. -->
+      <div id="flashSaleListingSection" style="display:none;">
+        <div class="listing-toolbar">
+          <span class="count" id="flashSaleResultCount">Loading Flash Sale…</span>
+          <span class="fs-listing-timer" id="flashSaleListingTimer"><i class="fa-regular fa-clock"></i> --h : --m : --s</span>
+        </div>
+        <div class="p-grid" id="flashSaleGrid"></div>
       </div>
 
-      <div class="p-grid" id="productGrid">
-      </div>
+      <!-- ===== NORMAL LISTING MODE ===== -->
+      <div id="normalListingSection">
+        <div class="listing-toolbar">
+          <span class="count" id="resultCount">Loading products…</span>
+          <select class="sort-select" id="f-sort">
+            <option value="">Sort: Relevance</option>
+            <option value="newest">Newest first</option>
+            <option value="popular">Top Selling</option>
+            <option value="price_asc">Price: Low to High</option>
+            <option value="price_desc">Price: High to Low</option>
+          </select>
+        </div>
 
-      <!-- Loads the next 8 products in place, with a spinner inside the
-           button while the request is in flight. Hides itself once every
-           product has been loaded. -->
-      <div class="load-more-wrap" id="loadMoreWrap" style="display:none;">
-        <button class="btn-loadmore" id="loadMoreBtn" type="button">
-          <span class="btn-loadmore__label" id="loadMoreLabel">Load More</span>
-          <span class="btn-loadmore__spinner"></span>
-        </button>
-        <p class="load-more-count" id="loadMoreCount"></p>
+        <div class="p-grid" id="productGrid">
+        </div>
+
+        <!-- Loads the next 8 products in place, with a spinner inside the
+             button while the request is in flight. Hides itself once every
+             product has been loaded. -->
+        <div class="load-more-wrap" id="loadMoreWrap" style="display:none;">
+          <button class="btn-loadmore" id="loadMoreBtn" type="button">
+            <span class="btn-loadmore__label" id="loadMoreLabel">Load More</span>
+            <span class="btn-loadmore__spinner"></span>
+          </button>
+          <p class="load-more-count" id="loadMoreCount"></p>
+        </div>
       </div>
     </section>
   </div>

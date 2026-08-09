@@ -122,7 +122,7 @@
 }
 .heavy-delivery-note {
   font-size: 11px; color: var(--pop); margin-top: 8px; font-weight: 600;
-  background: rgba(124,58,237,0.06); padding: 8px 10px; border-radius: 8px; border-left: 3px solid var(--pop);
+  background: rgba(124,58,237,.06); padding: 8px 10px; border-radius: 8px; border-left: 3px solid var(--pop);
   display: flex; align-items: flex-start; gap: 6px; line-height: 1.5;
 }
 
@@ -975,6 +975,33 @@ function firstDefined(...vals) {
   return "";
 }
 
+// ============================================================
+// EMAIL VERIFICATION GATE
+// Mirrors login.js's emailVerificationRequired detour, but re-checked
+// here because a buyer with an already-valid session cookie (see
+// login.js's goToVerifyEmail comment — the backend issues the cookie
+// BEFORE the OTP step is completed) can navigate straight to
+// checkout.html and skip that redirect entirely. Without this check,
+// getMe() succeeding was being treated as "fully logged in", when it
+// really only means "has a valid session".
+//
+// Only trips when a field comes back explicitly `false` (never when
+// it's simply absent), so accounts that predate email verification —
+// which login.js's own comments call out as a real case — aren't
+// locked out just because the field doesn't exist on their record.
+// If your backend uses a different field name than the three checked
+// below, add it here (same pattern as the phone/name fallback list
+// in firstDefined() calls elsewhere on this page).
+// ============================================================
+function isEmailUnverified(meResponse, meUser) {
+  if (meResponse && meResponse.emailVerificationRequired === true) return true;
+  if (meUser) {
+    const flags = [meUser.emailVerified, meUser.isEmailVerified, meUser.email_verified];
+    if (flags.some((f) => f === false)) return true;
+  }
+  return false;
+}
+
 // meResponse (/auth/me) is guaranteed to have succeeded already — the page
 // wouldn't be visible otherwise — so it's the reliable baseline. /users/profile
 // is fetched as an enhancement and, when available, wins field-by-field since
@@ -1126,6 +1153,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   } catch (e) {
     document.getElementById("authGate").style.display = "block";
     ssHideLoader();
+    return;
+  }
+
+  // Gate unverified accounts the same way login.js does. A user can reach
+  // this page with a valid session cookie but an unverified email (see
+  // login.js's goToVerifyEmail comment), so getMe() succeeding is NOT
+  // enough on its own to prove they finished onboarding.
+  const meUser = normalizeUserShape(meResponse);
+  if (isEmailUnverified(meResponse, meUser)) {
+    const next = encodeURIComponent("checkout.html");
+    window.location.href = `verify-email.html?next=${next}`;
     return;
   }
 
