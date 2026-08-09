@@ -183,13 +183,17 @@ getShopBySlug(slug) {
     getActiveFlashSales() {
       return request("/flash-sales/active", { requiresAuth: false });
     },
-    // Today's full window — live AND upcoming (still-locked) items, so the
-    // storefront can preview what's coming at 2:00 PM instead of showing
-    // nothing until the window opens.
     getTodayFlashSales() {
       return request("/flash-sales/today", { requiresAuth: false });
     },
+    // Re-fetches one Flash Sale's live price/stock — used by cart.html and
+    // checkout.html to re-validate a Flash Sale line the same way a regular
+    // product line is re-fetched, instead of trusting anything cached.
+    getFlashSale(id) {
+      return request(`/flash-sales/${id}`, { requiresAuth: false });
+    },
 
+    
     // ============================================================
     // PRODUCTS - PUBLIC
     // ============================================================
