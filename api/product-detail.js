@@ -1,24 +1,23 @@
 /**
  * api/product-detail.js  (Vercel Serverless Function)
  * -----------------------------------------------------------------------
- * Files under /api at your project root become serverless functions on
- * Vercel automatically — no framework needed for this to work on a plain
- * static deployment.
+ * CHANGED: reads the template from templates/product-detail.html instead
+ * of the project root. This is the fix for the static-file-shadowing bug:
+ * Vercel serves an actual static file at a matching path BEFORE it ever
+ * checks vercel.json rewrites. As long as a real product-detail.html sat
+ * at the project root, /product-detail.html requests were served as that
+ * plain static file directly — this function never ran, for ANY product.
  *
- * A request to /product-detail.html?id=... gets rewritten (see
- * vercel.json) to this function instead of being served as a static
- * file. This function:
- *   1. Reads the real product-detail.html template (bundled alongside
- *      this function via vercel.json's `includeFiles`)
- *   2. Fetches that product from your Render API
- *   3. Injects a real <title>/<meta description>/OG/Twitter/JSON-LD block
- *      between the <!--SEO_HEAD--> markers
- *   4. Sends the result — your existing product-detail.js then runs
- *      client-side exactly as before for the interactive parts.
+ * Moving the real template to templates/product-detail.html means no
+ * static file exists at the public /product-detail.html path anymore, so
+ * the request correctly falls through to the rewrite -> this function.
  *
- * Requires an environment variable in your Vercel project settings:
- *   RENDER_API_BASE = https://your-backend.onrender.com/api
- *   SITE_URL         = https://www.sixstarsuppliers.co.ke
+ * SETUP (see accompanying instructions):
+ *   1. Move your real product-detail.html to templates/product-detail.html
+ *   2. Update vercel.json's includeFiles to "templates/product-detail.html"
+ *   3. Nothing else changes — all internal links still point at
+ *      "product-detail.html?id=..." as before; that's the public URL,
+ *      unrelated to where the template source file lives on disk.
  * -----------------------------------------------------------------------
  */
 
@@ -37,9 +36,8 @@ function escapeHtml(str = '') {
 }
 
 function readTemplate() {
-  // process.cwd() at runtime is the project root Vercel deployed —
-  // product-detail.html sits there alongside your other static pages.
-  return fs.readFileSync(path.join(process.cwd(), 'product-detail.html'), 'utf8');
+  // CHANGED: templates/ subfolder, not project root — see header comment.
+  return fs.readFileSync(path.join(process.cwd(), 'templates', 'product-detail.html'), 'utf8');
 }
 
 module.exports = async (req, res) => {
@@ -53,7 +51,6 @@ module.exports = async (req, res) => {
     return;
   }
 
-  // No id in the URL — nothing to personalize, just serve the page as-is.
   if (!id) {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.status(200).send(template);
@@ -68,7 +65,7 @@ module.exports = async (req, res) => {
       product = data.product || null;
     }
   } catch (err) {
-    product = null; // Render API unreachable — fall through to not-found handling below
+    product = null;
   }
 
   if (!product) {
