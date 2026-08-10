@@ -1,0 +1,23 @@
+# Six Star Suppliers — robots.txt
+# Place this at the ROOT of your domain: https://www.sixstarsuppliers.com/robots.txt
+# (must be served from the domain root, not a subfolder)
+
+User-agent: *
+Allow: /
+
+# Pages with no SEO value / private account flows — keep crawlers out
+Disallow: /cart.html
+Disallow: /checkout.html
+Disallow: /login.html
+Disallow: /register.html
+Disallow: /forgot-password.html
+Disallow: /verify-email.html
+Disallow: /seller-dashboard.html
+Disallow: /seller-verification.html
+Disallow: /admin/
+Disallow: /track-order.html
+
+# Never let crawlers hit raw API endpoints
+Disallow: /api/
+
+Sitemap: https://www.sixstarsuppliers.com/sitemap.xml

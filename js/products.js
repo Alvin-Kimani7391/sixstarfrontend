@@ -121,6 +121,71 @@
   }
 
   // ============================================================
+  // SEO — dynamic <title>/<meta description>/canonical + ItemList JSON-LD
+  // for whatever filter combination is currently on screen. SS_SEO comes
+  // from js/seo-meta.js (loaded before this file in product.html); every
+  // call here is a no-op if that script isn't present, so this file still
+  // works standalone if seo-meta.js is ever removed.
+  //
+  // Priority mirrors renderFilterBanner()'s chip order below: Flash Sale
+  // and a free-text search are the most specific signals of "what page is
+  // this", then category, then hotDeals/sort, then the plain catalog.
+  // ============================================================
+  function currentCategoryName() {
+    if (!state.category) return "";
+    const path = (typeof ssFindCategoryPath === "function") ? ssFindCategoryPath(categoryTree, state.category) : null;
+    return (path && path.length) ? path[path.length - 1].name : "";
+  }
+
+  function updateSeoMeta() {
+    if (typeof SS_SEO === "undefined") return;
+
+    const origin = location.origin;
+    let title;
+    let description;
+    let canonical = `${origin}${location.pathname}${location.search}`;
+
+    if (state.flashSale) {
+      title = "Flash Sale — Today's Deals | Six Star Suppliers";
+      description = "Shop today's live Flash Sale on Six Star Suppliers — limited stock, steep discounts, live from 2PM until midnight.";
+    } else if (state.search) {
+      title = `"${state.search}" — Search results | Six Star Suppliers`;
+      description = `Results for "${state.search}" on Six Star Suppliers — compare prices and buy online with countrywide delivery.`;
+    } else if (state.category) {
+      const name = currentCategoryName() || "Products";
+      title = `${name} — Shop Online | Six Star Suppliers`;
+      description = `Browse ${name} at the best prices on Six Star Suppliers, with fast delivery and secure payment.`;
+    } else if (state.hotDeals) {
+      title = "Hot Deals — Six Star Suppliers";
+      description = "Today's hottest deals and trending products on Six Star Suppliers, updated regularly.";
+    } else if (state.sort === "newest") {
+      title = "New Arrivals — Six Star Suppliers";
+      description = "The latest products added to the Six Star Suppliers catalog.";
+    } else if (state.sort === "popular") {
+      title = "Top Selling Products — Six Star Suppliers";
+      description = "Our customers' favourite, best-selling products on Six Star Suppliers.";
+    } else {
+      title = "All Products — Six Star Suppliers";
+      description = "Browse the full Six Star Suppliers catalog. Filter by category and price, sort by relevance, and find today's hot deals.";
+      canonical = `${origin}/product.html`;
+    }
+
+    SS_SEO.setMeta({ title, description, canonical, type: "website" });
+  }
+
+  // Builds the ItemList JSON-LD from whatever's currently rendered. Accepts
+  // either plain Product docs (normal/top-selling mode) or FlashSale docs
+  // (flash sale mode, where the product lives at fs.product).
+  function updateSeoItemList(items, isFlashSaleShape) {
+    if (typeof SS_SEO === "undefined" || !SS_SEO.setItemListJsonLd) return;
+    const normalized = isFlashSaleShape
+      ? items.map((fs) => fs.product).filter(Boolean)
+      : items;
+    if (!normalized.length) return;
+    SS_SEO.setItemListJsonLd(normalized, location.origin);
+  }
+
+  // ============================================================
   // DYNAMIC FILTER BANNER — one removable chip per active filter, so
   // combinations (e.g. a category PLUS a search term) are all visible at
   // once. Special filters (Flash Sale / Hot Deals / New Arrivals / Top
@@ -286,6 +351,7 @@
     });
     flashGrid.innerHTML = flashSales.map(ssFlashSaleCard).join("");
     flashResultCount.textContent = `${flashSales.length} item${flashSales.length === 1 ? "" : "s"} in today's Flash Sale`;
+    updateSeoItemList(flashSales, true);
 
     const liveOnes = flashSales.filter(fs => fs.isLive);
     if (liveOnes.length) {
@@ -317,6 +383,7 @@
   async function load() {
     syncFormToState();
     renderFilterBanner();
+    updateSeoMeta();
 
     if (isFlashSaleMode()) {
       filtersAside.style.display = "none";
@@ -369,6 +436,7 @@
       loadedCount = products.length;
       resultCount.textContent = `${totalCount} product${totalCount === 1 ? "" : "s"} found`;
       refreshLoadMoreUI();
+      updateSeoItemList(products, false);
     } catch (err) {
       grid.innerHTML = `<div class="empty-state">
         <i class="fa-solid fa-triangle-exclamation"></i>
@@ -384,6 +452,10 @@
   // In Top Selling mode this slices the next chunk out of the already-
   // fetched, already-sorted topSellingPool instead of calling the backend
   // again — the pool covers TOP_SELLING_BATCH_SIZE items in one request.
+  // Note: deliberately does NOT re-run updateSeoItemList() — the ItemList
+  // reflects the first page's worth of items, which is what a crawler
+  // sees on initial render; re-running it on every "Load More" click would
+  // just thrash the JSON-LD block for no indexing benefit.
   async function loadMore() {
     if (isLoadingMore || loadedCount >= totalCount) return;
     setLoadMoreBusy(true);

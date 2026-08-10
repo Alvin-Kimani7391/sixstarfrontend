@@ -1,6 +1,7 @@
 {
   "rewrites": [
-    { "source": "/shop/:slug", "destination": "/shop-detail.html" },
+    { "source": "/shop/:slug", "destination": "/api/shop-detail?slug=:slug" },
+    { "source": "/shop-detail.html", "destination": "/api/shop-detail" },
 
     { "source": "/sitemap.xml", "destination": "https://sixstarbackend.onrender.com/sitemap.xml" },
     { "source": "/sitemap-static.xml", "destination": "https://sixstarbackend.onrender.com/sitemap-static.xml" },
@@ -13,6 +14,9 @@
   "functions": {
     "api/product-detail.js": {
       "includeFiles": "product-detail.html"
+    },
+    "api/shop-detail.js": {
+      "includeFiles": "shop-detail.html"
     }
   }
 }

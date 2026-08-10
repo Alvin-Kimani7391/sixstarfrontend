@@ -4,11 +4,73 @@
 
 let ssShopsState = { page: 1, limit: 12, search: "", verified: false, featured: false, sort: "featured" };
 
+// ============================================================
+// SEO — dynamic <title>/<meta description>/canonical + a ListItem JSON-LD
+// block for whatever's currently showing. SS_SEO comes from js/seo-meta.js
+// (load it before this file in shop.html, same as product.html does); every
+// call here is guarded so this file still works fine if that script isn't
+// present.
+//
+// Shop cards link to /shop/:slug (see ssShopCard() below), not
+// product-detail.html?id=, so this builds its own ItemList directly via
+// SS_SEO.setJsonLd() rather than reusing setItemListJsonLd() (which is
+// product-URL-shaped).
+// ============================================================
+function ssUpdateShopsSeoMeta() {
+  if (typeof SS_SEO === "undefined") return;
+
+  const origin = location.origin;
+  let title;
+  let description;
+  let canonical = `${origin}${location.pathname}${location.search}`;
+
+  if (ssShopsState.search) {
+    title = `"${ssShopsState.search}" — Shop search | Six Star Suppliers`;
+    description = `Shops matching "${ssShopsState.search}" on Six Star Suppliers — verified wholesalers and retailers.`;
+  } else if (ssShopsState.verified && ssShopsState.featured) {
+    title = "Featured Verified Shops — Six Star Suppliers";
+    description = "Browse our featured, verified shops on Six Star Suppliers — trusted sellers reviewed and approved before going live.";
+  } else if (ssShopsState.verified) {
+    title = "Verified Shops — Six Star Suppliers";
+    description = "Browse verified shops on Six Star Suppliers — every seller here has passed our verification checks.";
+  } else if (ssShopsState.featured) {
+    title = "Featured Shops — Six Star Suppliers";
+    description = "Discover our featured shops on Six Star Suppliers, hand-picked for quality and reliability.";
+  } else {
+    title = "Shops — Six Star Suppliers | Kenya";
+    description = "Browse verified shops on Six Star Suppliers — trusted wholesalers and retailers, all orders handled securely through the marketplace.";
+    canonical = `${origin}/shop.html`;
+  }
+
+  SS_SEO.setMeta({ title, description, canonical, type: "website" });
+}
+
+// Builds an ItemList of shop storefronts pointing at their pretty /shop/:slug
+// URLs, so crawlers get a structured summary of the directory page instead
+// of just the rendered cards.
+function ssUpdateShopsItemList(shops) {
+  if (typeof SS_SEO === "undefined" || !SS_SEO.setJsonLd) return;
+  if (!shops || !shops.length) return;
+
+  SS_SEO.setJsonLd("ss-shoplist-jsonld", {
+    "@context": "https://schema.org/",
+    "@type": "ItemList",
+    itemListElement: shops.map((s, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      url: `${location.origin}/shop/${encodeURIComponent(s.slug)}`,
+      name: s.shopName,
+    })),
+  });
+}
+
 async function ssLoadShops() {
   const grid = document.getElementById("shopsGrid");
   const countEl = document.getElementById("shopsCount");
   const paginationEl = document.getElementById("shopsPagination");
   grid.innerHTML = ssShopSkeletons(6);
+
+  ssUpdateShopsSeoMeta();
 
   const params = {
     page: ssShopsState.page,
@@ -38,6 +100,7 @@ async function ssLoadShops() {
 
     grid.innerHTML = shops.map(ssShopCard).join("");
     ssRenderShopsPagination(paginationEl, res.page || 1, res.pages || 1);
+    ssUpdateShopsItemList(shops);
   } catch (err) {
     console.error("ssLoadShops failed:", err);
     grid.innerHTML = `

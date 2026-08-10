@@ -5,6 +5,26 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>All Products — Six Star Suppliers</title>
 <meta name="description" content="Browse the full Six Star Suppliers catalog. Filter by category and price, sort by relevance, and find today's hot deals.">
+
+<!-- ==================== SEO: default tags for the base /product.html view.
+     products.js calls SS_SEO.setMeta()/setItemListJsonLd() (via seo-meta.js,
+     loaded below) once it knows the active ?category=/?search= filter, which
+     overwrites these at runtime for a filtered view. These are the fallback
+     a crawler sees before that JS runs, and what's shown for the unfiltered
+     "All Products" state. ==================== -->
+<link rel="canonical" href="https://www.sixstarsuppliers.com/product.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Six Star Suppliers">
+<meta property="og:title" content="All Products — Six Star Suppliers">
+<meta property="og:description" content="Browse the full Six Star Suppliers catalog. Filter by category and price, sort by relevance, and find today's hot deals.">
+<meta property="og:image" content="https://www.sixstarsuppliers.com/images/og-default.jpg">
+<meta property="og:url" content="https://www.sixstarsuppliers.com/product.html">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="All Products — Six Star Suppliers">
+<meta name="twitter:description" content="Browse the full Six Star Suppliers catalog.">
+<meta name="twitter:image" content="https://www.sixstarsuppliers.com/images/og-default.jpg">
+<!-- ==================== /SEO ==================== -->
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://kit.fontawesome.com/e1426ab85b.js" crossorigin="anonymous"></script>
@@ -187,6 +207,12 @@
 <script src="js/cart.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/ui.js"></script>
+
+<!-- ==================== SEO: search autocomplete widget ==================== -->
+<link rel="stylesheet" href="css/search-autocomplete.css">
+<script src="js/search-autocomplete.js"></script>
+
+<script src="js/seo-meta.js"></script>
 <script src="js/products.js"></script>
 <!-- Add this AFTER all your script includes -->
 <script>
