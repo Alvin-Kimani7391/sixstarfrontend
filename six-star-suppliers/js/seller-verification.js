@@ -654,7 +654,7 @@
       if (!files.idFrontImage) return "Upload a photo of the front of your ID.";
       const idType = document.getElementById("idType").value;
       if (idType !== "passport" && !files.idBackImage) return "Upload a photo of the back of your ID.";
-      if (!files.selfieWithId) return "Upload a selfie holding your ID.";
+      if (!files.selfieWithId) return "Upload full ID both sides.";
       return null;
     }
 
