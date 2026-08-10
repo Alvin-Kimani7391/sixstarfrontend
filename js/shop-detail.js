@@ -4,7 +4,19 @@
    products render identically to every other page on the site.
    ============================================================ */
 
-let ssShopDetailState = { shop: null, page: 1, limit: 12, sort: "-createdAt", search: "" };
+let ssShopDetailState = {
+  shop: null,
+  page: 1,
+  limit: 12,
+  sort: "-createdAt",
+  search: "",
+  // Becomes true the moment the shopper explicitly picks a sort option or
+  // runs a search — from then on we stop shuffling and just show exactly
+  // what they asked for. Resets to false on a fresh page load (new shop
+  // visit), matching wholesale.html/product.html's "default view only"
+  // shuffle rule.
+  sortTouched: false
+};
 
 function ssGetSlugFromUrl() {
   // Legacy support: shop-detail.html?slug=xyz or ?id=xyz
@@ -96,6 +108,19 @@ function ssUpdateShopRatingStats(shop) {
   }
 }
 
+// ============================================================
+// Randomized display order — ONLY for this shop's default product view.
+// Turns off for the rest of the visit the moment the shopper explicitly
+// changes the sort dropdown or runs a search (see ssShopDetailState.sortTouched,
+// set by the event listeners at the bottom of this file). Shuffling
+// happens per fetched page (server already paginates 12/page), so counts,
+// "X products", and pagination math are all completely unaffected — only
+// the visual order of whatever page just came back changes.
+// ============================================================
+function ssShouldShuffleShopListing() {
+  return !ssShopDetailState.search && !ssShopDetailState.sortTouched;
+}
+
 async function ssLoadShopProducts() {
   const grid = document.getElementById("shopProductsGrid");
   const pagination = document.getElementById("shopProductsPagination");
@@ -112,7 +137,7 @@ async function ssLoadShopProducts() {
 
   try {
     const res = await SS_API.getProducts(params);
-    const products = res.products || [];
+    let products = res.products || [];
     const total = res.total ?? products.length;
     document.getElementById("shopProductCountStat").textContent = total;
     document.getElementById("shopProductsCount").textContent = `${total} product${total === 1 ? "" : "s"}`;
@@ -127,6 +152,8 @@ async function ssLoadShopProducts() {
       pagination.innerHTML = "";
       return;
     }
+
+    if (ssShouldShuffleShopListing()) products = ssShuffle(products);
 
     grid.innerHTML = products.map(ssProductCard).join("");
     ssRenderShopProductsPagination(pagination, res.page || 1, res.pages || 1);
@@ -297,6 +324,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.getElementById("shopProductSort").addEventListener("change", e => {
     ssShopDetailState.sort = e.target.value;
+    // User explicitly picked a sort order — respect it exactly, no more
+    // shuffling for the rest of this shop visit.
+    ssShopDetailState.sortTouched = true;
     ssShopDetailState.page = 1;
     ssLoadShopProducts();
   });

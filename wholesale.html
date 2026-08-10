@@ -479,6 +479,11 @@
       </select>
       <input type="text" id="w-search" placeholder="Search wholesale products..." value="">
       <select id="w-sort">
+        <!-- "Recommended" = no explicit sort chosen. This is the state that
+             gets a fresh shuffle on every load/filter. Every other option
+             is a deliberate user choice and is always sorted exactly as
+             labeled — never shuffled. -->
+        <option value="">Recommended</option>
         <option value="newest">Newest First</option>
         <option value="price_asc">Price: Low to High</option>
         <option value="price_desc">Price: High to Low</option>
@@ -541,23 +546,38 @@
     return {
       category: p.get("category") || "",
       search: p.get("search") || "",
-      sort: p.get("sort") || "newest",
+      // "" = Recommended / no explicit sort — was "newest" before, which
+      // made it impossible to tell "user hasn't picked a sort" apart from
+      // "user deliberately wants recency order". Blank fixes that.
+      sort: p.get("sort") || "",
       page: parseInt(p.get("page") || "1", 10)
     };
   }
 
   let state = readParams();
 
+  // ============================================================
+  // Randomized display order — ONLY for the default "Recommended" view.
+  // Mirrors product.html's shouldShuffleListing(): any explicit sort
+  // choice (Newest / Price / Rating) or an active search term disables
+  // shuffling so that choice is respected exactly. Category filtering
+  // does NOT disable shuffling — it only narrows which products are in
+  // play, it doesn't imply an order.
+  // ============================================================
+  function shouldShuffleListing() {
+    return !state.sort && !state.search;
+  }
+
   function syncFormToState() {
     catSelect.value = state.category || "";
     searchInput.value = state.search || "";
-    sortSelect.value = state.sort || "newest";
+    sortSelect.value = state.sort || "";
   }
 
   function pushURL() {
     const p = new URLSearchParams();
     Object.entries(state).forEach(([k, v]) => {
-      if (v !== "" && v !== "newest" && !(k === "page" && v === 1)) p.set(k, v);
+      if (v !== "" && !(k === "page" && v === 1)) p.set(k, v);
     });
     history.pushState({}, "", "wholesale.html" + (p.toString() ? "?" + p.toString() : ""));
   }
@@ -708,21 +728,31 @@
       return true;
     });
 
-    switch(sort) {
-      case 'newest':
-        filteredProducts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        break;
-      case 'price_asc':
-        filteredProducts.sort((a, b) => (a.displayPrice || a.finalPrice || 0) - (b.displayPrice || b.finalPrice || 0));
-        break;
-      case 'price_desc':
-        filteredProducts.sort((a, b) => (b.displayPrice || b.finalPrice || 0) - (a.displayPrice || a.finalPrice || 0));
-        break;
-      case 'rating':
-        filteredProducts.sort((a, b) => (b.ratingsAverage || 0) - (a.ratingsAverage || 0));
-        break;
-      default:
-        break;
+    if (shouldShuffleListing()) {
+      // Default "Recommended" browsing state — no explicit sort, no
+      // search. Give the filtered set (category filter, if any, already
+      // applied above) a fresh shuffle instead of a fixed sort.
+      filteredProducts = ssShuffle(filteredProducts);
+    } else {
+      switch (sort) {
+        case 'newest':
+          filteredProducts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+          break;
+        case 'price_asc':
+          filteredProducts.sort((a, b) => (a.displayPrice || a.finalPrice || 0) - (b.displayPrice || b.finalPrice || 0));
+          break;
+        case 'price_desc':
+          filteredProducts.sort((a, b) => (b.displayPrice || b.finalPrice || 0) - (a.displayPrice || a.finalPrice || 0));
+          break;
+        case 'rating':
+          filteredProducts.sort((a, b) => (b.ratingsAverage || 0) - (a.ratingsAverage || 0));
+          break;
+        default:
+          // Search active but no explicit sort picked — fall back to
+          // newest-first as the sensible default for search results.
+          filteredProducts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+          break;
+      }
     }
 
     totalPages = Math.ceil(filteredProducts.length / 24) || 1;
@@ -749,7 +779,7 @@
   }
 
   function clearFilters() {
-    state = { category: "", search: "", sort: "newest", page: 1 };
+    state = { category: "", search: "", sort: "", page: 1 };
     pushURL();
     syncFormToState();
     applyFilters();
