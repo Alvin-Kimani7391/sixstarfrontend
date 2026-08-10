@@ -1915,3 +1915,53 @@ img{ max-width:100%; display:block; }
   .skel-card__body{ padding:10px 11px 13px; gap:7px; }
   .skel-line{ height:10px; }
 }
+
+
+
+
+
+
+
+
+/* ============================================================
+   FIX: Top Selling Categories / Shop by Category grid for phone
+   ============================================================ */
+
+@media(max-width:599px){
+  /* Increase the category grid to 4 columns on phones 
+     (adjusts the gap for better spacing) */
+  .cat-scroll {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px 8px;
+    padding: 0 14px;
+  }
+  
+  /* Make category items slightly more compact on small screens */
+  .cat-item {
+    gap: 6px;
+  }
+  
+  /* Category thumbnails should be smaller to fit 4 across */
+  .cat-thumb {
+    border-radius: var(--radius-sm);
+  }
+  
+  /* Category labels need to be readable but compact */
+  .cat-item span {
+    font-size: 10.5px;
+    max-width: 100%;
+    line-height: 1.2;
+  }
+}
+
+/* Extra-small phones (under 375px) — drop to 3 columns */
+@media(max-width:374px){
+  .cat-scroll {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px 6px;
+  }
+  
+  .cat-item span {
+    font-size: 10px;
+  }
+}
