@@ -102,6 +102,13 @@
   background: rgba(124,58,237,0.06); padding: 8px 10px; border-radius: 8px; border-left: 3px solid var(--pop);
   display: flex; align-items: flex-start; gap: 6px; line-height: 1.5;
 }
+/* Flash Sale line note — mirrors checkout.html's flash-sale-note so a Flash
+   Sale line reads consistently across cart and checkout. */
+.flash-sale-note {
+  font-size: 11px; color: #e0511a; margin-top: 8px; font-weight: 600;
+  background: rgba(224,81,26,.06); padding: 8px 10px; border-radius: 8px; border-left: 3px solid #e0511a;
+  display: flex; align-items: flex-start; gap: 6px; line-height: 1.5;
+}
 
 /* ---- Dynamic attribute/variant picker ---- */
 .attr-group { margin-bottom: 10px; }
@@ -241,7 +248,7 @@ async function enrichLine(line) {
     }
 
     if (!fs.isLive) {
-      return { line, product: fs.product || null, error: "This Flash Sale has ended.", isFlashDeal: true };
+      return { line, product: fs.product || null, error: "This Flash Sale has ended or sold out.", isFlashDeal: true };
     }
 
     const remaining = fs.remainingStock != null
@@ -336,7 +343,7 @@ function renderCartItems() {
       container.innerHTML += `
         <div class="cart-item-wrapper">
           <div class="premium-cart line-stale">
-            <div class="cart-details"><h4>${e.line.name || "Unavailable item"}</h4>
+            <div class="cart-details"><h4>${e.line.name || "Unavailable item"} ${e.isFlashDeal ? '<span class="wholesale-badge" style="background:linear-gradient(135deg,#FF5A1F,#FF8A00);"><i class="fa-solid fa-bolt"></i> Flash Sale</span>' : ""}</h4>
               <div class="stock-warning"><i class="fa-solid fa-triangle-exclamation"></i> ${e.error}</div>
             </div>
             <button class="removebtn" onclick="removeLine(${i})"><i class="fa-solid fa-trash"></i></button>
@@ -345,11 +352,12 @@ function renderCartItems() {
       return;
     }
 
-    const { product, requiresVariant, variantDefs, variants, selectedVariant, selectedAttrs, isWholesale, minQty, qty, unitPrice, stockAvailable } = e;
+    const { product, requiresVariant, variantDefs, variants, selectedVariant, selectedAttrs, isWholesale, minQty, qty, unitPrice, stockAvailable, isFlashDeal } = e;
     const heavy = isHeavyWholesale(e);
-    const flashBadge = e.isFlashDeal
+    const flashBadge = isFlashDeal
       ? `<span class="wholesale-badge" style="background:linear-gradient(135deg,#FF5A1F,#FF8A00);"><i class="fa-solid fa-bolt"></i> Flash Sale</span>`
       : "";
+    const productLinkId = product._id || product.id || "";
     const img = Array.isArray(product.images) && product.images.length ? product.images[0] : "";
     const itemTotal = unitPrice * qty;
     const canDecrease = qty > minQty;
@@ -390,8 +398,19 @@ function renderCartItems() {
           : `<div class="heavy-delivery-note"><i class="fa-solid fa-location-dot"></i><span>This item is billed at the wholesale delivery fee shown, arranged with your Region/Town at checkout.</span></div>`}`;
     }
 
+    // Flash Sale note — always simple/standard delivery, fixed per-unit price
+    // regardless of quantity, no MOQ, no tiers, no variants.
+    let flashSaleInfo = "";
+    if (isFlashDeal) {
+      flashSaleInfo = `
+        <div class="flash-sale-note">
+          <i class="fa-solid fa-bolt-lightning"></i>
+          <span>Flash Sale price — locked in at Ksh ${unitPrice.toLocaleString()}/unit, regardless of quantity. ${stockAvailable} unit(s) left. Ships via standard regional delivery.</span>
+        </div>`;
+    }
+
     let variantPicker = "";
-    if (requiresVariant) {
+    if (requiresVariant && !isFlashDeal) {
       variantPicker = `<div class="mini-config">` + variantDefs.map((def) => {
         const values = [...new Set(variants.flatMap((v) => v.combination.filter((c) => c.attribute === def._id).map((c) => c.value)))];
         const currentVal = selectedAttrs[def._id];
@@ -413,16 +432,17 @@ function renderCartItems() {
 
     container.innerHTML += `
       <div class="cart-item-wrapper">
-        <div class="premium-cart ${(!requiresVariant || selectedVariant) && !outOfStock ? "" : "line-stale"}">
+        <div class="premium-cart ${((!requiresVariant || selectedVariant) && !outOfStock) || isFlashDeal ? "" : "line-stale"}">
           <div class="cart-left">
-            <img src="${img}" onerror="this.src='images/placeholder.png'" onclick="location.href='product-detail.html?id=${product._id}'">
+            <img src="${img}" onerror="this.src='images/placeholder.png'" onclick="location.href='product-detail.html?id=${productLinkId}'">
             <div class="cart-details">
-              <h4 onclick="location.href='product-detail.html?id=${product._id}'">${product.name} ${flashBadge} ${isWholesale ? '<span class="wholesale-badge">Wholesale</span>' : ""} ${isWholesale && !heavy ? '<span class="standard-delivery-badge">Standard Delivery</span>' : ""} ${heavy ? '<span class="own-delivery-badge">Seller Delivery</span>' : ""}</h4>
+              <h4 onclick="location.href='product-detail.html?id=${productLinkId}'">${product.name} ${flashBadge} ${isWholesale ? '<span class="wholesale-badge">Wholesale</span>' : ""} ${isWholesale && !heavy ? '<span class="standard-delivery-badge">Standard Delivery</span>' : ""} ${heavy ? '<span class="own-delivery-badge">Seller Delivery</span>' : ""}</h4>
               <div class="price-line">Ksh ${itemTotal.toLocaleString()} <small>(Ksh ${unitPrice.toLocaleString()} × ${qty})</small></div>
+              ${flashSaleInfo}
               ${wholesaleInfo}
               ${variantPicker}
-              ${isWholesale && qty === minQty ? `<div class="moq-warning"><i class="fa-solid fa-info-circle"></i> Minimum order quantity: ${minQty} units</div>` : ""}
-              ${outOfStock ? `<div class="stock-warning"><i class="fa-solid fa-triangle-exclamation"></i> Out of stock</div>` : ""}
+              ${isWholesale && qty === minQty && !isFlashDeal ? `<div class="moq-warning"><i class="fa-solid fa-info-circle"></i> Minimum order quantity: ${minQty} units</div>` : ""}
+              ${outOfStock ? `<div class="stock-warning"><i class="fa-solid fa-triangle-exclamation"></i> ${isFlashDeal ? "Sold out" : "Out of stock"}</div>` : ""}
             </div>
           </div>
           <div class="cart-actions">
@@ -471,6 +491,22 @@ function decreaseQty(i) {
 }
 function applyQtyChange(e) {
   SS_CART.setQty(e.line.lineId, e.qty);
+
+  // FIX: this used to unconditionally recompute unitPrice from
+  // e.product.displayPrice/finalPrice + product.pricingTiers for EVERY line,
+  // including Flash Sale ones. For a Flash Sale line, e.product is the
+  // SELLER'S REGULAR product record (populated on the FlashSale doc) — its
+  // displayPrice/finalPrice is the normal price, not flashSalePrice, and it
+  // carries no pricingTiers of its own. So tapping +/- on a Flash Sale item
+  // silently replaced the discounted Flash Sale price with the regular price.
+  // Flash Sale pricing is a single fixed per-unit rate that never changes
+  // with quantity, so just skip the recompute entirely for these lines.
+  if (e.isFlashDeal) {
+    renderCartItems();
+    updateSummary();
+    return;
+  }
+
   const base = e.product.displayPrice ?? e.product.finalPrice ?? 0;
   e.unitPrice = SS_CART.resolveUnitPrice(base, e.product.pricingTiers || [], e.qty) + (e.selectedVariant?.priceAdjustment || 0);
   renderCartItems();

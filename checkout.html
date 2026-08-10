@@ -106,6 +106,17 @@
   display: inline-block; background: rgba(124,58,237,0.14); color: var(--pop); font-size: 9px; font-weight: 800;
   padding: 2px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px; margin-left: 6px; vertical-align: 2px;
 }
+/* Flash Sale line badge — same shape/language as wholesale-badge, distinct color so a
+   Flash Sale line is instantly recognizable in the checkout item list. */
+.flash-badge {
+  display: inline-block; background: linear-gradient(135deg,#ff7a1a,#e0511a); color: #fff; font-size: 9px; font-weight: 800;
+  padding: 2px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px; margin-left: 6px; vertical-align: 2px;
+}
+.flash-sale-note {
+  font-size: 11px; color: #e0511a; margin-top: 8px; font-weight: 600;
+  background: rgba(224,81,26,.06); padding: 8px 10px; border-radius: 8px; border-left: 3px solid #e0511a;
+  display: flex; align-items: flex-start; gap: 6px; line-height: 1.5;
+}
 .wholesale-info { background: #F5F0FF; border-radius: var(--radius-sm); padding: 10px 12px; margin-top: 8px; border-left: 3px solid var(--pop); }
 .wholesale-info .info-row { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--ink-soft); padding: 2px 0; }
 .wholesale-info .info-row strong { color: var(--ink); }
@@ -421,6 +432,10 @@ function showPageError(message) {
      separately as "Wholesale Delivery" — the Transport fee is
      NEVER charged again for them, even though the same Town
      selector is used to record where they should be delivered.
+   - FLASH SALE lines are always treated as simple/standard-delivery
+     (see cart.js's add()), and their price/stock come from the
+     FlashSale document (via SS_API.getFlashSale), never from the
+     product's regular finalPrice/stock/pricingTiers.
 
    SS_CART now comes from js/cart.js (shared with cart.html and
    product-detail.js) instead of a local inline duplicate, so a
@@ -445,20 +460,92 @@ const DELIVERY_DATA = {
 function isWholesaleLine(e) { return e.isWholesale; }
 function isHeavyWholesale(e) { return e.isWholesale && e.deliveryType === "heavy"; }
 // "Standard delivery" = billed at the regional Transport fee, same as retail.
-// True for every retail line, AND for wholesale lines the seller flagged 'simple'.
+// True for every retail line, AND for wholesale lines the seller flagged 'simple',
+// AND for every Flash Sale line (always forced to "simple" — see enrichLine below).
 function isStandardDelivery(e) { return !isHeavyWholesale(e); }
 function isNegotiatedDelivery(e) {
   return isHeavyWholesale(e) && !e.product.freeDelivery && e.product.deliveryCharge && e.product.deliveryCharge.chargeType === "negotiated";
 }
 
 // -------- enrichment: pull fresh product + variant + category-attribute data --------
+//
+// FIX: this used to unconditionally call SS_API.getProduct(line.productId) for
+// EVERY cart line, including Flash Sale ones — which meant a Flash Sale line's
+// price/stock were silently re-derived from the product's REGULAR price/stock
+// (product.displayPrice, product.pricingTiers, product.stock) instead of the
+// Flash Sale's own flashSalePrice/remainingStock. Worse, the returned object
+// never carried an isFlashDeal/flashSaleId field, so submitOrder()'s
+// `flashSaleId: e.isFlashDeal ? e.flashSaleId : undefined` always evaluated to
+// undefined — meaning the backend never even knew the order was for a Flash
+// Sale and just charged/validated it as a normal product purchase.
+//
+// Now: any line tagged isFlashDeal/flashSaleId by cart.js is re-validated
+// against GET /flash-sales/:id (same live re-derivation the backend itself
+// uses), and the enriched object carries isFlashDeal/flashSaleId through to
+// submitOrder().
 async function enrichLine(line) {
+  if (line.isFlashDeal && line.flashSaleId) {
+    let flashSale;
+    try {
+      const res = await SS_API.getFlashSale(line.flashSaleId);
+      flashSale = res.flashSale || res;
+    } catch (e) {
+      return {
+        line, product: null, error: "This Flash Sale is no longer available.",
+        isFlashDeal: true, flashSaleId: line.flashSaleId,
+      };
+    }
+
+    const product = flashSale.product || {};
+
+    if (!flashSale.isLive) {
+      return {
+        line, product, error: "This Flash Sale has ended or hasn't started yet.",
+        isFlashDeal: true, flashSaleId: line.flashSaleId,
+      };
+    }
+
+    const remaining = flashSale.remainingStock != null
+      ? Number(flashSale.remainingStock)
+      : Math.max(0, (Number(flashSale.stockAllocated) || 0) - (Number(flashSale.stockSold) || 0));
+
+    if (remaining <= 0) {
+      return {
+        line, product, error: "This Flash Sale item just sold out.",
+        isFlashDeal: true, flashSaleId: line.flashSaleId,
+      };
+    }
+
+    const qty = Math.max(1, Math.min(Number(line.qty) || 1, remaining));
+
+    return {
+      line,
+      product,
+      flashSale,
+      variantDefs: [],
+      variants: [],
+      requiresVariant: false,
+      selectedVariant: null,
+      selectedAttrs: {},
+      isWholesale: false,
+      deliveryType: "simple",
+      minQty: 1,
+      qty,
+      unitPrice: flashSale.flashSalePrice,
+      stockAvailable: remaining,
+      isFlashDeal: true,
+      flashSaleId: line.flashSaleId,
+      error: null,
+    };
+  }
+
+  // ---- regular (non-Flash-Sale) product line ----
   let product, variantDefs = [];
   try {
     const res = await SS_API.getProduct(line.productId);
     product = res.product || res;
   } catch (e) {
-    return { line, product: null, error: "This product is no longer available." };
+    return { line, product: null, error: "This product is no longer available.", isFlashDeal: false, flashSaleId: null };
   }
 
   try {
@@ -495,7 +582,7 @@ async function enrichLine(line) {
   return {
     line, product, variantDefs, variants, requiresVariant,
     selectedVariant, selectedAttrs, isWholesale, deliveryType, minQty, qty,
-    unitPrice, stockAvailable, error: null,
+    unitPrice, stockAvailable, isFlashDeal: false, flashSaleId: null, error: null,
   };
 }
 
@@ -527,7 +614,7 @@ function renderCheckoutItems() {
       container.innerHTML += `
         <div class="cart-item-wrapper">
           <div class="premium-cart line-stale">
-            <div class="cart-details"><h4>${e.line.name || "Unavailable item"}</h4>
+            <div class="cart-details"><h4>${e.line.name || "Unavailable item"} ${e.isFlashDeal ? '<span class="flash-badge"><i class="fa-solid fa-bolt"></i> Flash</span>' : ""}</h4>
               <div class="stock-warning"><i class="fa-solid fa-triangle-exclamation"></i> ${e.error}</div>
             </div>
             <button class="removebtn" onclick="removeLine(${i})"><i class="fa-solid fa-trash"></i></button>
@@ -536,7 +623,7 @@ function renderCheckoutItems() {
       return;
     }
 
-    const { product, requiresVariant, variantDefs, variants, selectedVariant, selectedAttrs, isWholesale, minQty, qty, unitPrice, stockAvailable } = e;
+    const { product, requiresVariant, variantDefs, variants, selectedVariant, selectedAttrs, isWholesale, minQty, qty, unitPrice, stockAvailable, isFlashDeal } = e;
     const heavy = isHeavyWholesale(e);
     const img = Array.isArray(product.images) && product.images.length ? product.images[0] : "";
     const itemTotal = unitPrice * qty;
@@ -581,9 +668,21 @@ function renderCheckoutItems() {
           : `<div class="heavy-delivery-note"><i class="fa-solid fa-location-dot"></i><span>We still collect your Region/Town below so the seller can arrange delivery — but this item is billed at the wholesale delivery fee shown, <strong>not</strong> the standard Transport fee.</span></div>`}`;
     }
 
-    // Dynamic variant/attribute picker, built from real ProductVariant combinations
+    // Flash Sale info block — always simple/standard delivery, no MOQ, no tiers,
+    // no variant picker. Shows the live claimed stock so the buyer sees urgency.
+    let flashSaleInfo = "";
+    if (isFlashDeal) {
+      flashSaleInfo = `
+        <div class="flash-sale-note">
+          <i class="fa-solid fa-bolt-lightning"></i>
+          <span>Flash Sale price — locked in at Ksh ${unitPrice.toLocaleString()}/unit. Only ${stockAvailable} unit(s) left in this Flash Sale. Ships via standard regional delivery.</span>
+        </div>`;
+    }
+
+    // Dynamic variant/attribute picker, built from real ProductVariant combinations.
+    // Flash Sale lines never have variants, so this is skipped for them.
     let variantPicker = "";
-    if (requiresVariant) {
+    if (requiresVariant && !isFlashDeal) {
       variantPicker = `<div class="mini-config">` + variantDefs.map((def) => {
         const values = [...new Set(variants.flatMap((v) => v.combination.filter((c) => c.attribute === def._id).map((c) => c.value)))];
         const currentVal = selectedAttrs[def._id];
@@ -605,16 +704,22 @@ function renderCheckoutItems() {
 
     container.innerHTML += `
       <div class="cart-item-wrapper">
-        <div class="premium-cart ${(!requiresVariant || selectedVariant) && !outOfStock ? "" : "line-stale"}">
+        <div class="premium-cart ${((!requiresVariant || selectedVariant) && !outOfStock) || isFlashDeal ? "" : "line-stale"}">
           <div class="cart-left">
             <img src="${img}" onerror="this.src='images/placeholder.png'">
             <div class="cart-details">
-              <h4>${product.name} ${isWholesale ? '<span class="wholesale-badge">Wholesale</span>' : ""} ${isWholesale && !heavy ? '<span class="standard-delivery-badge">Standard Delivery</span>' : ""} ${heavy ? '<span class="own-delivery-badge">Seller Delivery</span>' : ""}</h4>
+              <h4>${product.name}
+                ${isFlashDeal ? '<span class="flash-badge"><i class="fa-solid fa-bolt"></i> Flash Sale</span>' : ""}
+                ${isWholesale ? '<span class="wholesale-badge">Wholesale</span>' : ""}
+                ${isWholesale && !heavy && !isFlashDeal ? '<span class="standard-delivery-badge">Standard Delivery</span>' : ""}
+                ${heavy ? '<span class="own-delivery-badge">Seller Delivery</span>' : ""}
+              </h4>
               <div class="price-line">Ksh ${itemTotal.toLocaleString()} <small>(Ksh ${unitPrice.toLocaleString()} × ${qty})</small></div>
+              ${flashSaleInfo}
               ${wholesaleInfo}
               ${variantPicker}
-              ${isWholesale && qty === minQty ? `<div class="moq-warning"><i class="fa-solid fa-info-circle"></i> Minimum order quantity: ${minQty} units</div>` : ""}
-              ${outOfStock ? `<div class="stock-warning"><i class="fa-solid fa-triangle-exclamation"></i> Out of stock</div>` : ""}
+              ${isWholesale && qty === minQty && !isFlashDeal ? `<div class="moq-warning"><i class="fa-solid fa-info-circle"></i> Minimum order quantity: ${minQty} units</div>` : ""}
+              ${outOfStock ? `<div class="stock-warning"><i class="fa-solid fa-triangle-exclamation"></i> ${isFlashDeal ? "Sold out" : "Out of stock"}</div>` : ""}
             </div>
           </div>
           <div class="cart-actions">
@@ -664,6 +769,17 @@ function decreaseQty(i) {
 }
 function applyQtyChange(e) {
   SS_CART.setQty(e.line.lineId, e.qty);
+
+  // Flash Sale lines have a single fixed per-unit price (flashSalePrice) —
+  // no pricing tiers, no variant price adjustment — so unitPrice never needs
+  // recomputing here, unlike regular lines below.
+  if (e.isFlashDeal) {
+    renderCheckoutItems();
+    renderWholesaleDeliveryCard();
+    updateTotal();
+    return;
+  }
+
   const base = e.product.displayPrice ?? e.product.finalPrice ?? 0;
   e.unitPrice = SS_CART.resolveUnitPrice(base, e.product.pricingTiers || [], e.qty) + (e.selectedVariant?.priceAdjustment || 0);
   renderCheckoutItems();
@@ -752,7 +868,7 @@ function markFieldError(el) { if (el) el.classList.add("field-error"); }
 
 function updateTotal() {
   const live = enriched.filter((e) => !e.error);
-  const hasStandardItem = live.some((e) => isStandardDelivery(e));   // retail OR 'simple' wholesale
+  const hasStandardItem = live.some((e) => isStandardDelivery(e));   // retail, 'simple' wholesale, or Flash Sale
   const hasHeavyWholesale = live.some((e) => isHeavyWholesale(e));
   const hasNegotiatedItem = live.some((e) => isNegotiatedDelivery(e));
 
@@ -885,7 +1001,8 @@ function sendCustomLocationOrder() {
     if (e.error) return;
     const itemTotal = e.unitPrice * e.qty;
     total += itemTotal;
-    message += `${i + 1}. ${e.product.name}${e.isWholesale ? ` [WHOLESALE${isHeavyWholesale(e) ? " - SELLER DELIVERY" : " - STANDARD DELIVERY"}]` : ""}\n${e.selectedVariant ? `Option: ${e.selectedVariant.combination.map(c=>c.value).join(" / ")}` : ""}\nQty: ${e.qty}\nKsh ${itemTotal.toLocaleString()}\n\n`;
+    const tag = e.isFlashDeal ? " [FLASH SALE]" : (e.isWholesale ? ` [WHOLESALE${isHeavyWholesale(e) ? " - SELLER DELIVERY" : " - STANDARD DELIVERY"}]` : "");
+    message += `${i + 1}. ${e.product.name}${tag}\n${e.selectedVariant ? `Option: ${e.selectedVariant.combination.map(c=>c.value).join(" / ")}` : ""}\nQty: ${e.qty}\nKsh ${itemTotal.toLocaleString()}\n\n`;
   });
   message += `━━━━━━━━━━━━━━━\n💰 TOTAL: Ksh ${total.toLocaleString()}\n━━━━━━━━━━━━━━━\n\nPlease confirm if delivery to this location is possible. ✅`;
   window.open(`https://wa.me/254794327798?text=${encodeURIComponent(message)}`, "_blank");
@@ -1125,6 +1242,11 @@ async function submitOrder(event) {
       productId: e.product._id,
       variantId: e.selectedVariant ? e.selectedVariant._id : undefined,
       quantity: e.qty,
+      // FIX: e.isFlashDeal / e.flashSaleId are now actually populated by
+      // enrichLine() above — previously these were always undefined here
+      // because enrichLine() never carried the Flash Sale flag through, so
+      // the backend never received flashSaleId and silently priced/validated
+      // every Flash Sale purchase as a normal product order.
       flashSaleId: e.isFlashDeal ? e.flashSaleId : undefined,
     })),
     shippingAddress: {
