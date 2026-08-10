@@ -3,9 +3,11 @@
    Renders full retail + wholesale product info: gallery, price
    (with live tiered pricing for wholesalers), accurate stock
    state, MOQ, delivery terms, rating, reviews, product
-   specifications (non-variant attributes), a variant picker
-   (Size/Color etc. from ProductVariant + CategoryAttribute defs),
-   and a "related products" rail pulled from the same category.
+   specifications (non-variant attributes) as a spec-sheet grid,
+   a variant picker (Size/Color etc. from ProductVariant +
+   CategoryAttribute defs), a unified purchase "buy box" (qty +
+   add to cart / buy now), and a "related products" rail pulled
+   from the same category.
 
    Wholesale delivery now branches on `deliveryType`:
      - 'simple' -> this product ships exactly like a normal retail
@@ -112,19 +114,23 @@
     return `${value}${attr.unit ? " " + attr.unit : ""}`;
   }
 
+  // Renders specs as a clean two-column spec-sheet grid (label stacked
+  // above/left of a bold value) rather than a cramped table — this is the
+  // block buyers scan to compare products, so every row gets real breathing
+  // room and a readable type size.
   function renderSpecsPanel(p) {
     const specs = nonVariantAttributes(p);
     if (!specs.length) return "";
     return `
       <div class="pd-specs">
-        <h3 class="pd-specs__head">Specifications</h3>
-        <table class="pd-specs__table"><tbody>
+        <div class="pd-section-label">Specifications</div>
+        <div class="pd-specs__grid">
           ${specs.map(a => `
-            <tr>
-              <td class="pd-specs__label">${a.attribute.name}</td>
-              <td class="pd-specs__value">${formatAttrValue(a.attribute, a.value)}</td>
-            </tr>`).join("")}
-        </tbody></table>
+            <div class="pd-specs__item">
+              <span class="pd-specs__label">${a.attribute.name}</span>
+              <span class="pd-specs__value">${formatAttrValue(a.attribute, a.value)}</span>
+            </div>`).join("")}
+        </div>
       </div>`;
   }
 
@@ -154,7 +160,6 @@
     const moq = wholesale ? (p.minOrderQuantity || 1) : 1;
     const tiers = wholesale ? sortedTiers(p) : [];
     const stock = stockState(p);
-    const sellerName = p.seller?.businessName || p.seller?.shopName || p.seller?.name || "Verified seller";
 
     qty = wholesale ? moq : 1;
 
@@ -172,6 +177,7 @@
             ${images.map((img, i) => `<img src="${img}" class="${i === 0 ? "active" : ""}" data-i="${i}">`).join("")}
           </div>` : ""}
         </div>
+
         <div>
           <div class="pd-category">${p.category?.name || p.category || "Product"}</div>
 
@@ -187,8 +193,6 @@
             </button>
           </div>
 
-          
-
           <div class="review-stars" id="pdRatingSummary">
             ${p.ratingsCount
               ? `<span class="pd-rating-num">${(p.ratingsAverage || 0).toFixed(1)}</span>${starString(p.ratingsAverage)} <span style="color:var(--ink-soft);font-weight:400;">(${p.ratingsCount} review${p.ratingsCount === 1 ? "" : "s"})</span>`
@@ -199,14 +203,20 @@
             <span class="price-tag lg" id="pdPrice">${ssFmtPrice(price)}</span>
             ${hasDiscount ? `<span class="pd-old">${ssFmtPrice(p.finalPrice)}</span><span class="pd-discount-chip">-${p.discountPercent}%</span>` : ""}
           </div>
-          ${wholesale ? `<div class="form-hint" style="margin-top:2px;">Unit price shown is for single-unit purchase. Bulk pricing applies below.</div>` : ""}
+          ${wholesale ? `<div class="form-hint" style="margin-top:4px;">Unit price shown is for single-unit purchase. Bulk pricing applies below.</div>` : ""}
 
           <div class="pd-stock-row ${stock.level}">
             <span class="pd-stock-dot ${stock.level}"></span>
             <span>${stock.label}</span>
           </div>
 
-          <p class="pd-desc">${p.description || "No description provided for this product yet."}</p>
+          <div class="pd-description-card">
+            <div class="pd-section-label">Product overview</div>
+            <p class="pd-desc" id="pdDesc">${p.description || "No description provided for this product yet."}</p>
+            <button type="button" class="pd-desc-toggle" id="pdDescToggle">
+              <span>Read more</span><i class="fa-solid fa-chevron-down"></i>
+            </button>
+          </div>
 
           ${renderSpecsPanel(p)}
 
@@ -214,31 +224,33 @@
 
           <div id="pdVariantPicker"></div>
 
-          <div class="qty-row">
-            <div class="qty-stepper">
-              <button id="qtyMinus" aria-label="Decrease quantity">−</button>
-              <span id="qtyVal">${qty}</span>
-              <button id="qtyPlus" aria-label="Increase quantity">+</button>
+          <div class="pd-purchase-panel">
+            <div class="qty-row">
+              <div class="qty-stepper">
+                <button id="qtyMinus" aria-label="Decrease quantity">−</button>
+                <span id="qtyVal">${qty}</span>
+                <button id="qtyPlus" aria-label="Increase quantity">+</button>
+              </div>
+              <span class="form-hint">${wholesale ? `Minimum order: ${moq} units` : (stock.stock ? stock.stock + " in stock" : "")}</span>
             </div>
-            <span class="form-hint">${wholesale ? `Minimum order: ${moq} units` : (stock.stock ? stock.stock + " in stock" : "")}</span>
-          </div>
 
-          ${wholesale ? `
-            <div class="pd-unit-note" id="pdUnitNote"></div>
-            <div class="pd-total-line" id="pdTotalLine"></div>
-          ` : ""}
-          ${stock.level === "out" ? `<div class="pd-stock-warn">This product is currently out of stock.</div>` : ""}
-          <div class="pd-stock-warn" id="pdMoqStockWarn" style="display:none;"></div>
+            ${wholesale ? `
+              <div class="pd-unit-note" id="pdUnitNote"></div>
+              <div class="pd-total-line" id="pdTotalLine"></div>
+            ` : ""}
+            ${stock.level === "out" ? `<div class="pd-stock-warn">This product is currently out of stock.</div>` : ""}
+            <div class="pd-stock-warn" id="pdMoqStockWarn" style="display:none;"></div>
 
-          <div class="pd-actions">
-            <button class="btn btn-primary" id="addBtn" ${stock.level === "out" ? "disabled" : ""}><i class="fa-solid fa-cart-plus"></i> Add to cart</button>
-            <button class="btn btn-dark" id="buyBtn" ${stock.level === "out" ? "disabled" : ""}><i class="fa-solid fa-bolt"></i> Buy now</button>
-          </div>
+            <div class="pd-actions">
+              <button class="btn btn-primary" id="addBtn" ${stock.level === "out" ? "disabled" : ""}><i class="fa-solid fa-cart-plus"></i> Add to cart</button>
+              <button class="btn btn-dark" id="buyBtn" ${stock.level === "out" ? "disabled" : ""}><i class="fa-solid fa-bolt"></i> Buy now</button>
+            </div>
 
-          <div class="trust-row">
-            <div><i class="fa-solid fa-truck-fast"></i> Countrywide delivery</div>
-            <div><i class="fa-solid fa-shield-halved"></i> 1-year warranty</div>
-            <div><i class="fa-solid fa-rotate-left"></i> Easy returns</div>
+            <div class="trust-row">
+              <div><i class="fa-solid fa-truck-fast"></i> Countrywide delivery</div>
+              <div><i class="fa-solid fa-shield-halved"></i> 1-year warranty</div>
+              <div><i class="fa-solid fa-rotate-left"></i> Easy returns</div>
+            </div>
           </div>
         </div>
       </div>
@@ -303,8 +315,9 @@
     `;
 
     bindGallery();
+    bindDescriptionToggle();
     bindQty(p, wholesale, moq, stock);
-    bindActions(p, wholesale, moq, stock);
+    bindActions(p, wholesale, moq);
     bindReviewForm(p);
     bindShare(p);
     if (wholesale) updateWholesaleLive(p, moq, tiers, heavyWholesale);
@@ -399,6 +412,30 @@
         content.querySelectorAll(".pd-gallery__thumbs img").forEach(t => t.classList.remove("active"));
         img.classList.add("active");
       });
+    });
+  }
+
+  /* ---------------- description read-more ---------------- */
+
+  // Only show the toggle when the description actually overflows the
+  // 4-line clamp — short descriptions render fully with no dead button.
+  function bindDescriptionToggle() {
+    const desc = document.getElementById("pdDesc");
+    const toggle = document.getElementById("pdDescToggle");
+    if (!desc || !toggle) return;
+
+    desc.classList.add("clamped");
+
+    requestAnimationFrame(() => {
+      if (desc.scrollHeight > desc.clientHeight + 2) {
+        toggle.classList.add("show");
+      }
+    });
+
+    toggle.addEventListener("click", () => {
+      const isOpen = desc.classList.toggle("clamped") === false;
+      toggle.classList.toggle("open", isOpen);
+      toggle.querySelector("span").textContent = isOpen ? "Show less" : "Read more";
     });
   }
 
