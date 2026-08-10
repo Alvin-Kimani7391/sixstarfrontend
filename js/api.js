@@ -171,6 +171,24 @@ getShopBySlug(slug) {
     },
 
 
+/**
+ * ADD THIS to frontend/js/api.js, inside the "PRODUCTS - PUBLIC" section
+ * (right after getProduct(id) works well):
+ * -----------------------------------------------------------------------
+ */
+
+    getProductSuggestions(q) {
+      return request("/products/suggestions", { query: { q }, requiresAuth: false });
+    },
+
+/**
+ * This calls GET {API_BASE}/products/suggestions?q=... which hits the
+ * new getProductSuggestions controller/route you're adding on the
+ * backend — same request() wrapper, same credentials/error handling as
+ * every other call in this file, no separate fetch logic needed.
+ */
+
+
 // ============================================================
     // FLASH SALES - PUBLIC
     // ============================================================

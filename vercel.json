@@ -1,5 +1,18 @@
 {
   "rewrites": [
-    { "source": "/shop/:slug", "destination": "/shop-detail.html" }
-  ]
+    { "source": "/shop/:slug", "destination": "/shop-detail.html" },
+
+    { "source": "/sitemap.xml", "destination": "https://sixstarbackend.onrender.com/sitemap.xml" },
+    { "source": "/sitemap-static.xml", "destination": "https://sixstarbackend.onrender.com/sitemap-static.xml" },
+    { "source": "/sitemap-products.xml", "destination": "https://sixstarbackend.onrender.com/sitemap-products.xml" },
+    { "source": "/sitemap-shops.xml", "destination": "https://sixstarbackend.onrender.com/sitemap-shops.xml" },
+    { "source": "/sitemap-categories.xml", "destination": "https://sixstarbackend.onrender.com/sitemap-categories.xml" },
+
+    { "source": "/product-detail.html", "destination": "/api/product-detail" }
+  ],
+  "functions": {
+    "api/product-detail.js": {
+      "includeFiles": "product-detail.html"
+    }
+  }
 }

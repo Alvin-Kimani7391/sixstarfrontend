@@ -938,7 +938,10 @@ async function loadAgentsDropdown() {
 
 /* ============================================================
    PROFILE AUTOFILL — Name, M-Pesa Number, Delivery Address.
-   Fields stay fully editable.
+   Fields stay fully editable. Takes an already-fetched profileUser
+   instead of calling SS_API.getProfile() itself — the fetch now
+   happens once, up front, and is shared with the email-verification
+   gate below (see resolveProfileAndVerification).
    ============================================================ */
 function applyAutofill(fieldId, noteId, value) {
   if (!value) return false;
@@ -975,53 +978,7 @@ function firstDefined(...vals) {
   return "";
 }
 
-// ============================================================
-// EMAIL VERIFICATION GATE
-// Mirrors login.js's emailVerificationRequired detour, but re-checked
-// here because a buyer with an already-valid session cookie (see
-// login.js's goToVerifyEmail comment — the backend issues the cookie
-// BEFORE the OTP step is completed) can navigate straight to
-// checkout.html and skip that redirect entirely. Without this check,
-// getMe() succeeding was being treated as "fully logged in", when it
-// really only means "has a valid session".
-//
-// Only trips when a field comes back explicitly `false` (never when
-// it's simply absent), so accounts that predate email verification —
-// which login.js's own comments call out as a real case — aren't
-// locked out just because the field doesn't exist on their record.
-// If your backend uses a different field name than the three checked
-// below, add it here (same pattern as the phone/name fallback list
-// in firstDefined() calls elsewhere on this page).
-// ============================================================
-function isEmailUnverified(meResponse, meUser) {
-  if (meResponse && meResponse.emailVerificationRequired === true) return true;
-  if (meUser) {
-    const flags = [meUser.emailVerified, meUser.isEmailVerified, meUser.email_verified];
-    if (flags.some((f) => f === false)) return true;
-  }
-  return false;
-}
-
-// meResponse (/auth/me) is guaranteed to have succeeded already — the page
-// wouldn't be visible otherwise — so it's the reliable baseline. /users/profile
-// is fetched as an enhancement and, when available, wins field-by-field since
-// it's typically the more complete/canonical record. Every step logs to the
-// console under the "[checkout]" prefix so a failure can be diagnosed from
-// DevTools instead of just showing up as "nothing filled in".
-async function prefillContactFromProfile(meResponse) {
-  const meUser = normalizeUserShape(meResponse);
-  console.debug("[checkout] getMe() raw ->", meResponse, "normalized ->", meUser);
-
-  let profileUser = null;
-  try {
-    const profileRes = await SS_API.getProfile();
-    profileUser = normalizeUserShape(profileRes);
-    console.debug("[checkout] getProfile() raw ->", profileRes, "normalized ->", profileUser);
-  } catch (e) {
-    console.error("[checkout] getProfile() failed — falling back to /auth/me data only:", e);
-    showPageError("Couldn't refresh your saved profile details — using your account info instead. Please double-check your name/phone below. (" + (e.message || "unknown error") + ")");
-  }
-
+function prefillContactFromProfile(meUser, profileUser) {
   const name = firstDefined(profileUser?.name, profileUser?.fullName, meUser?.name, meUser?.fullName);
   const phone = firstDefined(profileUser?.phone, profileUser?.phoneNumber, profileUser?.mpesaNumber, profileUser?.mobile, meUser?.phone, meUser?.phoneNumber, meUser?.mpesaNumber, meUser?.mobile);
   const address = firstDefined(profileUser?.address, profileUser?.deliveryAddress, meUser?.address, meUser?.deliveryAddress);
@@ -1035,6 +992,68 @@ async function prefillContactFromProfile(meResponse) {
   if (!filledName && !filledPhone) {
     console.warn("[checkout] No saved name/phone found on either /auth/me or /users/profile responses — check the raw response shapes logged above.");
   }
+}
+
+// ============================================================
+// EMAIL VERIFICATION GATE
+// Mirrors login.js's emailVerificationRequired detour, but re-checked
+// here because a buyer with an already-valid session cookie (see
+// login.js's goToVerifyEmail comment — the backend issues the cookie
+// BEFORE the OTP step is completed) can navigate straight to
+// checkout.html and skip that redirect entirely. Without this check,
+// getMe() succeeding was being treated as "fully logged in", when it
+// really only means "has a valid session".
+//
+// The backend's User model (models/User.js) stores verification as a
+// single boolean field: `isVerified` — default: false at creation, so
+// every account has a real boolean here, never undefined. It's returned
+// as-is by BOTH:
+//   - GET /auth/me      -> authController.getMe() -> sanitizeUser(req.user)
+//                          (sanitizeUser deletes password/tokens/OTP
+//                          fields but never touches isVerified)
+//   - GET /users/profile -> userController.getProfile() ->
+//                          User.findById(...).select('-password')
+// so either meUser or profileUser is an authoritative source; profileUser
+// is preferred since it's the freshest read, with meUser as a fallback if
+// the /users/profile call itself failed.
+//
+// `emailVerificationRequired` is a SEPARATE flag returned only by
+// POST /auth/login (authController.loginUser) when isVerified is false at
+// login time — it is never present on /auth/me's response, so it isn't
+// checked here (checking it would just always be undefined/false and do
+// nothing).
+// ============================================================
+function isEmailUnverified(meUser, profileUser) {
+  const user = profileUser || meUser;
+  return !!user && user.isVerified !== true;
+}
+
+// Fetches /users/profile ONCE and returns everything both the verification
+// gate and the autofill step need, so we don't call getProfile() twice.
+// meResponse (/auth/me) is guaranteed to have succeeded already — the page
+// wouldn't be visible otherwise — so it's the reliable baseline; profile is
+// fetched as an enhancement on top of it. Every step logs to the console
+// under the "[checkout]" prefix so a failure can be diagnosed from DevTools
+// instead of just showing up as "nothing filled in" or "gate never fired".
+async function resolveProfileAndVerification(meResponse) {
+  const meUser = normalizeUserShape(meResponse);
+  console.debug("[checkout] getMe() raw ->", meResponse, "normalized ->", meUser);
+
+  let profileUser = null;
+  try {
+    const profileRes = await SS_API.getProfile();
+    profileUser = normalizeUserShape(profileRes);
+    console.debug("[checkout] getProfile() raw ->", profileRes, "normalized ->", profileUser);
+  } catch (e) {
+    console.error("[checkout] getProfile() failed — falling back to /auth/me data only:", e);
+    showPageError("Couldn't refresh your saved profile details — using your account info instead. Please double-check your name/phone below. (" + (e.message || "unknown error") + ")");
+  }
+
+  return {
+    meUser,
+    profileUser,
+    unverified: isEmailUnverified(meUser, profileUser),
+  };
 }
 
 async function submitOrder(event) {
@@ -1156,12 +1175,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  // Gate unverified accounts the same way login.js does. A user can reach
-  // this page with a valid session cookie but an unverified email (see
-  // login.js's goToVerifyEmail comment), so getMe() succeeding is NOT
-  // enough on its own to prove they finished onboarding.
-  const meUser = normalizeUserShape(meResponse);
-  if (isEmailUnverified(meResponse, meUser)) {
+  // Fetch /users/profile ONCE up front and use it for both the verification
+  // gate and the autofill step below — previously the gate only looked at
+  // /auth/me (before profile was ever fetched), so if the verified flag
+  // only lived on /users/profile, unverified buyers were never redirected.
+  const { meUser, profileUser, unverified } = await resolveProfileAndVerification(meResponse);
+
+  if (unverified) {
     const next = encodeURIComponent("checkout.html");
     window.location.href = `verify-email.html?next=${next}`;
     return;
@@ -1171,7 +1191,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("stepper").style.display = "flex";
 
   try {
-    await Promise.all([loadCheckout(), prefillContactFromProfile(meResponse)]);
+    prefillContactFromProfile(meUser, profileUser);
+    await loadCheckout();
     loadAgentsDropdown();
     SS_CART.updateBadge();
     document.getElementById("deliveryAddress").addEventListener("input", () => { clearFieldError(document.getElementById("deliveryAddress")); updateTotal(); });
