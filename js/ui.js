@@ -188,9 +188,25 @@ function ssQuickAdd(id) {
   ssToast(`${p.name} added to cart${qty > 1 ? ` (${qty} units)` : ""}`, "fa-cart-shopping");
 }
 
+//skeleton cards for loading state
 function ssSkeletonCards(n = 6) {
-  return Array.from({ length: n }).map(() => `<div class="p-card skel skeleton-card"></div>`).join("");
+  const card = `
+    <div class="p-card skel-card" aria-hidden="true">
+      <div class="skel-card__img skel-shimmer"></div>
+      <div class="skel-card__body">
+        <div class="skel-line skel-shimmer" style="width:92%"></div>
+        <div class="skel-line skel-shimmer" style="width:60%"></div>
+        <div class="skel-pill skel-shimmer"></div>
+        <div class="skel-card__foot">
+          <div class="skel-price skel-shimmer"></div>
+          <div class="skel-btn skel-shimmer"></div>
+        </div>
+      </div>
+    </div>`;
+  return Array.from({ length: n }).map(() => card).join("");
 }
+
+
 
 /* ---------- header / footer ---------- */
 function ssRenderHeader(active = "") {

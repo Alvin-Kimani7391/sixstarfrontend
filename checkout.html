@@ -361,8 +361,8 @@ button.main:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-s
         <div id="payment-step" class="payment-modal">
           <button onclick="document.getElementById('payment-step').style.display='none'">Close</button>
           <h4>Payment Details</h4>
-          <p>Send Money to: <strong>0794327798</strong></p>
-          <p>Name: <strong>Waithera Samuel Kimani</strong></p>
+          <p>PAYBILL: <strong>522533</strong></p>
+          <p>Account Number: <strong>8125245</strong></p>
           <div class="input-group">
             <label>Paste your full M-Pesa confirmation SMS</label>
             <textarea id="mpesa-message" rows="3" placeholder="e.g. QWE1XYZ23 Confirmed. Ksh1,500 sent to Waithera Samuel Kimani on 24/7/26..."></textarea>
@@ -1150,7 +1150,7 @@ async function submitOrder(event) {
     msg.innerHTML = `<div class="success">✅ Order placed successfully<br>
       Your order number:<br>
       <span class="order-number-highlight">${orderRef}</span><br>
-      <span style="font-size:12.5px;color:var(--ink-soft);font-weight:600;">Save this — you'll need it to track your order.</span><br><br>
+      <span style="font-size:12.5px;color:var(--ink-soft);font-weight:600;">Check your email for order details.</span><br><br>
       Redirecting to your orders...</div>`;
     // Deep-link straight into the Orders tab of the profile page, with the
     // specific order expanded and scrolled into view (handled in profile.js).

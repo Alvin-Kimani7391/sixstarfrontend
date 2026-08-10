@@ -2199,3 +2199,112 @@ body.drawer-lock {
   align-items:center;
   gap:4px;
 }
+
+
+
+
+
+
+/* ============================================================
+   SKELETON CARD — modern loading placeholder that mirrors real
+   .p-card anatomy (image, two name lines, a meta pill, then a
+   price + circular add-button row) instead of one flat gray
+   block. Sizing rides entirely on the existing .p-card responsive
+   rules (flex-basis in .p-scroll, width:100% in .p-grid, and the
+   phone/tiny-phone overrides already in this file) — so it always
+   matches whatever size the real card renders at, at every
+   breakpoint, with no separate media queries to keep in sync.
+   ============================================================ */
+
+.skel-card{
+  pointer-events:none;
+  cursor:default;
+}
+
+/* shared shimmer sweep, reused by every skeleton piece below */
+.skel-shimmer{
+  position:relative;
+  overflow:hidden;
+  background:var(--line-soft);
+}
+.skel-shimmer::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:linear-gradient(90deg,
+    transparent,
+    rgba(255,255,255,.7),
+    transparent);
+  transform:translateX(-100%);
+  animation:ssSkelSweep 1.6s ease-in-out infinite;
+}
+@keyframes ssSkelSweep{
+  100%{ transform:translateX(100%); }
+}
+@media(prefers-reduced-motion:reduce){
+  .skel-shimmer::after{ animation:none; display:none; }
+}
+
+.skel-card__img{
+  aspect-ratio:1/1;
+  border-radius:var(--radius-md) var(--radius-md) 0 0;
+}
+
+.skel-card__body{
+  padding:10px 12px 14px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.skel-line{
+  height:11px;
+  border-radius:5px;
+}
+
+.skel-pill{
+  height:16px;
+  width:64px;
+  border-radius:20px;
+  margin-top:2px;
+}
+
+.skel-card__foot{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-top:6px;
+}
+
+.skel-price{
+  height:17px;
+  width:58px;
+  border-radius:5px;
+}
+
+.skel-btn{
+  width:30px;
+  height:30px;
+  border-radius:50%;
+  flex-shrink:0;
+}
+
+/* Phone: nudge padding/gaps and piece sizes up slightly to match the
+   real card's own phone-only enlargement (see .p-card__body,
+   .p-card__add, .price-tag rules under @media(max-width:599px)
+   elsewhere in this file), so the transition from skeleton -> real
+   content doesn't shift height at all. */
+@media(max-width:599px){
+  .skel-card__body{ padding:12px 13px 15px; gap:9px; }
+  .skel-line{ height:12px; }
+  .skel-card__foot{ margin-top:8px; }
+  .skel-price{ width:66px; height:18px; }
+  .skel-btn{ width:32px; height:32px; }
+}
+
+/* Extra-small phones — matches the tighter .p-card__body padding
+   already defined for this breakpoint. */
+@media(max-width:374px){
+  .skel-card__body{ padding:10px 11px 13px; gap:7px; }
+  .skel-line{ height:10px; }
+}
