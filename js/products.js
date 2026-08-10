@@ -74,6 +74,24 @@
     return Number(p.stock ?? p.stockQuantity ?? p.quantity ?? p.qty ?? 0) || 0;
   }
 
+  // ============================================================
+  // Randomized display order — ONLY for plain browsing.
+  //
+  // Deliberately returns false (no shuffle) when:
+  //   - an explicit sort is selected (newest / popular / price_asc /
+  //     price_desc) — scrambling those would break the exact thing the
+  //     user picked from the dropdown
+  //   - a search term is active — search relevance order must survive
+  //
+  // Category and price-range filters do NOT disable shuffling — those
+  // just narrow WHICH products are in play; there's no inherent order to
+  // preserve within a filtered set, so "All Products" and "Category X"
+  // browsing both get a fresh shuffle per page load/fetch.
+  // ============================================================
+  function shouldShuffleListing() {
+    return !state.sort && !state.search;
+  }
+
   function syncFormToState() {
     minInput.value = state.minPrice || "";
     maxInput.value = state.maxPrice || "";
@@ -303,7 +321,8 @@
   // Reuses ssFlashSaleCard() and ssFmtCountdown() from ui.js (the exact
   // same rendering the homepage rail uses) instead of duplicating that
   // logic here. No pagination — /flash-sales/today already returns the
-  // whole day's set in one call.
+  // whole day's set in one call. Order is left as backend returns it
+  // (sorted by startAt) since the countdown logic reads flashSales[0].
   // ============================================================
   function stopFlashSaleCountdown() {
     if (flashSaleCountdownTimer) {
@@ -419,6 +438,11 @@
         const res = await fetchPage(page);
         products = res.products || res.data || (Array.isArray(res) ? res : []);
         totalCount = res.total ?? res.count ?? products.length;
+        // Randomize this page's display order — only kicks in when no
+        // explicit sort/search is active (see shouldShuffleListing()
+        // above). Filtering already happened server-side in fetchPage();
+        // this only reorders what came back.
+        if (shouldShuffleListing()) products = ssShuffle(products);
       }
 
       if (!products.length) {
@@ -469,6 +493,10 @@
         const nextPage = page + 1;
         const res = await fetchPage(nextPage);
         products = res.products || res.data || (Array.isArray(res) ? res : []);
+        // Same rule as load() — shuffle each freshly-fetched page only
+        // when no explicit sort/search is in play, so pagination totals
+        // and "Showing X of Y" counts stay exactly accurate.
+        if (shouldShuffleListing()) products = ssShuffle(products);
         page = nextPage;
       }
 

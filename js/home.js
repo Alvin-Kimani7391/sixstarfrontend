@@ -17,6 +17,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Real, backend-driven Flash Sale rail — live countdown to midnight when
   // something's active, countdown to the next 2:00 PM when nothing is.
+  // NOTE: deliberately NOT shuffled — ssRenderFlashSale() reads
+  // flashSales[0] to drive the "ends in / starts in" timer, so the array
+  // order is functional, not cosmetic.
   ssRenderFlashSale("flashSaleSection", "flashSaleProducts", "flashSaleTimer");
 
   const hot = document.getElementById("hotDeals");
@@ -43,16 +46,33 @@ document.addEventListener("DOMContentLoaded", async () => {
     return Number(p.stock ?? p.stockQuantity ?? p.quantity ?? p.qty ?? 0) || 0;
   }
 
+  // ---------------------------------------------------------------
+  // Hot Deals — no meaningful backend order (it's just "isHotDeal: true"),
+  // so shuffle the full result before slicing to the rail size. This does
+  // NOT touch the hotDeals filter itself — filtering already happened in
+  // the API call above; we're only reordering what came back.
+  // ---------------------------------------------------------------
   try {
     const hotRes = await SS_API.getProducts({ hotDeals: true, page: 1 });
-    cacheAndRender(hot, (hotRes.products || hotRes.data || hotRes || []).slice(0, 10), "No hot deals right now — check back soon.");
+    const hotProducts = ssShuffle(hotRes.products || hotRes.data || hotRes || []).slice(0, 10);
+    cacheAndRender(hot, hotProducts, "No hot deals right now — check back soon.");
   } catch (_) { hot.innerHTML = `<p class="form-hint">Couldn't load hot deals. <a href="index.html">Retry</a></p>`; }
 
+  // ---------------------------------------------------------------
+  // New Arrivals — intentionally left in "newest first" order.
+  // Shuffling this rail would defeat its purpose (it exists specifically
+  // to show what's most recent), so sort=newest is respected as-is.
+  // ---------------------------------------------------------------
   try {
     const newRes = await SS_API.getProducts({ sort: "newest", page: 1 });
     cacheAndRender(fresh, (newRes.products || newRes.data || newRes || []).slice(0, 10), "No new arrivals yet.");
   } catch (_) { fresh.innerHTML = `<p class="form-hint">Couldn't load new arrivals.</p>`; }
 
+  // ---------------------------------------------------------------
+  // Wholesale preview — no meaningful order either way, so shuffle
+  // whichever set we ended up with (direct query or the manual filter
+  // fallback) before caching/rendering.
+  // ---------------------------------------------------------------
   if (wholesalePreview) {
     try {
       const wholesaleRes = await SS_API.getProducts({
@@ -72,6 +92,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         );
       }
 
+      wholesaleProducts = ssShuffle(wholesaleProducts);
       wholesaleProducts.forEach(p => { window.__ssProductCache[p.id] = p; });
       wholesalePreview.innerHTML = wholesaleProducts.length
         ? wholesaleProducts.slice(0, 10).map(ssProductCard).join("")
@@ -81,6 +102,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  // ---------------------------------------------------------------
+  // Top Selling — already shuffled (unchanged): pull the top-stock pool,
+  // then randomize which 10 of the top 20 show up this load.
+  // ---------------------------------------------------------------
   try {
     const topRes = await SS_API.getProducts({ page: 1, limit: 40 });
     let list = topRes.products || topRes.data || topRes || [];
@@ -90,12 +115,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     cacheAndRender(topSelling, list, "No top-selling products right now.");
   } catch (_) { topSelling.innerHTML = `<p class="form-hint">Couldn't load top-selling products.</p>`; }
 
+  // ---------------------------------------------------------------
+  // Catalog preview (homepage "Our Catalog" strip) — plain page-1 fetch
+  // with no filter/sort applied, so shuffle it for a fresher feel on
+  // every visit. The "Browse All Products" button still just routes to
+  // product.html, which does its own thing (see products.js).
+  // ---------------------------------------------------------------
   const catalogLoadMoreWrap = document.getElementById("catalogLoadMoreWrap");
   const catalogLoadMoreBtn = document.getElementById("catalogLoadMoreBtn");
 
   try {
     const allRes = await SS_API.getProducts({ page: 1, limit: CATALOG_PAGE_SIZE });
-    const products = (allRes.products || allRes.data || allRes || []).slice(0, CATALOG_PAGE_SIZE);
+    const products = ssShuffle(allRes.products || allRes.data || allRes || []).slice(0, CATALOG_PAGE_SIZE);
     cacheAndRender(catalog, products, "No products available yet.");
     if (catalogLoadMoreWrap) {
       catalogLoadMoreWrap.style.display = products.length ? "flex" : "none";
