@@ -257,6 +257,19 @@ button.main:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-s
   font-weight: 600; text-align: center;
 }
 
+/* ---- Terms & Conditions acceptance (payment step) ---- */
+.terms-agree {
+  display: flex; align-items: flex-start; gap: 10px; margin-top: 14px;
+  padding: 12px 13px; border-radius: 12px; background: var(--bg-page);
+  border: 1.5px solid var(--line); transition: border-color .2s ease;
+}
+.terms-agree.field-error { border-color: var(--brick); box-shadow: 0 0 0 3px rgba(184,68,46,.12); }
+.terms-agree input[type="checkbox"] {
+  width: 18px; height: 18px; margin-top: 1px; flex-shrink: 0; accent-color: var(--marigold-deep); cursor: pointer;
+}
+.terms-agree label { font-size: 12.5px; color: var(--ink-soft); line-height: 1.55; cursor: pointer; font-weight: 600; }
+.terms-agree label a { color: var(--marigold-deep); font-weight: 800; text-decoration: underline; }
+
 @media (max-width: 600px) {
   .checkout-wrap { padding: 8px 12px 32px; }
   .section-card { padding: 16px; }
@@ -368,7 +381,7 @@ button.main:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-s
           <hr>
           <h3>Total <span>Ksh <span id="total-price">0</span></span></h3>
         </div>
-        <button class="main" id="proceedBtn" onclick="showPayment()"><i class="fa-solid fa-credit-card"></i>Proceed to Pay</button>
+        <button class="main" id="proceedBtn" onclick="showPayment()" style="background: orange;"><i class="fa-solid fa-credit-card"></i>Proceed to Pay</button>
         <div id="payment-step" class="payment-modal">
           <button onclick="document.getElementById('payment-step').style.display='none'">Close</button>
           <h4>Payment Details</h4>
@@ -378,7 +391,11 @@ button.main:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-s
             <label>Paste your full M-Pesa confirmation SMS</label>
             <textarea id="mpesa-message" rows="3" placeholder="e.g. QWE1XYZ23 Confirmed. Ksh1,500 sent to Waithera Samuel Kimani on 24/7/26..."></textarea>
           </div>
-          <button onclick="submitOrder(event)"><i class="fa-solid fa-check"></i> Submit Order</button>
+          <div class="terms-agree" id="termsAgreeRow">
+            <input type="checkbox" id="termsCheckbox" onchange="onTermsCheckboxChange()">
+            <label for="termsCheckbox">I have read and agree to the <a href="about.html#terms" target="_blank" rel="noopener">Terms &amp; Conditions</a>.</label>
+          </div>
+          <button id="submitOrderBtn" disabled onclick="submitOrder(event)"><i class="fa-solid fa-check"></i> Submit Order</button>
         </div>
         <p id="msg"></p>
       </div>
@@ -1008,6 +1025,13 @@ function sendCustomLocationOrder() {
   window.open(`https://wa.me/254794327798?text=${encodeURIComponent(message)}`, "_blank");
 }
 
+function onTermsCheckboxChange() {
+  const box = document.getElementById("termsCheckbox");
+  const submitBtn = document.getElementById("submitOrderBtn");
+  submitBtn.disabled = !box.checked;
+  if (box.checked) clearFieldError(document.getElementById("termsAgreeRow"));
+}
+
 function showPayment() {
   const missingVariant = enriched.find((e) => !e.error && e.requiresVariant && !e.selectedVariant);
   if (missingVariant) { alert(`Please select ${missingVariant.variantDefs.map(d=>d.name).join(" & ")} for "${missingVariant.product.name}".`); return; }
@@ -1033,6 +1057,14 @@ function showPayment() {
     return;
   }
   clearFieldError(addressEl);
+
+  // Reset the terms checkbox / submit-button state each time the payment
+  // step is (re)opened, so a previous session's agreement can't silently
+  // carry over to a different order.
+  const termsBox = document.getElementById("termsCheckbox");
+  termsBox.checked = false;
+  document.getElementById("submitOrderBtn").disabled = true;
+  clearFieldError(document.getElementById("termsAgreeRow"));
 
   document.getElementById("payment-step").style.display = "block";
   document.getElementById("payment-step").scrollIntoView({ behavior: "smooth", block: "center" });
@@ -1177,6 +1209,18 @@ async function submitOrder(event) {
   const msg = document.getElementById("msg");
   const btn = event?.target || document.querySelector("#payment-step button:last-of-type");
   if (btn) btn.disabled = true;
+
+  // Terms & Conditions must be accepted before an order can be submitted.
+  const termsBox = document.getElementById("termsCheckbox");
+  if (!termsBox || !termsBox.checked) {
+    msg.innerHTML = "<span style='color:#E23744'>Please accept the Terms &amp; Conditions to continue</span>";
+    markFieldError(document.getElementById("termsAgreeRow"));
+    document.getElementById("termsAgreeRow").scrollIntoView({ behavior: "smooth", block: "center" });
+    if (btn) btn.disabled = false;
+    return;
+  }
+  clearFieldError(document.getElementById("termsAgreeRow"));
+
   msg.innerHTML = "Processing your order... ⏳";
 
   const name = document.getElementById("name").value.trim();
@@ -1261,6 +1305,7 @@ async function submitOrder(event) {
     // Standard Transport fee only — the backend prices each heavy wholesale
     // line's own delivery charge independently from its stored deliveryCharge.
     transportFee,
+    termsAccepted: true,
   };
 
   try {
