@@ -120,7 +120,7 @@ function ssShopSkeletons(n) {
 function ssShopCard(s) {
   const initial = (s.shopName || "?").trim().charAt(0).toUpperCase();
   return `
-    <a class="shop-card" href="/shop/templates/${encodeURIComponent(s.slug)}">
+    <a class="shop-card" href="/shop/${encodeURIComponent(s.slug)}">
       <div class="shop-card__banner">
         ${s.isFeatured ? `<span class="shop-featured-ribbon"><i class="fa-solid fa-star"></i> Featured</span>` : ""}
         ${s.banner ? `<img src="${s.banner}" alt="${s.shopName}" loading="lazy">` : ""}
