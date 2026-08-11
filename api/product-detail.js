@@ -1,23 +1,9 @@
 /**
  * api/product-detail.js  (Vercel Serverless Function)
  * -----------------------------------------------------------------------
- * CHANGED: reads the template from templates/product-detail.html instead
- * of the project root. This is the fix for the static-file-shadowing bug:
- * Vercel serves an actual static file at a matching path BEFORE it ever
- * checks vercel.json rewrites. As long as a real product-detail.html sat
- * at the project root, /product-detail.html requests were served as that
- * plain static file directly — this function never ran, for ANY product.
- *
- * Moving the real template to templates/product-detail.html means no
- * static file exists at the public /product-detail.html path anymore, so
- * the request correctly falls through to the rewrite -> this function.
- *
- * SETUP (see accompanying instructions):
- *   1. Move your real product-detail.html to templates/product-detail.html
- *   2. Update vercel.json's includeFiles to "templates/product-detail.html"
- *   3. Nothing else changes — all internal links still point at
- *      "product-detail.html?id=..." as before; that's the public URL,
- *      unrelated to where the template source file lives on disk.
+ * Reads the template from templates/product-detail.html (NOT the project
+ * root) so no static file shadows the /product-detail.html rewrite.
+ * Matches vercel.json's includeFiles: "templates/product-detail.html".
  * -----------------------------------------------------------------------
  */
 
@@ -36,7 +22,6 @@ function escapeHtml(str = '') {
 }
 
 function readTemplate() {
-  // CHANGED: templates/ subfolder, not project root — see header comment.
   return fs.readFileSync(path.join(process.cwd(), 'templates', 'product-detail.html'), 'utf8');
 }
 
@@ -97,12 +82,19 @@ module.exports = async (req, res) => {
     description: rawDescription,
     image: product.images,
     sku: String(product._id),
+    brand: product.attributes?.find((a) => a.attribute?.name?.toLowerCase() === 'brand')
+      ? { '@type': 'Brand', name: String(product.attributes.find((a) => a.attribute?.name?.toLowerCase() === 'brand').value) }
+      : undefined,
     offers: {
       '@type': 'Offer',
       url: canonical,
       priceCurrency: 'KES',
       price: price || 0,
       availability: product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+      seller: {
+        '@type': 'Organization',
+        name: 'Six Star Suppliers',
+      },
     },
     ...(product.ratingsCount ? {
       aggregateRating: {

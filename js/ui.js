@@ -157,7 +157,7 @@ function ssProductCard(p) {
         ${p.isHotDeal ? `<div class="p-card__hot"><i class="fa-solid fa-fire"></i> Hot</div>` : ""}
       </div>
       <div class="p-card__img">
-        <img src="${ssImg(p)}" alt="${p.name}" loading="lazy" onclick="location.href='/product-detail.html?id=${p.id}'">
+        <img src="${ssImg(p)}" alt="${p.name}" loading="lazy" onclick="location.href='/template/product-detail.html?id=${p.id}'">
         ${outOfStock ? `<div class="p-card__oos-overlay">Out of stock</div>` : ""}
       </div>
       <div class="p-card__body">
@@ -181,7 +181,7 @@ function ssProductCard(p) {
 window.__ssProductCache = window.__ssProductCache || {};
 function ssQuickAdd(id) {
   const p = window.__ssProductCache[id];
-  if (!p) { location.href = `/product-detail.html?id=${id}`; return; }
+  if (!p) { location.href = `/template/product-detail.html?id=${id}`; return; }
   if ((Number(p.stock) || 0) <= 0) { ssToast("This product is out of stock", "fa-circle-exclamation"); return; }
   const qty = p.sellerRole === "wholesaler" ? (p.minOrderQuantity || 1) : 1;
   SS_CART.add(p, qty);
@@ -485,7 +485,7 @@ function ssBindSearchSuggestions(inputEl, boxEl) {
 
     boxEl.querySelectorAll(".sug-item").forEach(item => {
       item.addEventListener("click", () => {
-        location.href = `/product-detail.html?id=${item.dataset.id}`;
+        location.href = `/template/product-detail.html?id=${item.dataset.id}`;
       });
     });
 
@@ -1167,7 +1167,7 @@ function ssFlashSaleCard(fs) {
         <div class="p-card__hot fs-card__flash-badge"><i class="fa-solid fa-bolt"></i> Flash</div>
       </div>
       <div class="p-card__img">
-        <img src="${ssImg(product)}" alt="${product.name || "Product"}" loading="lazy" onclick="location.href='/product-detail.html?id=${productId}'">
+        <img src="${ssImg(product)}" alt="${product.name || "Product"}" loading="lazy" onclick="location.href='//template/product-detail.html?id=${productId}'">
         ${overlay}
       </div>
       <div class="p-card__body">

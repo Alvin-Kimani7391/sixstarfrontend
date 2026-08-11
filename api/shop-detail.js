@@ -1,15 +1,8 @@
 /**
  * api/shop-detail.js  (Vercel Serverless Function)
  * -----------------------------------------------------------------------
- * Same pattern as api/product-detail.js, applied to shop storefronts.
- * Handles BOTH request shapes your site already uses:
- *   - /shop/:slug            (pretty URL, per your existing vercel.json rewrite)
- *   - /shop-detail.html?slug=... or ?id=...  (legacy/query-param form,
- *     matching ssGetSlugFromUrl() in shop-detail.js)
- *
- * Requires the same env vars as product-detail.js:
- *   RENDER_API_BASE = https://sixstarbackend.onrender.com/api
- *   SITE_URL         = https://www.sixstarsuppliers.com
+ * Reads the template from templates/shop-detail.html to match
+ * vercel.json's includeFiles: "templates/shop-detail.html".
  * -----------------------------------------------------------------------
  */
 
@@ -28,11 +21,9 @@ function escapeHtml(str = '') {
 }
 
 function readTemplate() {
-  return fs.readFileSync(path.join(process.cwd(), 'shop-detail.html'), 'utf8');
+  return fs.readFileSync(path.join(process.cwd(), 'templates', 'shop-detail.html'), 'utf8');
 }
 
-// Pulls the slug out of either the rewritten :slug param (from /shop/:slug)
-// or the legacy ?slug=/?id= query string.
 function extractSlug(req) {
   return req.query.slug || req.query.id || null;
 }

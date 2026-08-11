@@ -13,10 +13,10 @@
   ],
   "functions": {
     "api/product-detail.js": {
-      "includeFiles": "product-detail.html"
+      "includeFiles": "templates/product-detail.html"
     },
     "api/shop-detail.js": {
-      "includeFiles": "shop-detail.html"
+      "includeFiles": "templates/shop-detail.html"
     }
   }
 }
