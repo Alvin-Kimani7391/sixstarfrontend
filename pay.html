@@ -368,7 +368,7 @@ button.main:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-s
           <hr>
           <h3>Total <span>Ksh <span id="total-price">0</span></span></h3>
         </div>
-        <button class="main" id="proceedBtn" onclick="showPayment()"><i class="fa-solid fa-credit-card"></i>Proceed to Pay</button>
+        <button class="main" id="proceedBtn" onclick="showPayment()" style="background: orange;"><i class="fa-solid fa-credit-card"></i>Proceed to Pay</button>
         <div id="payment-step" class="payment-modal">
           <button onclick="document.getElementById('payment-step').style.display='none'">Close</button>
           <h4>Payment Details</h4>
@@ -378,7 +378,7 @@ button.main:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-s
             <label>Paste your full M-Pesa confirmation SMS</label>
             <textarea id="mpesa-message" rows="3" placeholder="e.g. QWE1XYZ23 Confirmed. Ksh1,500 sent to Waithera Samuel Kimani on 24/7/26..."></textarea>
           </div>
-          <button onclick="submitOrder(event)"><i class="fa-solid fa-check"></i> Submit Order</button>
+          <button onclick="submitOrder(event)"  ><i class="fa-solid fa-check"></i> Submit Order</button>
         </div>
         <p id="msg"></p>
       </div>
