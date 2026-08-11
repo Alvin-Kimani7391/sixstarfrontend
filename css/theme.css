@@ -45,6 +45,7 @@ img{ max-width:100%; display:block; }
 /* ================= LAYOUT UTILITIES ================= */
 .wrap{ width:100%; margin:0 auto; padding:0 0px; }
 .block{ padding: 0; width:100%; margin:0 auto; }
+.block--banner{ padding:20px 240px; }
 .block.tint{ background:var(--surface); }
 
 .see-all{ font-size:12.5px; font-weight:700; display:inline-flex; align-items:center; gap:5px; }
