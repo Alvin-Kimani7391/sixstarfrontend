@@ -9,7 +9,9 @@
     { "source": "/sitemap-shops.xml", "destination": "https://sixstarbackend.onrender.com/sitemap-shops.xml" },
     { "source": "/sitemap-categories.xml", "destination": "https://sixstarbackend.onrender.com/sitemap-categories.xml" },
 
-    { "source": "/product-detail.html", "destination": "/api/product-detail" }
+    { "source": "/product-detail.html", "destination": "/api/product-detail" },
+
+    { "source": "/about.html/return-policy", "destination": "/about.html" }
   ],
   "functions": {
     "api/product-detail.js": {
