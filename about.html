@@ -627,6 +627,43 @@
           </div>
         </div>
 
+        <!-- Card: Return & Exchange Policy (Google Merchant Center reference) -->
+        <div class="accordion-card full-width" id="return-policy">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <div class="left">
+              <div class="icon"><i class="fa-solid fa-rotate-left"></i></div>
+              <span class="title">Return &amp; Exchange Policy</span>
+              <span class="badge buyer">Buyer</span>
+            </div>
+            <span class="toggle-icon"><i class="fa-solid fa-chevron-down"></i></span>
+          </div>
+          <div class="accordion-body">
+            <div class="content">
+              <p><strong>Six Star Suppliers</strong> accepts returns and exchanges on eligible orders delivered within <strong>Kenya</strong>, under the terms set out below.</p>
+
+              <ul>
+                <li><strong>Returns:</strong> We accept returns for both defective and non-defective products.</li>
+                <li><strong>Exchanges:</strong> We accept exchanges.</li>
+                <li><strong>Product condition:</strong> Returned items must be new and unused (New only).</li>
+                <li><strong>Return window:</strong> 7 days from the date of delivery.</li>
+                <li><strong>Return method:</strong> At a drop-off location.</li>
+                <li><strong>Restocking fees:</strong> No cost — we do not charge a restocking fee.</li>
+                <li><strong>Refund processing time:</strong> 7 days from when the returned item is received and inspected.</li>
+              </ul>
+
+              <div class="highlight-box">
+                <p><strong>Countries covered:</strong> Kenya</p>
+                <p><strong>Merchant:</strong> Six Star Suppliers &nbsp;·&nbsp; <a href="tel:+254794327798">+254 794 327 798</a></p>
+                <p><strong>Full return policy:</strong> <a href="https://www.sixstarsuppliers.com/about.html/return-policy">sixstarsuppliers.com/about.html/return-policy</a></p>
+              </div>
+
+              <p>This policy applies alongside, and does not limit, the statutory warranty and consumer-protection rights described above under Buyer Protections &amp; Rights, or any rights available to you under Kenyan law.</p>
+
+              <span class="legal-ref">Source: Returns Policy · Terms &amp; Conditions § 25-27, § 37</span>
+            </div>
+          </div>
+        </div>
+
         <!-- Card: Payments & Pricing -->
         <div class="accordion-card">
           <div class="accordion-header" onclick="toggleAccordion(this)">
@@ -1106,6 +1143,30 @@
 <a href="#" class="wa-float" id="wa-float"></a>
 <div id="toast"></div>
 
+<!-- ==================== Google Merchant Center: Return Policy structured data ==================== -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "OnlineStore",
+  "name": "Six Star Suppliers",
+  "url": "https://www.sixstarsuppliers.com",
+  "hasMerchantReturnPolicy": {
+    "@type": "MerchantReturnPolicy",
+    "name": "Six Star Suppliers Return Policy",
+    "applicableCountry": "KE",
+    "returnPolicyCountry": "KE",
+    "returnPolicyCategory": "https://schema.org/MerchantReturnFiniteReturnWindow",
+    "merchantReturnDays": 7,
+    "itemCondition": "https://schema.org/NewCondition",
+    "returnMethod": "https://schema.org/ReturnAtKiosk",
+    "returnFees": "https://schema.org/FreeReturn",
+    "refundType": "https://schema.org/FullRefund",
+    "merchantReturnLink": "https://www.sixstarsuppliers.com/about.html/return-policy"
+  }
+}
+</script>
+<!-- ==================== /Google Merchant Center ==================== -->
+
 <script src="js/config.js"></script>
 <script src="js/api.js"></script>
 <script src="js/cart.js"></script>
@@ -1131,6 +1192,23 @@
 
     // Open first accordion by default (already has .open class on "What We Do")
     // All good
+
+    // Deep-link support: auto-open the Return Policy card when arriving via
+    // /about.html#return-policy OR /about.html/return-policy (server-routed, see below)
+    const path = window.location.pathname;
+    const wantsReturnPolicy =
+      window.location.hash === '#return-policy' ||
+      path.endsWith('/return-policy') ||
+      path.endsWith('/return-policy/');
+
+    if (wantsReturnPolicy) {
+      const card = document.getElementById('return-policy');
+      if (card) {
+        card.classList.add('open');
+        // slight delay so layout has settled before scrolling
+        setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
+      }
+    }
   });
 </script>
 </body>
