@@ -343,6 +343,24 @@ html[data-theme="dark"] .qc-chatwrap{
 .qc-sig--closed .qc-row__avatar, .qc-sig--expired .qc-row__avatar{ color:var(--qc-text-faint); } .qc-sig--closed .qc-row__avatar::before, .qc-sig--expired .qc-row__avatar::before{ background:currentColor; }
 .qc-sig--cancelled .qc-row__avatar{ color:var(--danger); } .qc-sig--cancelled .qc-row__avatar::before{ background:var(--danger); }
 
+/* ---- avatar as a real product photo ("contact photo" style) ----
+   Used instead of the status icon whenever the request has a photo,
+   so the product is recognizable at a glance even before opening
+   the bubble. A thin status-colored ring keeps the status signal
+   (open/bidding/selected/etc.) readable at a glance too. */
+.qc-row__avatar--photo{
+  padding:0;
+  overflow:hidden;
+  box-shadow:0 0 0 2px var(--qc-surface), 0 0 0 3px currentColor;
+}
+.qc-row__avatar--photo::before{ content:none; }
+.qc-row__avatar--photo img{
+  width:100%; height:100%;
+  object-fit:cover;
+  border-radius:50%;
+  display:block;
+}
+
 .qc-row__col{ min-width:0; flex:1; }
 .qc-row__sender{ font-size:10.5px; font-weight:700; color:var(--qc-text-faint); margin:0 0 3px 4px; display:flex; align-items:center; gap:5px; }
 .qc-row__sender i{ font-size:7px; }
@@ -359,6 +377,38 @@ html[data-theme="dark"] .qc-chatwrap{
 }
 .qc-bubble:hover{ box-shadow:0 4px 14px rgba(0,0,0,.14); }
 .qc-bubble.is-new{ box-shadow:0 0 0 2px rgba(255,90,31,.35), var(--qc-bubble-shadow); }
+
+/* ---- product photo banner, shown before expanding — this is the
+   "well visible even before viewing full request" piece. Sized like
+   a real chat image-message so it reads as content, not decoration. ---- */
+.qc-bubble__media{
+  position:relative;
+  width:100%;
+  max-height:230px;
+  overflow:hidden;
+  background:var(--qc-surface-alt);
+  cursor:zoom-in;
+}
+.qc-bubble__media img{
+  width:100%;
+  height:230px;
+  object-fit:cover;
+  display:block;
+  transition:transform .4s cubic-bezier(.22,1,.36,1);
+}
+.qc-bubble:hover .qc-bubble__media img{ transform:scale(1.045); }
+.qc-bubble__media-zoom{
+  position:absolute; top:9px; right:9px;
+  width:26px; height:26px; border-radius:50%;
+  background:rgba(9,10,13,.55);
+  backdrop-filter:blur(3px);
+  -webkit-backdrop-filter:blur(3px);
+  color:#fff; font-size:10.5px;
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; transform:scale(.85);
+  transition:opacity .18s ease, transform .18s ease;
+}
+.qc-bubble__media:hover .qc-bubble__media-zoom{ opacity:1; transform:scale(1); }
 
 .qc-bubble__head{ padding:10px 12px 8px; }
 .qc-bubble__title{ font-family:var(--font-display); font-size:14px; font-weight:600; color:var(--qc-text); line-height:1.32; }
@@ -549,6 +599,7 @@ html[data-theme="dark"] .qc-status--cancelled{ background:rgba(226,55,68,.18); c
   .qc-spec-grid{ grid-template-columns:1fr 1fr; }
   .qc-composer{ padding:8px 10px; padding-bottom:calc(8px + env(safe-area-inset-bottom)); }
   .qc-menu{ width:82vw; }
+  .qc-bubble__media, .qc-bubble__media img{ height:180px; }
 }
 
 @media(prefers-reduced-motion:reduce){
@@ -556,4 +607,5 @@ html[data-theme="dark"] .qc-status--cancelled{ background:rgba(226,55,68,.18); c
   .qc-jump{ animation:none; }
   .qc-pulse-dot::after{ animation:none; }
   .qc-bubble, .qc-menu, .qc-menu-backdrop, .qc-about-backdrop, .qc-about-modal, .qc-searchbar, .qc-theme-toggle__sun, .qc-theme-toggle__moon{ transition:none; }
+  .qc-bubble__media img{ transition:none; }
 }

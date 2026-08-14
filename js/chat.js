@@ -245,11 +245,29 @@
     return `<div class="qc-error"><i class="fa-solid fa-triangle-exclamation"></i> <span>${esc(msg)}</span></div>`;
   }
 
+  function bubbleMediaHTML(rfq) {
+    if (!rfq.productImage) return '';
+    return `
+      <div class="qc-bubble__media" data-lightbox="${esc(rfq.productImage)}" title="Tap to view full photo">
+        <img src="${esc(rfq.productImage)}" alt="${esc(rfq.productName)}" loading="lazy">
+        <span class="qc-bubble__media-zoom"><i class="fa-solid fa-magnifying-glass-plus"></i></span>
+      </div>`;
+  }
+
+  function rowAvatarHTML(rfq, statusKey) {
+    if (rfq.productImage) {
+      return `<div class="qc-row__avatar qc-row__avatar--photo"><img src="${esc(rfq.productImage)}" alt="" loading="lazy"></div>`;
+    }
+    const icon = STATUS_ICON[statusKey] || 'fa-file-invoice';
+    return `<div class="qc-row__avatar"><i class="fa-solid ${icon}"></i></div>`;
+  }
+
   function bubbleHTML(rfq, isNew) {
     const statusKey = statusKeyOf(rfq);
     const bidCount = rfq.bidCount || 0;
     return `
       <div class="qc-bubble${isNew ? ' is-new' : ''}" data-toggle>
+        ${bubbleMediaHTML(rfq)}
         <div class="qc-bubble__head">
           <div class="qc-bubble__title">${esc(rfq.productName)}</div>
           <div class="qc-bubble__meta">
@@ -281,7 +299,7 @@
               </div>
               <div class="qc-detail-actions">
                 <button class="qc-btn-reply" type="button" data-reply><i class="fa-solid fa-paper-plane"></i> Submit an offer</button>
-                <a class="qc-btn-view" href="rfq-detail.html?id=${encodeURIComponent(rfq._id)}"><i class="fa-solid fa-arrow-up-right-from-square"></i> View full request</a>
+               
               </div>
             </div>
           </div>
@@ -291,10 +309,9 @@
 
   function rowHTML(rfq, isNew) {
     const statusKey = statusKeyOf(rfq);
-    const icon = STATUS_ICON[statusKey] || 'fa-file-invoice';
     return `
       <div class="qc-row qc-sig--${statusKey}${isNew ? ' qc-row--enter' : ''}" data-row-id="${esc(rfq._id)}">
-        <div class="qc-row__avatar"><i class="fa-solid ${icon}"></i></div>
+        ${rowAvatarHTML(rfq, statusKey)}
         <div class="qc-row__col">
           <div class="qc-row__sender"><i class="fa-solid fa-circle"></i>Verified buyer · identity masked</div>
           ${bubbleHTML(rfq, isNew)}
@@ -361,6 +378,12 @@
 
   /* ---------------- interactions: feed ---------------- */
   messagesEl.addEventListener('click', (e) => {
+    const mediaEl = e.target.closest('[data-lightbox]');
+    if (mediaEl) {
+      e.stopPropagation();
+      window.open(mediaEl.dataset.lightbox, '_blank', 'noopener');
+      return;
+    }
     const replyBtn = e.target.closest('[data-reply]');
     if (replyBtn) {
       e.stopPropagation();
