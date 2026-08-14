@@ -281,7 +281,7 @@
               </div>
               <div class="qc-detail-actions">
                 <button class="qc-btn-reply" type="button" data-reply><i class="fa-solid fa-paper-plane"></i> Submit an offer</button>
-                
+                <a class="qc-btn-view" href="rfq-detail.html?id=${encodeURIComponent(rfq._id)}"><i class="fa-solid fa-arrow-up-right-from-square"></i> View full request</a>
               </div>
             </div>
           </div>
