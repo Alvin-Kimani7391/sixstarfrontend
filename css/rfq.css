@@ -1,0 +1,474 @@
+/* ============================================================
+   SIX STAR SUPPLIERS — rfq.css
+   Styles for rfq.html (post/browse requests) and rfq-detail.html
+   (request detail + offer comparison + private chat + similar
+   products). Built entirely on the design tokens already defined
+   in theme.css (--brand, --ink, --surface, --line, --pop, --price,
+   --danger, --sun, --radius-*, --shadow-*, --font-display/body/mono)
+   — no new color system introduced.
+
+   Also styles the "Quick Quote" bottom sheet embedded in chat.html
+   (see the .rfq-sheet* block at the bottom) — a compact version of
+   this same form, sharing field markup/ids with the section above
+   so js/rfq.js's SS_RFQ_FORM controller can drive either one.
+   ============================================================ */
+
+/* ---------- shared page shell ---------- */
+.rfq-page-hero{
+  background:linear-gradient(135deg, var(--ink) 0%, #232530 100%);
+  color:#fff;
+  border-radius:var(--radius-lg);
+  padding:34px 30px;
+  margin:20px 0 24px;
+  position:relative;
+  overflow:hidden;
+}
+.rfq-page-hero::after{
+  content:"";
+  position:absolute;
+  top:-40%; right:-10%;
+  width:340px; height:340px;
+  background:radial-gradient(circle, rgba(255,90,31,.35), transparent 70%);
+  pointer-events:none;
+}
+.rfq-page-hero h1{ font-family:var(--font-display); font-size:26px; font-weight:600; margin-bottom:8px; position:relative; }
+.rfq-page-hero p{ color:rgba(255,255,255,.72); font-size:14px; max-width:520px; position:relative; }
+.rfq-page-hero .btn-primary{ margin-top:18px; position:relative; }
+
+/* ---------- avatar circles (shared: offers, chat, activity) ---------- */
+.rfq-avatar{
+  width:38px; height:38px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-display); font-weight:700; font-size:14px;
+  color:#fff; flex-shrink:0;
+  background:linear-gradient(135deg,var(--brand),var(--brand-dark));
+}
+.rfq-avatar--lg{ width:52px; height:52px; font-size:18px; }
+.rfq-avatar--sm{ width:28px; height:28px; font-size:11px; }
+/* deterministic color rotation keyed by data-hue (0-5), set inline by JS
+   from the label so the same seller always gets the same color */
+.rfq-avatar[data-hue="1"]{ background:linear-gradient(135deg,var(--pop),#5B21B6); }
+.rfq-avatar[data-hue="2"]{ background:linear-gradient(135deg,var(--price),#0e8a43); }
+.rfq-avatar[data-hue="3"]{ background:linear-gradient(135deg,#2563EB,#1E3A8A); }
+.rfq-avatar[data-hue="4"]{ background:linear-gradient(135deg,var(--sun),#C77700); color:#3a2600; }
+.rfq-avatar[data-hue="5"]{ background:linear-gradient(135deg,var(--danger),#a01d28); }
+
+/* ---------- status pills ---------- */
+.rfq-status{ display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.4px; padding:5px 13px; border-radius:20px; }
+.rfq-status::before{ content:""; width:6px; height:6px; border-radius:50%; background:currentColor; }
+.rfq-status--open, .rfq-status--bidding{ background:#E8F5E9; color:#2E7D32; }
+.rfq-status--seller_selected{ background:#F5F0FF; color:var(--pop); }
+.rfq-status--closed{ background:#EEF0F4; color:var(--ink-soft); }
+.rfq-status--expired, .rfq-status--cancelled{ background:#FBE4DD; color:var(--danger); }
+
+/* ============================================================
+   rfq.html — "Post a Request" form + "My Requests" list
+   ============================================================ */
+.rfq-form-card{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-lg); padding:26px; box-shadow:var(--shadow-soft); }
+.rfq-form-card h2{ font-family:var(--font-display); font-size:19px; margin-bottom:4px; }
+.rfq-form-card .sub{ color:var(--ink-faint); font-size:13px; margin-bottom:22px; }
+
+.rfq-form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px 18px; }
+@media(max-width:640px){ .rfq-form-grid{ grid-template-columns:1fr; } }
+.rfq-form-grid .full{ grid-column:1/-1; }
+
+.rfq-field label{ display:block; font-size:12.5px; font-weight:700; color:var(--ink-soft); margin-bottom:6px; }
+.rfq-field .req{ color:var(--brand); }
+.rfq-field input, .rfq-field select, .rfq-field textarea{
+  width:100%; padding:11px 14px; border-radius:var(--radius-sm); border:1.5px solid var(--line);
+  font-family:var(--font-body); font-size:13.5px; color:var(--ink); background:var(--surface); transition:.18s ease;
+}
+.rfq-field input:focus, .rfq-field select:focus, .rfq-field textarea:focus{ outline:none; border-color:var(--brand); box-shadow:0 0 0 4px rgba(255,90,31,.1); }
+.rfq-field textarea{ resize:vertical; min-height:90px; }
+.rfq-field .hint{ font-size:11px; color:var(--ink-faint); margin-top:5px; }
+
+.rfq-budget-row{ display:flex; align-items:center; gap:10px; }
+.rfq-budget-row input{ flex:1; }
+.rfq-budget-row span{ color:var(--ink-faint); font-size:13px; }
+
+/* image upload dropzone */
+.rfq-image-drop{
+  border:2px dashed var(--line); border-radius:var(--radius-md); padding:22px;
+  display:flex; flex-direction:column; align-items:center; gap:8px; text-align:center;
+  cursor:pointer; transition:.2s ease; color:var(--ink-faint); position:relative; overflow:hidden;
+}
+.rfq-image-drop:hover{ border-color:var(--brand); color:var(--brand); background:#FFF6EF; }
+.rfq-image-drop i{ font-size:24px; }
+.rfq-image-drop input[type=file]{ position:absolute; inset:0; opacity:0; cursor:pointer; }
+.rfq-image-drop img{ width:100%; max-height:180px; object-fit:contain; border-radius:var(--radius-sm); }
+
+.rfq-form-actions{ display:flex; justify-content:flex-end; gap:12px; margin-top:22px; }
+
+/* my requests list */
+.rfq-list-head{ display:flex; justify-content:space-between; align-items:center; margin:34px 0 16px; }
+.rfq-list-head h2{ font-family:var(--font-display); font-size:19px; }
+.rfq-card-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; }
+.rfq-card{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-md); overflow:hidden; transition:.2s ease; display:flex; flex-direction:column; }
+.rfq-card:hover{ box-shadow:var(--shadow-card-hover); transform:translateY(-2px); }
+.rfq-card__img{ aspect-ratio:16/10; background:var(--bg-page); display:flex; align-items:center; justify-content:center; overflow:hidden; }
+.rfq-card__img img{ width:100%; height:100%; object-fit:cover; }
+.rfq-card__body{ padding:14px 16px 16px; display:flex; flex-direction:column; gap:8px; flex:1; }
+.rfq-card__title{ font-weight:700; font-size:14px; color:var(--ink); }
+.rfq-card__meta{ font-size:12px; color:var(--ink-faint); display:flex; flex-wrap:wrap; gap:10px; }
+.rfq-card__meta span{ display:inline-flex; align-items:center; gap:5px; }
+.rfq-card__foot{ display:flex; justify-content:space-between; align-items:center; margin-top:auto; padding-top:8px; }
+.rfq-card__bids{ font-size:12.5px; font-weight:700; color:var(--brand); }
+
+/* ============================================================
+   rfq-detail.html — request header + offers + chat + similar
+   ============================================================ */
+.rfq-detail-hero{
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-lg);
+  padding:22px 24px; margin:18px 0 22px; display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap;
+  box-shadow:var(--shadow-soft);
+}
+.rfq-detail-hero__img{ width:96px; height:96px; border-radius:var(--radius-md); overflow:hidden; background:var(--bg-page); flex-shrink:0; }
+.rfq-detail-hero__img img{ width:100%; height:100%; object-fit:cover; }
+.rfq-detail-hero__body{ flex:1; min-width:220px; }
+.rfq-detail-hero__body h1{ font-family:var(--font-display); font-size:20px; font-weight:600; margin:2px 0 8px; }
+.rfq-detail-hero__meta{ display:flex; flex-wrap:wrap; gap:14px; font-size:12.5px; color:var(--ink-soft); margin-bottom:10px; }
+.rfq-detail-hero__meta span{ display:inline-flex; align-items:center; gap:6px; }
+.rfq-detail-hero__meta i{ color:var(--brand); }
+.rfq-detail-hero__desc{ font-size:13px; color:var(--ink-soft); line-height:1.6; max-width:600px; }
+.rfq-detail-hero__actions{ display:flex; flex-direction:column; gap:8px; align-items:flex-end; }
+.rfq-countdown{ font-family:var(--font-mono); font-size:11.5px; color:var(--ink-faint); display:flex; align-items:center; gap:6px; }
+
+/* two-column layout: offers+similar (left) / chat (right, sticky) */
+.rfq-layout{ display:grid; grid-template-columns:1fr; gap:22px; padding-bottom:60px; }
+@media(min-width:960px){ .rfq-layout{ grid-template-columns:1fr 400px; align-items:start; } }
+
+.rfq-section-title{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.rfq-section-title h2{ font-family:var(--font-display); font-size:17px; font-weight:600; display:flex; align-items:center; gap:8px; }
+.rfq-section-title h2 i{ color:var(--brand); font-size:15px; }
+.rfq-section-title .count-badge{ background:var(--bg-page); color:var(--ink-soft); font-size:11.5px; font-weight:700; padding:3px 10px; border-radius:20px; }
+
+/* ---- offer cards ---- */
+.offer-list{ display:flex; flex-direction:column; gap:12px; margin-bottom:36px; }
+.offer-card{
+  background:var(--surface); border:1.5px solid var(--line); border-radius:var(--radius-md);
+  padding:16px 18px; display:flex; gap:14px; transition:.2s ease;
+}
+.offer-card:hover{ border-color:var(--brand); box-shadow:var(--shadow-soft); }
+.offer-card.accepted{ border-color:var(--price); background:#F3FBF5; }
+.offer-card.rejected{ opacity:.55; }
+.offer-card__main{ flex:1; min-width:0; }
+.offer-card__head{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+.offer-card__name{ font-weight:700; font-size:13.5px; color:var(--ink); display:flex; align-items:center; gap:6px; }
+.offer-card__name .verified{ color:var(--price); font-size:12px; }
+.offer-card__time{ font-size:11px; color:var(--ink-faint); margin-left:auto; }
+.offer-card__stats{ display:grid; grid-template-columns:repeat(auto-fit,minmax(90px,1fr)); gap:8px 14px; margin-bottom:8px; }
+.offer-stat{ display:flex; flex-direction:column; }
+.offer-stat .label{ font-size:10px; text-transform:uppercase; letter-spacing:.4px; color:var(--ink-faint); font-weight:700; }
+.offer-stat .value{ font-family:var(--font-mono); font-size:14px; font-weight:800; color:var(--ink); }
+.offer-stat .value.price{ color:var(--price); }
+.offer-card__msg{ font-size:12.5px; color:var(--ink-soft); background:var(--bg-page); border-radius:var(--radius-sm); padding:9px 12px; margin-top:6px; line-height:1.5; }
+.offer-card__flag{ font-size:10.5px; color:var(--danger); margin-top:5px; display:flex; align-items:center; gap:5px; }
+.offer-card__actions{ display:flex; flex-direction:column; gap:8px; flex-shrink:0; justify-content:center; }
+.offer-card__actions .btn{ white-space:nowrap; padding:9px 16px; font-size:12.5px; }
+.offer-badge-status{ font-size:10.5px; font-weight:800; text-transform:uppercase; padding:4px 10px; border-radius:20px; }
+.offer-badge-status.pending{ background:#FFF3EA; color:var(--brand-dark); }
+.offer-badge-status.accepted{ background:#E8F5E9; color:var(--price); }
+.offer-badge-status.rejected{ background:#F0F0F0; color:var(--ink-faint); }
+
+.offer-empty{ text-align:center; padding:40px 20px; color:var(--ink-faint); background:var(--surface); border:1.5px dashed var(--line); border-radius:var(--radius-md); }
+.offer-empty i{ font-size:26px; margin-bottom:10px; display:block; color:var(--ink-faint); }
+
+/* ---- similar products ---- */
+.similar-products-rail{ margin-bottom:10px; }
+
+/* ============================================================
+   CHAT PANEL — real chat-app feel: header w/ avatar + status,
+   scrollable bubble stream w/ grouped timestamps, sticky input bar
+   with attach + send, moderation notice banner.
+   ============================================================ */
+.chat-panel{
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-lg);
+  display:flex; flex-direction:column; height:600px; overflow:hidden; box-shadow:var(--shadow-soft);
+}
+@media(min-width:960px){ .chat-panel{ position:sticky; top:96px; } }
+
+.chat-panel__placeholder{
+  flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:10px; color:var(--ink-faint); padding:30px; text-align:center;
+}
+.chat-panel__placeholder i{ font-size:34px; }
+.chat-panel__placeholder p{ font-size:13px; max-width:220px; }
+
+.chat-header{ display:flex; align-items:center; gap:12px; padding:14px 16px; border-bottom:1px solid var(--line); background:var(--surface); flex-shrink:0; }
+.chat-header__info{ flex:1; min-width:0; }
+.chat-header__name{ font-weight:700; font-size:13.5px; color:var(--ink); display:flex; align-items:center; gap:6px; }
+.chat-header__name .verified{ color:var(--price); font-size:11px; }
+.chat-header__sub{ font-size:11px; color:var(--ink-faint); }
+.chat-header__close{ width:30px; height:30px; border-radius:50%; border:none; background:var(--bg-page); color:var(--ink-soft); cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.chat-header__close:hover{ background:var(--line); }
+
+.chat-messages{ flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:4px; background:#FAFAFB; }
+.chat-day-divider{ text-align:center; font-size:10.5px; color:var(--ink-faint); font-weight:700; text-transform:uppercase; letter-spacing:.4px; margin:14px 0 8px; }
+
+.chat-row{ display:flex; gap:8px; max-width:82%; margin-bottom:2px; }
+.chat-row.mine{ align-self:flex-end; flex-direction:row-reverse; }
+.chat-row .rfq-avatar{ width:26px; height:26px; font-size:10px; margin-top:auto; flex-shrink:0; }
+.chat-row.mine .rfq-avatar{ display:none; }
+
+.chat-bubble{ padding:10px 13px; border-radius:16px; font-size:13px; line-height:1.5; position:relative; word-break:break-word; }
+.chat-row:not(.mine) .chat-bubble{ background:#fff; border:1px solid var(--line); color:var(--ink); border-bottom-left-radius:4px; }
+.chat-row.mine .chat-bubble{ background:linear-gradient(135deg,var(--brand),var(--brand-dark)); color:#fff; border-bottom-right-radius:4px; }
+.chat-bubble img{ max-width:220px; border-radius:10px; display:block; cursor:pointer; }
+.chat-bubble.masked{ font-style:italic; opacity:.85; }
+.chat-bubble.masked i{ margin-right:5px; }
+
+.chat-meta-row{ display:flex; gap:6px; align-items:center; font-size:9.5px; color:var(--ink-faint); margin:2px 2px 8px; }
+.chat-row.mine + .chat-meta-row, .chat-meta-row.mine{ justify-content:flex-end; }
+
+.chat-moderation-notice{
+  background:#FFF3EA; color:var(--brand-dark); font-size:11.5px; font-weight:600;
+  padding:8px 14px; display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--line); flex-shrink:0;
+}
+.chat-moderation-notice i{ font-size:13px; }
+
+.chat-restricted-banner{
+  background:#FBE4DD; color:var(--danger); font-size:12px; font-weight:600;
+  padding:10px 14px; text-align:center; flex-shrink:0;
+}
+
+.chat-input-bar{ display:flex; align-items:flex-end; gap:8px; padding:12px 14px; border-top:1px solid var(--line); background:var(--surface); flex-shrink:0; }
+.chat-attach-btn{
+  width:38px; height:38px; border-radius:50%; border:1.5px solid var(--line); background:var(--surface);
+  color:var(--ink-soft); cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; position:relative; transition:.18s ease;
+}
+.chat-attach-btn:hover{ border-color:var(--brand); color:var(--brand); }
+.chat-attach-btn input[type=file]{ position:absolute; inset:0; opacity:0; cursor:pointer; }
+.chat-input-bar textarea{
+  flex:1; resize:none; border:1.5px solid var(--line); border-radius:20px; padding:10px 16px;
+  font-family:var(--font-body); font-size:13.5px; max-height:90px; outline:none; transition:.18s ease;
+}
+.chat-input-bar textarea:focus{ border-color:var(--brand); box-shadow:0 0 0 4px rgba(255,90,31,.1); }
+.chat-send-btn{
+  width:38px; height:38px; border-radius:50%; border:none; cursor:pointer; flex-shrink:0;
+  background:linear-gradient(135deg,var(--brand),var(--brand-dark)); color:#fff; display:flex; align-items:center; justify-content:center; transition:.18s ease;
+}
+.chat-send-btn:hover{ transform:scale(1.06); }
+.chat-send-btn:disabled{ opacity:.4; cursor:not-allowed; transform:none; }
+
+.chat-image-preview-bar{ display:flex; align-items:center; gap:10px; padding:8px 14px; background:#FFF6EF; border-top:1px solid var(--line); flex-shrink:0; }
+.chat-image-preview-bar img{ width:44px; height:44px; object-fit:cover; border-radius:8px; }
+.chat-image-preview-bar span{ font-size:12px; color:var(--ink-soft); flex:1; }
+.chat-image-preview-bar button{ background:none; border:none; color:var(--danger); cursor:pointer; font-size:16px; }
+
+/* confirm overlay reused (accept offer, cancel request) */
+.rfq-confirm-overlay{ position:fixed; inset:0; background:rgba(21,22,26,.5); z-index:250; display:none; align-items:center; justify-content:center; padding:20px; }
+.rfq-confirm-overlay.open{ display:flex; }
+.rfq-confirm-box{ background:var(--surface); border-radius:var(--radius-lg); padding:26px; max-width:380px; width:100%; text-align:center; }
+.rfq-confirm-box i{ font-size:2rem; color:var(--brand); margin-bottom:10px; }
+.rfq-confirm-box h3{ font-size:1.05rem; margin-bottom:8px; }
+.rfq-confirm-box p{ color:var(--ink-soft); font-size:.87rem; margin-bottom:20px; line-height:1.5; }
+.rfq-confirm-box .row{ display:flex; gap:10px; }
+.rfq-confirm-box .row .btn{ flex:1; }
+
+/* mobile: chat becomes a full-screen overlay instead of a sticky column */
+@media(max-width:959px){
+  .chat-panel{ position:fixed; inset:0; z-index:9997; border-radius:0; height:100%; display:none; }
+  .chat-panel.mobile-open{ display:flex; }
+  .rfq-layout{ padding-bottom:20px; }
+}
+
+.toast-notice{ /* reuses #toast styling already in theme.css */ }
+
+/* ============================================================
+   QUICK QUOTE SHEET — bottom-sheet variant of the RFQ form used
+   by chat.html's composer (#qcSheet / #qcSheetBackdrop). It's a
+   self-contained "modal" that reuses the .rfq-field / .rfq-form-grid
+   / .rfq-image-drop / .rfq-budget-row rules defined above, so any
+   change to the form's field styling applies to both places.
+
+   THEMING: scoped local --rfq-sheet-* variables with light
+   defaults and html[data-theme="dark"] overrides, matching how
+   chat.css themes the rest of the "Live Quotes" page. This is
+   self-contained on purpose — it doesn't touch or depend on
+   chat.css's --qc-* tokens, and it doesn't affect rfq.html's
+   plain-light form styling above (data-theme is never set there).
+
+   BEHAVIOR (see chat.js):
+     - opens sliding up from the bottom, covering ~3/4 of the
+       screen on phones, with a drag-to-dismiss handle
+     - becomes a centered floating card (not edge-to-edge) from
+       720px up, so desktop/tablet users get a proper modal feel
+     - the "Prefer the full page?" link falls back to rfq.html
+   ============================================================ */
+.rfq-sheet, .rfq-sheet-backdrop{
+  --rfq-sheet-bg:#fff;
+  --rfq-sheet-text:var(--ink);
+  --rfq-sheet-soft:var(--ink-soft);
+  --rfq-sheet-faint:var(--ink-faint);
+  --rfq-sheet-line:var(--line);
+  --rfq-sheet-field-bg:#fff;
+  --rfq-sheet-field-border:var(--line);
+  --rfq-sheet-alt-bg:#F6F7FA;
+}
+html[data-theme="dark"] .rfq-sheet,
+html[data-theme="dark"] .rfq-sheet-backdrop{
+  --rfq-sheet-bg:#181A20;
+  --rfq-sheet-text:#F3F3F5;
+  --rfq-sheet-soft:rgba(243,243,245,.72);
+  --rfq-sheet-faint:rgba(243,243,245,.46);
+  --rfq-sheet-line:rgba(255,255,255,.1);
+  --rfq-sheet-field-bg:#20222A;
+  --rfq-sheet-field-border:rgba(255,255,255,.12);
+  --rfq-sheet-alt-bg:#101217;
+}
+
+.rfq-sheet-backdrop{
+  position:fixed; inset:0;
+  background:rgba(9,10,13,.55);
+  backdrop-filter:blur(4px);
+  -webkit-backdrop-filter:blur(4px);
+  z-index:205;
+  opacity:0; visibility:hidden;
+  transition:opacity .32s ease, visibility .32s ease;
+}
+.rfq-sheet-backdrop.active{ opacity:1; visibility:visible; }
+
+.rfq-sheet{
+  position:fixed;
+  left:0; right:0; bottom:0;
+  z-index:210;
+  height:75vh;
+  max-height:75vh;
+  display:flex;
+  flex-direction:column;
+  background:var(--rfq-sheet-bg);
+  color:var(--rfq-sheet-text);
+  border-radius:26px 26px 0 0;
+  box-shadow:0 -24px 60px rgba(10,11,15,.28);
+  transform:translateY(102%);
+  transition:transform .42s cubic-bezier(.19,1,.22,1);
+  will-change:transform;
+}
+.rfq-sheet.active{ transform:translateY(0); }
+.rfq-sheet.dragging{ transition:none; }
+.rfq-sheet[aria-hidden="true"]:not(.active){ pointer-events:none; }
+
+.rfq-sheet__handle-wrap{
+  flex-shrink:0;
+  display:flex; justify-content:center;
+  padding:10px 0 6px;
+  cursor:grab;
+  touch-action:none;
+}
+.rfq-sheet__handle-wrap:active{ cursor:grabbing; }
+.rfq-sheet__handle{
+  width:40px; height:4.5px; border-radius:10px;
+  background:var(--rfq-sheet-line);
+  transition:background .18s ease;
+}
+.rfq-sheet__handle-wrap:hover .rfq-sheet__handle{ background:var(--brand); }
+
+.rfq-sheet__header{
+  flex-shrink:0;
+  display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
+  padding:2px 20px 14px;
+  border-bottom:1px solid var(--rfq-sheet-line);
+}
+.rfq-sheet__title h2{
+  font-family:var(--font-display); font-size:18px; font-weight:600;
+  display:flex; align-items:center; gap:9px; color:var(--rfq-sheet-text);
+}
+.rfq-sheet__title h2 i{
+  width:30px; height:30px; border-radius:50%; flex-shrink:0;
+  display:inline-flex; align-items:center; justify-content:center; font-size:13px;
+  color:#fff; background:linear-gradient(135deg,var(--brand),var(--brand-dark));
+  box-shadow:0 5px 12px rgba(255,90,31,.3);
+}
+.rfq-sheet__title p{ font-size:12px; color:var(--rfq-sheet-faint); margin-top:5px; }
+.rfq-sheet__close{
+  width:32px; height:32px; border-radius:50%; flex-shrink:0;
+  border:1.5px solid var(--rfq-sheet-line); background:transparent;
+  color:var(--rfq-sheet-soft); cursor:pointer;
+  display:flex; align-items:center; justify-content:center; font-size:13px;
+  transition:.18s ease;
+}
+.rfq-sheet__close:hover{ border-color:var(--brand); color:var(--brand); transform:rotate(90deg); }
+
+.rfq-sheet__body{
+  flex:1; min-height:0; overflow-y:auto;
+  padding:18px 20px 10px;
+  -webkit-overflow-scrolling:touch;
+}
+.rfq-sheet__body::-webkit-scrollbar{ width:6px; }
+.rfq-sheet__body::-webkit-scrollbar-thumb{ background:var(--rfq-sheet-line); border-radius:10px; }
+
+/* Re-theme the shared .rfq-field / .rfq-image-drop / .rfq-budget-row
+   rules (defined earlier in this file for rfq.html) so they follow
+   the sheet's own light/dark palette instead of the page defaults. */
+.rfq-sheet .rfq-field label{ color:var(--rfq-sheet-soft); }
+.rfq-sheet .rfq-field input,
+.rfq-sheet .rfq-field select,
+.rfq-sheet .rfq-field textarea{
+  background:var(--rfq-sheet-field-bg);
+  border-color:var(--rfq-sheet-field-border);
+  color:var(--rfq-sheet-text);
+}
+.rfq-sheet .rfq-field input::placeholder,
+.rfq-sheet .rfq-field textarea::placeholder{ color:var(--rfq-sheet-faint); }
+.rfq-sheet .rfq-field .hint{ color:var(--rfq-sheet-faint); }
+.rfq-sheet .rfq-budget-row span{ color:var(--rfq-sheet-faint); }
+.rfq-sheet .rfq-image-drop{
+  border-color:var(--rfq-sheet-field-border);
+  color:var(--rfq-sheet-faint);
+  background:var(--rfq-sheet-alt-bg);
+}
+.rfq-sheet .rfq-image-drop:hover{ border-color:var(--brand); color:var(--brand); background:rgba(255,90,31,.08); }
+.rfq-sheet #rfqError{ margin-top:2px; }
+
+.rfq-sheet__footer{
+  flex-shrink:0;
+  display:flex; align-items:center; gap:12px;
+  padding:12px 20px calc(14px + env(safe-area-inset-bottom));
+  border-top:1px solid var(--rfq-sheet-line);
+  background:var(--rfq-sheet-bg);
+}
+.rfq-sheet__fullpage-link{
+  flex-shrink:0;
+  display:inline-flex; align-items:center; gap:6px;
+  font-size:11.5px; font-weight:600; color:var(--rfq-sheet-faint);
+  white-space:nowrap;
+  transition:color .18s ease;
+}
+.rfq-sheet__fullpage-link:hover{ color:var(--brand); }
+.rfq-sheet__fullpage-link i{ font-size:10px; }
+.rfq-sheet__submit{
+  flex:1;
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  padding:13px 20px;
+  border-radius:30px;
+  font-size:13.5px; font-weight:700;
+  box-shadow:0 10px 24px rgba(255,90,31,.3);
+  transition:transform .18s ease, box-shadow .18s ease;
+}
+.rfq-sheet__submit:hover{ transform:translateY(-1px); box-shadow:0 14px 28px rgba(255,90,31,.36); }
+.rfq-sheet__submit:disabled{ opacity:.7; transform:none; cursor:not-allowed; }
+
+/* ---------- desktop / tablet: dock as a floating card ---------- */
+@media(min-width:720px){
+  .rfq-sheet{
+    left:50%;
+    right:auto;
+    bottom:24px;
+    width:520px;
+    max-width:calc(100vw - 48px);
+    height:auto;
+    max-height:min(720px, 82vh);
+    border-radius:26px;
+    transform:translate(-50%, 40px) scale(.97);
+    opacity:0;
+    transition:transform .38s cubic-bezier(.19,1,.22,1), opacity .28s ease;
+  }
+  .rfq-sheet.active{ transform:translate(-50%, 0) scale(1); opacity:1; }
+  .rfq-sheet.dragging{ transition:none; }
+  .rfq-sheet__handle-wrap{ display:none; }
+  .rfq-sheet__header{ padding-top:18px; }
+}
+
+@media(prefers-reduced-motion:reduce){
+  .rfq-sheet, .rfq-sheet-backdrop{ transition:none; }
+}

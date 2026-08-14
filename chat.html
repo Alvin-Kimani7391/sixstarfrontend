@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Live Quotes | Six Star Suppliers</title>
+<meta name="description" content="Every quote request buyers post, live — like a chat. See what's needed, how many sellers have replied, and submit your own offer.">
+<meta name="theme-color" content="#15161A">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://kit.fontawesome.com/e1426ab85b.js" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/chat.css">
+<link rel="stylesheet" href="css/rfq.css">
+<script>
+  /* Set the theme before first paint so there's no light->dark flash. */
+  (function () {
+    try {
+      var saved = localStorage.getItem('ss-chat-theme');
+      var theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', theme);
+    } catch (e) { /* ignore, default CSS (light) applies */ }
+  })();
+</script>
+</head>
+<body data-page="chat.html" class="qc-body">
+
+<div class="qc-app" id="qcApp">
+
+  <!-- ===================================================
+       TOP BAR — identity + live status + search + theme
+       =================================================== -->
+  <header class="qc-topbar">
+    <button class="qc-iconbtn" id="qcMenuBtn" type="button" aria-label="Open menu" aria-expanded="false">
+      <span class="qc-hamburger"><span></span><span></span><span></span></span>
+    </button>
+
+    <div class="qc-topbar__id">
+      <div class="qc-topbar__avatar"><i class="fa-solid fa-bolt"></i></div>
+      <div class="qc-topbar__text">
+        <span class="qc-topbar__title">Live Quotes</span>
+        <span class="qc-topbar__status"><i class="qc-pulse-dot"></i>Live · refreshes automatically</span>
+      </div>
+    </div>
+
+    <div class="qc-topbar__actions">
+      <button class="qc-iconbtn" id="qcSearchBtn" type="button" aria-label="Search requests" aria-pressed="false">
+        <i class="fa-solid fa-magnifying-glass"></i>
+      </button>
+      <button class="qc-iconbtn qc-theme-toggle" id="qcThemeToggle" type="button" aria-label="Toggle dark mode">
+        <i class="fa-solid fa-moon qc-theme-toggle__moon"></i>
+        <i class="fa-solid fa-sun qc-theme-toggle__sun"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- collapsible search row -->
+  <div class="qc-searchbar" id="qcSearchBar">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <input type="text" id="qcSearchInput" placeholder="Search by product, location..." autocomplete="off">
+    <button type="button" id="qcSearchClear" aria-label="Clear search"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+
+  <!-- status filter chips -->
+  <div class="qc-filters" id="qcFilters">
+    <button class="qc-chip is-active" data-filter="all" type="button">All <b id="qcCountAll">0</b></button>
+    <button class="qc-chip" data-filter="open" type="button"><i class="fa-solid fa-circle qc-chip__dot qc-chip__dot--open"></i>Open <b id="qcCountOpen">0</b></button>
+    <button class="qc-chip" data-filter="bidding" type="button"><i class="fa-solid fa-circle qc-chip__dot qc-chip__dot--bidding"></i>Receiving offers <b id="qcCountBidding">0</b></button>
+    <button class="qc-chip" data-filter="selected" type="button"><i class="fa-solid fa-circle qc-chip__dot qc-chip__dot--selected"></i>Seller selected <b id="qcCountSelected">0</b></button>
+    <button class="qc-chip" data-filter="archived" type="button"><i class="fa-solid fa-circle qc-chip__dot qc-chip__dot--archived"></i>Archived <b id="qcCountArchived">0</b></button>
+  </div>
+
+  <!-- ===================================================
+       CHAT FEED
+       =================================================== -->
+  <main class="qc-chatwrap" id="qcMessages">
+    <div class="qc-loading" id="qcLoading">
+      <div class="qc-skel-row"><div class="qc-skel qc-skel--avatar"></div><div class="qc-skel qc-skel--bubble"></div></div>
+      <div class="qc-skel-row"><div class="qc-skel qc-skel--avatar"></div><div class="qc-skel qc-skel--bubble" style="width:72%"></div></div>
+      <div class="qc-skel-row"><div class="qc-skel qc-skel--avatar"></div><div class="qc-skel qc-skel--bubble" style="width:58%"></div></div>
+    </div>
+  </main>
+
+  <button class="qc-jump" id="qcJump" type="button" style="display:none;">
+    <i class="fa-solid fa-arrow-down"></i> New requests
+  </button>
+
+  <!-- ===================================================
+       COMPOSER — opens the Quick Quote sheet (mini rfq.html)
+       instead of navigating away. "Prefer the full page?" link
+       lives inside the sheet itself for anyone who wants the
+       whole rfq.html experience.
+       =================================================== -->
+  <button type="button" class="qc-composer" id="qcComposerBtn" aria-haspopup="dialog" aria-controls="qcSheet">
+    <span class="qc-composer__icon qc-composer__icon--emoji"><i class="fa-regular fa-face-smile"></i></span>
+    <span class="qc-composer__field">Ask for a quote — what do you need?</span>
+    <span class="qc-composer__icon qc-composer__icon--clip"><i class="fa-solid fa-paperclip"></i></span>
+    <span class="qc-composer__send"><i class="fa-solid fa-paper-plane"></i></span>
+  </button>
+
+</div>
+
+<!-- ===================================================
+     SLIDE-IN MENU
+     =================================================== -->
+<div class="qc-menu-backdrop" id="qcMenuBackdrop"></div>
+<nav class="qc-menu" id="qcMenu" aria-hidden="true">
+  <div class="qc-menu__profile">
+    <button class="qc-menu__close" id="qcMenuClose" type="button" aria-label="Close menu"><i class="fa-solid fa-xmark"></i></button>
+    <div class="qc-menu__avatar"><i class="fa-solid fa-bolt"></i></div>
+    <div class="qc-menu__brand">Six Star Suppliers</div>
+    <div class="qc-menu__sub">Live Quotes Board</div>
+  </div>
+
+  <div class="qc-menu__list">
+    <a href="index.html"><i class="fa-solid fa-house"></i>Home</a>
+    <a href="rfq.html"><i class="fa-solid fa-circle-plus"></i>New request</a>
+    <!-- NOTE FOR GHIK: point this at whatever route lists a buyer's own RFQs
+         (e.g. my-requests.html / buyer-dashboard.html#requests) if the
+         filename differs in your build. -->
+    <a href="my-requests.html"><i class="fa-solid fa-list-check"></i>My requests</a>
+    <a href="#" id="qcAboutLink"><i class="fa-solid fa-circle-info"></i>About Live Quotes</a>
+  </div>
+
+  <div class="qc-menu__theme-row">
+    <span><i class="fa-solid fa-circle-half-stroke"></i>Dark mode</span>
+    <label class="qc-switch">
+      <input type="checkbox" id="qcThemeSwitch">
+      <span class="qc-switch__track"><span class="qc-switch__thumb"></span></span>
+    </label>
+  </div>
+
+  <div class="qc-menu__foot">
+    <i class="fa-solid fa-shield-halved"></i>
+    <span>Only verified sellers can reply to buyer requests. Everyone can browse.</span>
+  </div>
+</nav>
+
+<!-- ===================================================
+     ABOUT MODAL
+     =================================================== -->
+<div class="qc-about-backdrop" id="qcAboutBackdrop">
+  <div class="qc-about-modal">
+    <button class="qc-about-modal__close" id="qcAboutClose" type="button" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+    <div class="qc-about-modal__icon"><i class="fa-solid fa-comments"></i></div>
+    <h2>What is Live Quotes?</h2>
+    <p>Every quote request posted on Six Star Suppliers shows up here the moment it's submitted — like a live chat feed, open for anyone to browse.</p>
+    <ul>
+      <li><i class="fa-solid fa-eye"></i><span>Buyer identity stays masked. Sellers only see the request, never the buyer's contact details.</span></li>
+      <li><i class="fa-solid fa-shield-halved"></i><span>Only verified sellers can submit an offer. Everyone else can browse and post their own request.</span></li>
+      <li><i class="fa-solid fa-bolt"></i><span>The board refreshes automatically, so new requests and offer counts stay current.</span></li>
+    </ul>
+    <a href="rfq.html" class="qc-about-modal__cta"><i class="fa-solid fa-circle-plus"></i> Post a quote request</a>
+  </div>
+</div>
+
+<!-- ===================================================
+     QUICK QUOTE SHEET — a mini rfq.html, opened from the
+     composer above. Shares field ids/markup with rfq.html's
+     full form so js/rfq.js drives both with one controller
+     (window.SS_RFQ_FORM.init — see js/rfq.js and js/chat.js).
+     =================================================== -->
+<div class="rfq-sheet-backdrop" id="qcSheetBackdrop"></div>
+<div class="rfq-sheet" id="qcSheet" role="dialog" aria-modal="true" aria-labelledby="qcSheetTitleText" aria-hidden="true">
+  <div class="rfq-sheet__handle-wrap" id="qcSheetHandle"><span class="rfq-sheet__handle"></span></div>
+
+  <div class="rfq-sheet__header">
+    <div class="rfq-sheet__title">
+      <h2 id="qcSheetTitleText"><i class="fa-solid fa-bolt"></i>Quick Quote</h2>
+      <p>Post it here, sellers reply privately — takes under a minute.</p>
+    </div>
+    <button class="rfq-sheet__close" id="qcSheetClose" type="button" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+
+  <div class="rfq-sheet__body">
+    <form id="rfqForm">
+      <div class="rfq-form-grid">
+
+        <div class="rfq-field full">
+          <label>Product photo</label>
+          <div class="rfq-image-drop" id="imageDrop">
+            <i class="fa-solid fa-image"></i>
+            <span id="imageDropText">Click or drag a photo here (optional)</span>
+            <input type="file" id="productImage" accept="image/*">
+          </div>
+        </div>
+
+        <div class="rfq-field full">
+          <label>Product name <span class="req">*</span></label>
+          <input type="text" id="productName" placeholder="e.g. School Shoes" required>
+        </div>
+
+        <div class="rfq-field">
+          <label>Quantity <span class="req">*</span></label>
+          <input type="number" id="quantity" min="1" placeholder="500" required>
+        </div>
+
+        <div class="rfq-field">
+          <label>Unit <span class="req">*</span></label>
+          <input type="text" id="unit" placeholder="pairs, kg, cartons..." required>
+        </div>
+
+        <div class="rfq-field full">
+          <label>Budget range <span class="req">*</span></label>
+          <div class="rfq-budget-row">
+            <input type="number" id="minBudget" min="0" placeholder="Min (KSh)" required>
+            <span>to</span>
+            <input type="number" id="maxBudget" min="0" placeholder="Max (KSh)" required>
+            <select id="budgetType" style="max-width:150px;">
+              <option value="per_unit">Per unit</option>
+              <option value="total">Total</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="rfq-field">
+          <label>Location <span class="req">*</span></label>
+          <input type="text" id="location" placeholder="e.g. Nairobi" required>
+        </div>
+
+        <div class="rfq-field">
+          <label>Required by <span class="req">*</span></label>
+          <input type="date" id="requiredDate" required>
+        </div>
+
+        <div class="rfq-field">
+          <label>Delivery required?</label>
+          <select id="deliveryRequired">
+            <option value="true" selected>Yes</option>
+            <option value="false">No, I'll arrange pickup</option>
+          </select>
+        </div>
+
+        <div class="rfq-field">
+          <label>Delivery budget</label>
+          <input type="number" id="deliveryBudget" min="0" placeholder="KSh (optional)">
+        </div>
+
+        <div class="rfq-field full">
+          <label>Description <span class="req">*</span></label>
+          <textarea id="description" placeholder="Brand, colour, size, model, quality, packaging — the more detail, the better the offers you'll get." required></textarea>
+          <p class="hint" id="descHint">Minimum 20 characters</p>
+        </div>
+      </div>
+
+      <div class="alert alert-error" id="rfqError" style="display:none;"></div>
+    </form>
+  </div>
+
+  <div class="rfq-sheet__footer">
+    <a href="rfq.html" class="rfq-sheet__fullpage-link"><i class="fa-solid fa-arrow-up-right-from-square"></i>Prefer the full page? Open full form</a>
+    <button type="submit" form="rfqForm" class="btn btn-primary rfq-sheet__submit" id="rfqSubmitBtn">
+      <i class="fa-solid fa-paper-plane"></i> Post Request
+    </button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/cart.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/rfq.js"></script>
+<script src="js/chat.js"></script>
+</body>
+</html>

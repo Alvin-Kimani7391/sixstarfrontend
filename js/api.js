@@ -10,6 +10,9 @@
    names are kept as aliases so nothing already wired up in your HTML
    breaks. See the comments next to createOrder/placeOrder and
    addReview/postReview below.
+
+   NEW: RFQ / Bidding / Private Chat section added at the bottom,
+   matching backend routes/rfqRoutes.js.
    ============================================================ */
 
 const SS_API = (() => {
@@ -358,6 +361,63 @@ getShopBySlug(slug) {
     // fields (Brand, Size, Color, ...) render on the product creation form.
     getCategoryAttributes(categoryId) {
       return request(`/categories/${categoryId}/attributes`, { requiresAuth: false });
+    },
+
+    // ============================================================
+    // RFQ / BIDDING / PRIVATE CHAT  (NEW)
+    // Matches backend routes/rfqRoutes.js, mounted at /api/rfq
+    // ============================================================
+
+    // ---- Public ----
+    getRFQs(params = {}) {
+      return request("/rfq", { query: params, requiresAuth: false });
+    },
+    getRFQ(id) {
+      return request(`/rfq/${id}`, { requiresAuth: false });
+    },
+    getSimilarRFQProducts(params = {}) {
+      return request("/rfq/similar-products", { query: params, requiresAuth: false });
+    },
+
+    // ---- Buyer ----
+    // formData fields: productName, category, quantity, unit, minBudget,
+    // maxBudget, budgetType, location, deliveryRequired, deliveryBudget,
+    // requiredDate, description, and optionally a file under "productImage".
+    createRFQ(formData) {
+      return request("/rfq", { method: "POST", body: formData, isForm: true, requiresAuth: true });
+    },
+    getMyRFQs() {
+      return request("/rfq/mine/list", { requiresAuth: true });
+    },
+    // Offers/bids submitted on ONE of the buyer's own RFQs — seller identity
+    // arrives already masked (label/initials only, never raw name/email/phone).
+    getRFQOffers(rfqId) {
+      return request(`/rfq/${rfqId}/bids`, { requiresAuth: true });
+    },
+    acceptRFQBid(bidId) {
+      return request(`/rfq/bids/${bidId}/accept`, { method: "PATCH", requiresAuth: true });
+    },
+    closeRFQ(id) {
+      return request(`/rfq/${id}/close`, { method: "PATCH", requiresAuth: true });
+    },
+    cancelRFQ(id, reason) {
+      return request(`/rfq/${id}/cancel`, { method: "PATCH", body: { reason }, requiresAuth: true });
+    },
+
+    // ---- Chat (buyer or seller, access-checked server-side) ----
+    // Send a text message: sendRFQMessage(rfqId, { receiverId, message })
+    // Send an image: build a FormData with receiverId + a file under "image",
+    // then sendRFQMessage(rfqId, formData, true)
+    sendRFQMessage(rfqId, payload, isForm = false) {
+      return request(`/rfq/${rfqId}/messages`, { method: "POST", body: payload, isForm, requiresAuth: true });
+    },
+    getRFQConversation(rfqId, counterpartId) {
+      return request(`/rfq/${rfqId}/messages/${counterpartId}`, { requiresAuth: true });
+    },
+
+    // ---- Profile widget: merged recent messages + bids + my requests ----
+    getRFQActivity(limit) {
+      return request("/rfq/profile/activity", { query: { limit }, requiresAuth: true });
     },
   };
 })();
