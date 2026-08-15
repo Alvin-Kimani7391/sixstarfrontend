@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Buyer Request | Six Star Suppliers Seller Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/seller-rfq.css">
+</head>
+<body>
+
+<div id="pageLoader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+
+<header class="site-header">
+  <div class="header-row">
+    <a href="seller-dashboard.html" class="brand">
+      <div class="brand-mark"><img src="/images/logo.jpg" alt="Six Star Suppliers logo"></div>
+      <div>
+        <div class="brand-name">Six Star Suppliers</div>
+        <div class="brand-tag">Buyer Request</div>
+      </div>
+    </a>
+    <a href="seller-rfq.html" class="iconbtn" title="Back to requests">
+      <i class="fa-solid fa-arrow-left"></i>
+    </a>
+  </div>
+</header>
+
+<main class="wrap" style="max-width:1200px; padding-top:20px;">
+
+  <!-- ===== Request hero ===== -->
+  <div class="rfq-detail-hero" id="rfqHero">
+    <div class="skel orders-skel" style="width:100%;height:110px;"></div>
+  </div>
+
+  <div class="rfq-layout">
+    <!-- ===== LEFT: your offer recap + bid form ===== -->
+    <div>
+      <div class="rfq-section-title"><i class="fa-solid fa-hand-holding-dollar"></i> Your Offer</div>
+
+      <div class="bid-form-card">
+        <div id="existingBidNote"></div>
+        <div id="offerRecapWrap"></div>
+
+        <form id="bidForm">
+          <div class="bid-form-grid">
+            <div class="rfq-field">
+              <label>Unit price (KES) <span class="req">*</span></label>
+              <input type="number" id="bidUnitPrice" min="0" step="0.01" required placeholder="e.g. 580">
+            </div>
+            <div class="rfq-field">
+              <label>Quantity available <span class="req">*</span></label>
+              <input type="number" id="bidQuantity" min="1" required placeholder="e.g. 500">
+            </div>
+            <div class="rfq-field">
+              <label>Delivery fee (KES)</label>
+              <input type="number" id="bidDeliveryFee" min="0" step="0.01" placeholder="e.g. 2000">
+            </div>
+            <div class="rfq-field">
+              <label>Delivery time</label>
+              <input type="text" id="bidDeliveryTime" placeholder="e.g. 3 days">
+            </div>
+            <div class="rfq-field">
+              <label>Offer valid until</label>
+              <input type="date" id="bidValidUntil">
+            </div>
+            <div class="rfq-field full">
+              <label>Message to buyer <span class="label-soft" style="font-weight:400;">(optional)</span></label>
+              <textarea id="bidMessage" placeholder="Any details worth mentioning — quality, packaging, MOQ, etc. Contact info and external links aren't allowed here." style="width:100%; min-height:80px; padding:11px 14px; border:1.5px solid var(--line); border-radius:var(--radius-s); font-family:inherit; font-size:13.5px;"></textarea>
+            </div>
+          </div>
+
+          <div class="alert alert-error" id="bidFormError"></div>
+
+          <div class="bid-form-actions">
+            <button type="submit" class="btn btn-primary" id="bidSubmitBtn"><i class="fa-solid fa-paper-plane"></i> Submit Offer</button>
+            <button type="button" class="btn btn-outline" id="bidWithdrawBtn" style="display:none;"><i class="fa-solid fa-ban"></i> Withdraw Offer</button>
+            <button type="button" class="btn btn-outline" id="bidMessageBtn" style="display:none;"><i class="fa-regular fa-comment"></i> Message Buyer</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ===== RIGHT: chat panel ===== -->
+    <!-- ===== RIGHT: chat launcher ===== -->
+    <div class="chat-panel" id="chatPanel">
+      <div class="chat-panel__placeholder" id="chatPlaceholder">
+        <i class="fa-regular fa-comments"></i>
+        <p>Submit an offer first — you can message the buyer privately once your offer is on the table.</p>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer class="footer-bottom">© 2026 Six Star Suppliers. All rights reserved.</footer>
+
+<!-- ===== Withdraw confirm ===== -->
+<div class="rfq-confirm-overlay" id="withdrawOverlay">
+  <div class="rfq-confirm-box">
+    <i class="fa-solid fa-triangle-exclamation"></i>
+    <h3>Withdraw this offer?</h3>
+    <p>The buyer will no longer see your offer on this request. This can't be undone.</p>
+    <div class="row">
+      <button class="btn btn-outline" id="withdrawDismiss">Cancel</button>
+      <button class="btn btn-dark" id="withdrawConfirm" style="background:var(--brick);">Yes, withdraw</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===== FULLSCREEN CHAT MODAL ===== -->
+<div class="rc-modal-overlay" id="rcModalOverlay">
+  <div class="rc-modal" id="rcModal">
+    <div class="rc-modal__head">
+      <div class="rc-head__id">
+        <div class="rc-head__avatar" id="rcAvatar">B</div>
+        <div class="rc-head__text">
+          <div class="rc-head__label" id="rcLabel">Buyer</div>
+          <div class="rc-head__sub" id="rcSub"><i class="fa-solid fa-lock"></i>Private conversation</div>
+        </div>
+      </div>
+      <button class="rc-modal__close" id="rcModalClose" type="button" aria-label="Close chat">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <div class="rc-thread" id="rcThread"></div>
+    <div id="rcNoticeSlot"></div>
+
+    <div class="rc-composer" id="rcComposer">
+      <label class="rc-composer__attach" title="Attach a photo">
+        <i class="fa-solid fa-paperclip"></i>
+        <input type="file" id="rcImageInput" accept="image/*">
+      </label>
+      <textarea class="rc-composer__field" id="rcField" rows="1" placeholder="Message the buyer..."></textarea>
+      <button class="rc-composer__send" id="rcSend" type="button"><i class="fa-solid fa-paper-plane"></i></button>
+    </div>
+  </div>
+</div>
+
+
+
+<div id="toast"><i class="fa-solid fa-circle-check"></i><span></span></div>
+
+<script src="js/config.js"></script>
+<script src="js/toast.js"></script>
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/seller-rfq-detail.js"></script>
+</body>
+</html>

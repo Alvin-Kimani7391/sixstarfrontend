@@ -1,5 +1,5 @@
 /* ============================================================
-   SIX STAR SUPPLIERS — API client
+   SIX STAR SUPPLIERS — API client (seller/admin surface)
    Cookie-based authentication (httpOnly JWT cookie from Express backend).
 
    This merges two earlier versions of api.js into one:
@@ -17,6 +17,10 @@
    - Legal documents (Terms, Seller Agreement, policies) + seller acceptance
    - Flash Sale (daily 2:00 PM – midnight deals): seller submission,
      seller's own submission list/cancel, and the public "active now" feed
+   - RFQ / Bidding / Private Chat — seller side (NEW): browse open buyer
+     requests, submit/update/withdraw an offer, list "My Offers", and the
+     shared private chat endpoints used to talk to the buyer once a bid
+     is on the table.
    ============================================================ */
 
 const SS_API = (() => {
@@ -459,6 +463,57 @@ const SS_API = (() => {
     // fields (Brand, Size, Color, ...) render on the product creation form.
     getCategoryAttributes(categoryId) {
       return request(`/categories/${categoryId}/attributes`, { requiresAuth: false });
+    },
+
+    // ============================================================
+    // RFQ / BIDDING / PRIVATE CHAT — seller side (NEW)
+    // Matches backend routes/rfqRoutes.js, mounted at /api/rfq
+    // ============================================================
+
+    // ---- Public — browse open buyer requests ----
+    getRFQs(params = {}) {
+      return request("/rfq", { query: params, requiresAuth: false });
+    },
+    getRFQ(id) {
+      return request(`/rfq/${id}`, { requiresAuth: false });
+    },
+
+    // ---- Seller: submit or update a private offer (upsert — one bid per
+    // seller per RFQ, so calling this again on the same RFQ just updates
+    // the existing bid instead of creating a duplicate) ----
+    // payload: { unitPrice, quantityAvailable, deliveryFee, deliveryTime,
+    //            offerValidUntil, message }
+    submitOrUpdateBid(rfqId, payload) {
+      return request(`/rfq/${rfqId}/bids`, { method: "POST", body: payload, requiresAuth: true });
+    },
+    withdrawBid(bidId) {
+      return request(`/rfq/bids/${bidId}/withdraw`, { method: "PATCH", requiresAuth: true });
+    },
+    // Every offer this seller has ever submitted, across all RFQs.
+    getMyBids() {
+      return request("/rfq/bids/mine/list", { requiresAuth: true });
+    },
+    // Masked buyer identity — only resolves once the seller has bid on this RFQ.
+    // This is how the seller-side chat learns WHO (receiverId) to message.
+    getBuyerIdentity(rfqId) {
+      return request(`/rfq/${rfqId}/buyer-identity`, { requiresAuth: true });
+    },
+
+    // ---- Chat (buyer or seller, access-checked server-side). A seller can
+    // only message the buyer on an RFQ they've actually bid on. ----
+    // Send a text message: sendRFQMessage(rfqId, { receiverId, message })
+    // Send an image: build a FormData with receiverId + a file under "image",
+    // then sendRFQMessage(rfqId, formData, true)
+    sendRFQMessage(rfqId, payload, isForm = false) {
+      return request(`/rfq/${rfqId}/messages`, { method: "POST", body: payload, isForm, requiresAuth: true });
+    },
+    getRFQConversation(rfqId, counterpartId) {
+      return request(`/rfq/${rfqId}/messages/${counterpartId}`, { requiresAuth: true });
+    },
+
+    // ---- Profile widget: merged recent messages + bids for this seller ----
+    getRFQActivity(limit) {
+      return request("/rfq/profile/activity", { query: { limit }, requiresAuth: true });
     },
   };
 })();

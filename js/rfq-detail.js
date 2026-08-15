@@ -1,8 +1,9 @@
 /* ============================================================
    RFQ-DETAIL.JS
    Powers rfq-detail.html: request summary + countdown, the
-   offers/bids comparison list, a real chat-app-style private
-   conversation panel (text + image, moderation-aware), and a
+   offers/bids comparison list, and a private chat with whichever
+   seller you tap "Message" on — opened as a fullscreen modal
+   (closed via the X, backdrop click, or Escape), plus a
    similar-products recommendation rail.
    ============================================================ */
 (function () {
@@ -58,10 +59,26 @@
 
   let rfq = null;
   let offers = [];
-  let currentCounterpart = null; // { id, label, initials, isVerified, ... } of the seller currently open in chat
+  let currentCounterpart = null; // { id, label, initials, isVerified, ... } of whichever seller's chat is open
   let chatPollTimer = null;
   let pendingBidId = null;
   let pendingImageFile = null;
+  let modalOpen = false;
+
+  /* ---------------- static modal elements (bound once) ---------------- */
+  const rcModalOverlay = document.getElementById('rcModalOverlay');
+  const rcModalClose = document.getElementById('rcModalClose');
+  const rcAvatar = document.getElementById('rcAvatar');
+  const rcLabel = document.getElementById('rcLabel');
+  const rcSub = document.getElementById('rcSub');
+  const chatMessagesEl = document.getElementById('chatMessages');
+  const chatModerationNoticeEl = document.getElementById('chatModerationNotice');
+  const chatRestrictedBannerEl = document.getElementById('chatRestrictedBanner');
+  const chatImagePreviewBarEl = document.getElementById('chatImagePreviewBar');
+  const chatInputBarEl = document.getElementById('chatInputBar');
+  const chatTextInput = document.getElementById('chatTextInput');
+  const chatSendBtn = document.getElementById('chatSendBtn');
+  const chatImageInput = document.getElementById('chatImageInput');
 
   /* ================================================================ */
   /* REQUEST HERO + COUNTDOWN                                          */
@@ -200,7 +217,7 @@
         btn.addEventListener('click', () => {
           const card = btn.closest('.offer-card');
           const offer = offers.find((o) => o._id === card.dataset.bidId);
-          if (offer) openChat(offer.seller);
+          if (offer) openChatModal(offer.seller);
         });
       });
       list.querySelectorAll('.offer-accept-btn').forEach((btn) => {
@@ -263,34 +280,8 @@
   }
 
   /* ================================================================ */
-  /* CHAT PANEL                                                         */
+  /* FULLSCREEN CHAT MODAL                                              */
   /* ================================================================ */
-
-  function chatShellHTML(counterpart) {
-    return `
-      <div class="chat-header">
-        <button class="chat-header__close" id="chatBackBtn" title="Back" style="order:-1;"><i class="fa-solid fa-arrow-left"></i></button>
-        ${avatarHTML(counterpart)}
-        <div class="chat-header__info">
-          <div class="chat-header__name">${esc(counterpart.label)} ${counterpart.isVerified ? '<i class="fa-solid fa-circle-check verified"></i>' : ''}</div>
-          <div class="chat-header__sub">${esc(rfq.productName)}</div>
-        </div>
-        <button class="chat-header__close" id="chatCloseBtn" title="Close"><i class="fa-solid fa-xmark"></i></button>
-      </div>
-      <div id="chatModerationNotice"></div>
-      <div id="chatRestrictedBanner"></div>
-      <div class="chat-messages" id="chatMessages"></div>
-      <div id="chatImagePreviewBar"></div>
-      <div class="chat-input-bar" id="chatInputBar">
-        <label class="chat-attach-btn" title="Attach a photo">
-          <i class="fa-solid fa-paperclip"></i>
-          <input type="file" id="chatImageInput" accept="image/*">
-        </label>
-        <textarea id="chatTextInput" placeholder="Type a message..." rows="1"></textarea>
-        <button class="chat-send-btn" id="chatSendBtn" title="Send"><i class="fa-solid fa-paper-plane"></i></button>
-      </div>
-    `;
-  }
 
   function messageRowHTML(msg, isMine) {
     let bubbleInner;
@@ -314,10 +305,8 @@
   }
 
   function renderMessages(messages) {
-    const container = document.getElementById('chatMessages');
-    if (!container) return;
     if (!messages.length) {
-      container.innerHTML = `<div class="chat-panel__placeholder" style="height:100%;"><i class="fa-regular fa-comment-dots"></i><p>Say hello — ask about specs, availability, or delivery.</p></div>`;
+      chatMessagesEl.innerHTML = `<div class="chat-panel__placeholder" style="height:100%;"><i class="fa-regular fa-comment-dots"></i><p>Say hello — ask about specs, availability, or delivery.</p></div>`;
       return;
     }
     let html = '';
@@ -330,110 +319,113 @@
       }
       html += messageRowHTML(m, String(m.sender) === String(user.id || user._id));
     });
-    container.innerHTML = html;
-    container.scrollTop = container.scrollHeight;
+    chatMessagesEl.innerHTML = html;
+    chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
   }
 
-  async function openChat(sellerIdentity) {
+  function openChatModal(sellerIdentity) {
     currentCounterpart = sellerIdentity;
-    const panel = document.getElementById('chatPanel');
-    panel.innerHTML = chatShellHTML(sellerIdentity);
-    panel.classList.add('mobile-open');
-    document.body.style.overflow = window.innerWidth < 960 ? 'hidden' : '';
+    pendingImageFile = null;
 
-    document.getElementById('chatCloseBtn').addEventListener('click', closeChat);
-    document.getElementById('chatBackBtn').addEventListener('click', closeChat);
+    // reset composer / notice state for this conversation
+    chatImagePreviewBarEl.innerHTML = '';
+    chatImageInput.value = '';
+    chatModerationNoticeEl.innerHTML = '';
+    chatRestrictedBannerEl.innerHTML = '';
+    chatInputBarEl.style.display = 'flex';
+    chatTextInput.value = '';
+    chatTextInput.style.height = 'auto';
+    chatMessagesEl.innerHTML = `<div class="chat-panel__placeholder" style="height:100%;"><i class="fa-solid fa-spinner fa-spin"></i></div>`;
 
-    const textInput = document.getElementById('chatTextInput');
-    const sendBtn = document.getElementById('chatSendBtn');
-    const imageInput = document.getElementById('chatImageInput');
+    rcAvatar.textContent = sellerIdentity.initials || '?';
+    rcAvatar.dataset.hue = hashHue(sellerIdentity.label || sellerIdentity.initials);
+    rcLabel.innerHTML = `${esc(sellerIdentity.label)} ${sellerIdentity.isVerified ? '<i class="fa-solid fa-circle-check verified"></i>' : ''}`;
+    rcSub.textContent = rfq ? rfq.productName : '';
 
-    textInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendTextMessage(); }
-    });
-    textInput.addEventListener('input', () => {
-      textInput.style.height = 'auto';
-      textInput.style.height = Math.min(textInput.scrollHeight, 90) + 'px';
-    });
-    sendBtn.addEventListener('click', () => {
-      if (pendingImageFile) sendImageMessage(); else sendTextMessage();
-    });
-    imageInput.addEventListener('change', () => {
-      const file = imageInput.files[0];
-      if (!file) return;
-      if (file.size > 3 * 1024 * 1024) { toast('Image must be under 3MB', 'fa-circle-exclamation'); imageInput.value = ''; return; }
-      pendingImageFile = file;
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        document.getElementById('chatImagePreviewBar').innerHTML = `
-          <div class="chat-image-preview-bar">
-            <img src="${e.target.result}">
-            <span>Photo ready to send</span>
-            <button id="cancelImageBtn"><i class="fa-solid fa-xmark"></i></button>
-          </div>`;
-        document.getElementById('cancelImageBtn').addEventListener('click', () => {
-          pendingImageFile = null;
-          imageInput.value = '';
-          document.getElementById('chatImagePreviewBar').innerHTML = '';
-        });
-      };
-      reader.readAsDataURL(file);
-    });
+    modalOpen = true;
+    rcModalOverlay.classList.add('open');
+    document.body.classList.add('rc-modal-lock');
 
-    await loadConversation();
+    loadConversation();
     startChatPolling();
+    setTimeout(() => chatTextInput.focus({ preventScroll: true }), 260);
   }
 
-  function closeChat() {
+  function closeChatModal() {
+    modalOpen = false;
+    rcModalOverlay.classList.remove('open');
+    document.body.classList.remove('rc-modal-lock');
     stopChatPolling();
     currentCounterpart = null;
     pendingImageFile = null;
-    document.body.style.overflow = '';
-    const panel = document.getElementById('chatPanel');
-    panel.classList.remove('mobile-open');
-    panel.innerHTML = `
-      <div class="chat-panel__placeholder">
-        <i class="fa-regular fa-comments"></i>
-        <p>Select "Message" on an offer to start a private conversation with that seller.</p>
-      </div>`;
   }
 
+  rcModalClose.addEventListener('click', closeChatModal);
+  rcModalOverlay.addEventListener('click', (e) => { if (e.target === rcModalOverlay) closeChatModal(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modalOpen) closeChatModal(); });
+
+  // composer listeners — bound once, since the modal markup is static
+  chatTextInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendTextMessage(); }
+  });
+  chatTextInput.addEventListener('input', () => {
+    chatTextInput.style.height = 'auto';
+    chatTextInput.style.height = Math.min(chatTextInput.scrollHeight, 90) + 'px';
+  });
+  chatSendBtn.addEventListener('click', () => {
+    if (pendingImageFile) sendImageMessage(); else sendTextMessage();
+  });
+  chatImageInput.addEventListener('change', () => {
+    const file = chatImageInput.files[0];
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) { toast('Image must be under 3MB', 'fa-circle-exclamation'); chatImageInput.value = ''; return; }
+    pendingImageFile = file;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      chatImagePreviewBarEl.innerHTML = `
+        <div class="chat-image-preview-bar">
+          <img src="${e.target.result}">
+          <span>Photo ready to send</span>
+          <button id="cancelImageBtn"><i class="fa-solid fa-xmark"></i></button>
+        </div>`;
+      document.getElementById('cancelImageBtn').addEventListener('click', () => {
+        pendingImageFile = null;
+        chatImageInput.value = '';
+        chatImagePreviewBarEl.innerHTML = '';
+      });
+    };
+    reader.readAsDataURL(file);
+  });
+
   async function loadConversation() {
+    if (!currentCounterpart) return;
     try {
       const res = await SS_API.getRFQConversation(rfqId, currentCounterpart.id);
       renderMessages(res.messages || []);
-      const banner = document.getElementById('chatRestrictedBanner');
-      if (banner) banner.innerHTML = '';
+      chatRestrictedBannerEl.innerHTML = '';
     } catch (err) {
-      const banner = document.getElementById('chatRestrictedBanner');
-      if (banner) banner.innerHTML = `<div class="chat-restricted-banner"><i class="fa-solid fa-triangle-exclamation"></i> ${esc(err.message || 'Could not load this conversation.')}</div>`;
+      chatRestrictedBannerEl.innerHTML = `<div class="chat-restricted-banner"><i class="fa-solid fa-triangle-exclamation"></i> ${esc(err.message || 'Could not load this conversation.')}</div>`;
     }
   }
 
   function showModerationNotice(text) {
-    const el = document.getElementById('chatModerationNotice');
-    if (!el) return;
-    el.innerHTML = `<div class="chat-moderation-notice"><i class="fa-solid fa-shield-halved"></i> ${esc(text)}</div>`;
-    setTimeout(() => { if (el) el.innerHTML = ''; }, 6000);
+    chatModerationNoticeEl.innerHTML = `<div class="chat-moderation-notice"><i class="fa-solid fa-shield-halved"></i> ${esc(text)}</div>`;
+    setTimeout(() => { chatModerationNoticeEl.innerHTML = ''; }, 6000);
   }
 
   function disableChatInput(message) {
-    const bar = document.getElementById('chatInputBar');
-    const banner = document.getElementById('chatRestrictedBanner');
-    if (bar) bar.style.display = 'none';
-    if (banner) banner.innerHTML = `<div class="chat-restricted-banner"><i class="fa-solid fa-ban"></i> ${esc(message)}</div>`;
+    chatInputBarEl.style.display = 'none';
+    chatRestrictedBannerEl.innerHTML = `<div class="chat-restricted-banner"><i class="fa-solid fa-ban"></i> ${esc(message)}</div>`;
   }
 
   async function sendTextMessage() {
-    const textInput = document.getElementById('chatTextInput');
-    const text = textInput.value.trim();
-    if (!text) return;
-    const sendBtn = document.getElementById('chatSendBtn');
-    sendBtn.disabled = true;
+    const text = chatTextInput.value.trim();
+    if (!text || !currentCounterpart) return;
+    chatSendBtn.disabled = true;
     try {
       const res = await SS_API.sendRFQMessage(rfqId, { receiverId: currentCounterpart.id, message: text });
-      textInput.value = '';
-      textInput.style.height = 'auto';
+      chatTextInput.value = '';
+      chatTextInput.style.height = 'auto';
       appendMessage(res.message);
       if (res.notice) showModerationNotice(res.notice);
     } catch (err) {
@@ -443,22 +435,21 @@
         toast(err.message || 'Could not send message', 'fa-circle-exclamation');
       }
     } finally {
-      sendBtn.disabled = false;
+      chatSendBtn.disabled = false;
     }
   }
 
   async function sendImageMessage() {
-    if (!pendingImageFile) return;
-    const sendBtn = document.getElementById('chatSendBtn');
-    sendBtn.disabled = true;
+    if (!pendingImageFile || !currentCounterpart) return;
+    chatSendBtn.disabled = true;
     const fd = new FormData();
     fd.append('receiverId', currentCounterpart.id);
     fd.append('image', pendingImageFile);
     try {
       const res = await SS_API.sendRFQMessage(rfqId, fd, true);
       pendingImageFile = null;
-      document.getElementById('chatImagePreviewBar').innerHTML = '';
-      document.getElementById('chatImageInput').value = '';
+      chatImagePreviewBarEl.innerHTML = '';
+      chatImageInput.value = '';
       appendMessage(res.message);
     } catch (err) {
       if (err.status === 403) {
@@ -467,34 +458,37 @@
         toast(err.message || 'Could not send photo', 'fa-circle-exclamation');
       }
     } finally {
-      sendBtn.disabled = false;
+      chatSendBtn.disabled = false;
     }
   }
 
   function appendMessage(msg) {
-    const container = document.getElementById('chatMessages');
-    if (!container) return;
-    const placeholder = container.querySelector('.chat-panel__placeholder');
-    if (placeholder) container.innerHTML = '';
-    const dividers = container.querySelectorAll('.chat-day-divider');
+    const placeholder = chatMessagesEl.querySelector('.chat-panel__placeholder');
+    if (placeholder) chatMessagesEl.innerHTML = '';
+    const dividers = chatMessagesEl.querySelectorAll('.chat-day-divider');
     const lastDivider = dividers.length ? dividers[dividers.length - 1] : null;
     const today = dayLabel(msg.createdAt);
     if (!lastDivider || lastDivider.textContent !== today) {
-      container.insertAdjacentHTML('beforeend', `<div class="chat-day-divider">${today}</div>`);
+      chatMessagesEl.insertAdjacentHTML('beforeend', `<div class="chat-day-divider">${today}</div>`);
     }
-    container.insertAdjacentHTML('beforeend', messageRowHTML(msg, true));
-    container.scrollTop = container.scrollHeight;
+    chatMessagesEl.insertAdjacentHTML('beforeend', messageRowHTML(msg, true));
+    chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
   }
 
   function startChatPolling() {
     stopChatPolling();
-    chatPollTimer = setInterval(() => { if (currentCounterpart) loadConversation(); }, 7000);
+    chatPollTimer = setInterval(() => { if (modalOpen && currentCounterpart) loadConversation(); }, 7000);
   }
   function stopChatPolling() {
     if (chatPollTimer) clearInterval(chatPollTimer);
     chatPollTimer = null;
   }
   window.addEventListener('beforeunload', stopChatPolling);
+  document.addEventListener('visibilitychange', () => {
+    if (!modalOpen) return;
+    if (document.hidden) stopChatPolling();
+    else { loadConversation(); startChatPolling(); }
+  });
 
   /* ================================================================ */
   /* INIT                                                                */

@@ -1,0 +1,263 @@
+/* ============================================================
+   SELLER-RFQ.CSS
+   Powers seller-rfq.html (Open Requests / My Offers board) and
+   seller-rfq-detail.html (bid form + live private chat with buyer).
+   Built entirely on style.css's own tokens (--navy-deep, --marigold,
+   --paper, --teal, --brick, --line) so it reads as the same product,
+   not a bolted-on widget.
+   ============================================================ */
+
+/* ================= PAGE HERO / TABS (seller-rfq.html) ================= */
+.rfq-page-hero{ padding:6px 0 22px; max-width:640px; }
+.rfq-page-hero h1{ font-size:1.6rem; display:flex; align-items:center; gap:10px; }
+.rfq-page-hero h1 i{ color:var(--marigold-deep); }
+.rfq-page-hero p{ color:var(--ink-soft); margin-top:8px; line-height:1.6; font-size:.92rem; }
+
+.rfq-tabs{ display:flex; gap:8px; border-bottom:1px solid var(--line); margin-bottom:20px; }
+.rfq-tab{
+  background:none; border:none; padding:12px 4px; margin-right:18px;
+  font-weight:700; font-size:.92rem; color:var(--ink-soft);
+  border-bottom:2px solid transparent; display:flex; align-items:center; gap:8px;
+}
+.rfq-tab.active{ color:var(--navy-deep); border-bottom-color:var(--marigold); }
+.tab-count{
+  background:var(--paper-dim); color:var(--ink-soft); font-family:var(--font-mono);
+  font-size:.72rem; font-weight:700; padding:2px 8px; border-radius:999px;
+}
+.rfq-tab.active .tab-count{ background:var(--marigold); color:var(--navy-deep); }
+
+.rfq-search-row{ margin-bottom:18px; }
+.rfq-search-row input{
+  width:100%; padding:11px 16px; border:1px solid var(--line); border-radius:999px;
+  background:var(--white); font-size:.9rem;
+}
+.rfq-search-row input:focus{ outline:none; border-color:var(--teal); }
+
+/* ================= REQUEST CARDS (Open Requests grid) ================= */
+.rfq-card-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:16px; }
+.request-card{
+  background:var(--white); border:1px solid var(--line); border-radius:var(--radius-m);
+  overflow:hidden; box-shadow:var(--shadow-card); display:flex; flex-direction:column;
+}
+.request-card__img{ aspect-ratio:16/10; background:var(--paper-dim); overflow:hidden; }
+.request-card__img img{ width:100%; height:100%; object-fit:cover; }
+.request-card__body{ padding:14px 16px 16px; display:flex; flex-direction:column; gap:8px; flex:1; }
+.request-card__title{ font-family:var(--font-display); font-weight:600; font-size:1rem; color:var(--navy-deep); line-height:1.3; }
+.request-card__meta{ display:flex; flex-wrap:wrap; gap:6px 12px; }
+.request-card__meta span{ display:inline-flex; align-items:center; gap:5px; font-size:.76rem; color:var(--ink-soft); }
+.request-card__meta i{ color:var(--teal); font-size:.72rem; }
+.request-card__budget{ font-family:var(--font-mono); font-weight:700; color:var(--brick); font-size:.9rem; }
+.request-card__foot{ margin-top:auto; display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding-top:6px; border-top:1px dashed var(--line); }
+.request-card__bids{ font-size:.76rem; font-weight:700; color:var(--teal-deep); margin-right:auto; }
+
+/* status pills — shared by both cards and detail page */
+.rfq-status{ display:inline-flex; align-items:center; gap:5px; font-size:.66rem; font-weight:800; text-transform:uppercase; letter-spacing:.4px; padding:4px 10px; border-radius:999px; }
+.rfq-status--open{ background:#FFF3EA; color:var(--marigold-deep); }
+.rfq-status--bidding{ background:#EFE7FB; color:#6D3FC4; }
+.rfq-status--seller_selected{ background:#E4F3E7; color:#1E7A37; }
+.rfq-status--closed, .rfq-status--expired{ background:var(--paper-dim); color:var(--ink-soft); }
+.rfq-status--cancelled{ background:#FBE4DD; color:var(--brick); }
+
+.rfq-empty{ grid-column:1/-1; text-align:center; padding:60px 20px; color:var(--ink-soft); display:flex; flex-direction:column; align-items:center; gap:10px; }
+.rfq-empty i{ font-size:1.8rem; color:var(--line); }
+
+/* ================= MY OFFERS list ================= */
+.my-offer-card{ display:flex; gap:14px; background:var(--white); border:1px solid var(--line); border-radius:var(--radius-m); padding:14px; box-shadow:var(--shadow-card); }
+.my-offer-card__img{ width:64px; height:64px; border-radius:10px; overflow:hidden; flex-shrink:0; background:var(--paper-dim); }
+.my-offer-card__img img{ width:100%; height:100%; object-fit:cover; }
+.my-offer-card__body{ flex:1; min-width:0; display:flex; flex-direction:column; gap:8px; }
+.my-offer-card__head{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.my-offer-card__title{ font-weight:700; font-size:.92rem; color:var(--navy-deep); margin-right:auto; }
+.bid-status-pill{ font-size:.66rem; font-weight:800; text-transform:uppercase; padding:3px 9px; border-radius:999px; letter-spacing:.3px; }
+.bid-status-pill.pending{ background:#FFF3EA; color:var(--marigold-deep); }
+.bid-status-pill.accepted{ background:#E4F3E7; color:#1E7A37; }
+.bid-status-pill.rejected{ background:#FBE4DD; color:var(--brick); }
+.bid-status-pill.withdrawn{ background:var(--paper-dim); color:var(--ink-soft); }
+.my-offer-card__stats{ display:flex; flex-wrap:wrap; gap:6px 16px; font-size:.8rem; color:var(--ink-soft); }
+.my-offer-card__stats b{ color:var(--ink); font-family:var(--font-mono); }
+.my-offer-card__actions{ display:flex; gap:8px; flex-wrap:wrap; }
+
+/* ================= confirm overlay (withdraw) ================= */
+.rfq-confirm-overlay{ position:fixed; inset:0; background:rgba(14,35,56,.5); display:flex; align-items:center; justify-content:center; padding:20px; z-index:400; opacity:0; pointer-events:none; transition:.2s ease; }
+.rfq-confirm-overlay.open{ opacity:1; pointer-events:auto; }
+.rfq-confirm-box{ background:var(--white); border-radius:var(--radius-l); padding:28px 24px; max-width:360px; text-align:center; transform:translateY(10px); transition:.2s ease; }
+.rfq-confirm-overlay.open .rfq-confirm-box{ transform:translateY(0); }
+.rfq-confirm-box i{ font-size:1.8rem; color:var(--brick); margin-bottom:10px; }
+.rfq-confirm-box h3{ font-size:1.05rem; margin-bottom:6px; }
+.rfq-confirm-box p{ color:var(--ink-soft); font-size:.85rem; margin-bottom:18px; }
+.rfq-confirm-box .row{ display:flex; gap:10px; }
+.rfq-confirm-box .row .btn{ flex:1; }
+
+/* ================= DETAIL PAGE (seller-rfq-detail.html) ================= */
+.rfq-detail-hero{
+  background:var(--white); border:1px solid var(--line); border-radius:var(--radius-l);
+  padding:18px; display:flex; gap:16px; margin-bottom:22px; box-shadow:var(--shadow-card);
+}
+.rfq-detail-hero__img{ width:96px; height:96px; border-radius:12px; overflow:hidden; flex-shrink:0; background:var(--paper-dim); }
+.rfq-detail-hero__img img{ width:100%; height:100%; object-fit:cover; }
+.rfq-detail-hero__body{ flex:1; min-width:0; display:flex; flex-direction:column; gap:8px; }
+.rfq-detail-hero__title-row{ display:flex; align-items:flex-start; gap:10px; flex-wrap:wrap; }
+.rfq-detail-hero__title{ font-family:var(--font-display); font-size:1.2rem; font-weight:600; color:var(--navy-deep); margin-right:auto; }
+.rfq-detail-hero__meta{ display:flex; flex-wrap:wrap; gap:6px 16px; }
+.rfq-detail-hero__meta span{ display:inline-flex; align-items:center; gap:5px; font-size:.8rem; color:var(--ink-soft); }
+.rfq-detail-hero__meta i{ color:var(--teal); }
+.rfq-detail-hero__budget{ font-family:var(--font-mono); font-weight:700; color:var(--brick); font-size:1.05rem; }
+.rfq-detail-hero__desc{ font-size:.85rem; color:var(--ink-soft); line-height:1.6; margin-top:2px; }
+
+.rfq-select-banner{ display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:var(--radius-s); font-size:.85rem; font-weight:600; margin-bottom:18px; }
+.rfq-select-banner.accepted{ background:#E4F3E7; color:#1E7A37; }
+.rfq-select-banner.rejected{ background:#FBE4DD; color:var(--brick); }
+.rfq-select-banner.closed{ background:var(--paper-dim); color:var(--ink-soft); }
+.rfq-select-banner i{ font-size:1rem; }
+
+.rfq-section-title{ display:flex; align-items:center; gap:8px; font-family:var(--font-display); font-weight:600; color:var(--navy-deep); font-size:1.05rem; margin-bottom:12px; }
+.rfq-section-title i{ color:var(--marigold-deep); }
+
+.rfq-layout{ display:grid; grid-template-columns:1fr; gap:24px; align-items:start; }
+@media(min-width:900px){ .rfq-layout{ grid-template-columns:1fr 400px; } }
+
+.bid-form-card{ background:var(--white); border:1px solid var(--line); border-radius:var(--radius-l); padding:18px; box-shadow:var(--shadow-card); }
+.bid-form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+.bid-form-grid .rfq-field.full{ grid-column:1/-1; }
+@media(max-width:520px){ .bid-form-grid{ grid-template-columns:1fr; } }
+.rfq-field label{ display:block; font-size:.78rem; font-weight:700; color:var(--ink-soft); margin-bottom:6px; }
+.rfq-field .req{ color:var(--brick); }
+.rfq-field input, .rfq-field select, .rfq-field textarea{
+  width:100%; padding:10px 13px; border:1px solid var(--line); border-radius:var(--radius-s); background:var(--paper); font-size:.88rem;
+}
+.rfq-field input:focus, .rfq-field select:focus, .rfq-field textarea:focus{ outline:none; border-color:var(--teal); background:var(--white); }
+.bid-form-actions{ display:flex; gap:10px; flex-wrap:wrap; }
+
+.existing-bid-note{ display:flex; align-items:center; gap:8px; background:#FFF3EA; color:var(--marigold-deep); font-size:.8rem; font-weight:600; padding:10px 12px; border-radius:var(--radius-s); margin-bottom:14px; }
+.offer-recap{ display:grid; grid-template-columns:1fr 1fr; gap:8px 16px; background:var(--paper-dim); border-radius:var(--radius-s); padding:12px 14px; margin-bottom:16px; font-size:.8rem; }
+.offer-recap div{ display:flex; justify-content:space-between; gap:8px; color:var(--ink-soft); }
+.offer-recap b{ color:var(--ink); font-family:var(--font-mono); }
+.offer-recap .mod-flag{ grid-column:1/-1; display:flex; align-items:center; gap:6px; color:var(--brick); font-weight:600; }
+
+/* ============================================================
+   CHAT LAUNCHER — compact card in the sidebar, replaces the
+   old inline chat panel. Clicking it opens the fullscreen modal.
+   ============================================================ */
+.chat-panel{
+  background:var(--white); border:1px solid var(--line); border-radius:var(--radius-l);
+  box-shadow:var(--shadow-card); overflow:hidden; position:sticky; top:96px;
+}
+@media(max-width:899px){ .chat-panel{ position:static; } }
+
+.chat-panel__placeholder{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:34px 24px; text-align:center; color:var(--ink-soft); }
+.chat-panel__placeholder i{ font-size:2rem; color:var(--line); }
+.chat-panel__placeholder p{ font-size:.85rem; max-width:26ch; line-height:1.6; }
+
+.chat-launcher__card{ display:flex; align-items:center; gap:12px; padding:16px; }
+.chat-launcher__avatar{
+  width:44px; height:44px; border-radius:50%; flex-shrink:0;
+  background:linear-gradient(135deg,var(--teal),var(--teal-deep)); color:#fff;
+  display:flex; align-items:center; justify-content:center; font-weight:700; font-size:.85rem;
+}
+.chat-launcher__body{ flex:1; min-width:0; }
+.chat-launcher__label{ font-weight:700; font-size:.9rem; color:var(--navy-deep); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.chat-launcher__sub{ font-size:.74rem; color:var(--ink-soft); margin-top:2px; }
+.chat-launcher__sub i{ font-size:.65rem; color:var(--teal); }
+.chat-launcher__open{ flex-shrink:0; white-space:nowrap; }
+
+/* ============================================================
+   FULLSCREEN CHAT MODAL
+   ============================================================ */
+.rc-modal-overlay{
+  position:fixed; inset:0; z-index:500;
+  background:rgba(14,35,56,.55); backdrop-filter:blur(2px);
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none; transition:opacity .22s ease;
+}
+.rc-modal-overlay.open{ opacity:1; pointer-events:auto; }
+
+.rc-modal{
+  width:100%; height:100%;
+  background:var(--paper);
+  display:flex; flex-direction:column;
+  transform:translateY(16px); transition:transform .25s cubic-bezier(.22,1,.36,1);
+}
+.rc-modal-overlay.open .rc-modal{ transform:translateY(0); }
+
+@media(min-width:720px){
+  .rc-modal{
+    width:min(560px, 92vw); height:min(720px, 90vh);
+    border-radius:var(--radius-l); overflow:hidden;
+    box-shadow:0 30px 70px rgba(14,35,56,.4);
+  }
+}
+
+body.rc-modal-lock{ overflow:hidden; }
+
+/* ---- modal header: buyer identity + close ---- */
+.rc-modal__head{ display:flex; align-items:center; gap:12px; padding:14px 12px 14px 18px; border-bottom:1px solid var(--line); background:var(--white); flex-shrink:0; }
+.rc-head__id{ display:flex; align-items:center; gap:11px; flex:1; min-width:0; }
+.rc-head__avatar{ width:38px; height:38px; border-radius:50%; background:linear-gradient(135deg,var(--teal),var(--teal-deep)); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:.8rem; flex-shrink:0; }
+.rc-head__text{ min-width:0; flex:1; }
+.rc-head__label{ font-weight:700; font-size:.86rem; color:var(--navy-deep); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.rc-head__sub{ font-size:.72rem; color:var(--ink-soft); display:flex; align-items:center; gap:5px; }
+.rc-head__sub i{ font-size:.62rem; color:var(--teal); }
+.rc-head__verified{ color:var(--teal-deep); }
+.rc-modal__close{ width:36px; height:36px; border-radius:50%; border:none; background:var(--paper-dim); color:var(--ink-soft); display:flex; align-items:center; justify-content:center; font-size:1rem; flex-shrink:0; transition:.15s ease; }
+.rc-modal__close:hover{ background:var(--line); color:var(--ink); }
+
+/* ---- thread ---- */
+.rc-thread{ flex:1; overflow-y:auto; padding:14px 12px; display:flex; flex-direction:column; gap:2px; background:var(--paper); position:relative; }
+.rc-thread::-webkit-scrollbar{ width:6px; }
+.rc-thread::-webkit-scrollbar-thumb{ background:rgba(27,31,35,.15); border-radius:10px; }
+
+.rc-daydivider{ display:flex; justify-content:center; margin:12px 0; }
+.rc-daydivider span{ background:var(--paper-dim); color:var(--ink-soft); font-size:.66rem; font-weight:700; text-transform:uppercase; letter-spacing:.4px; padding:4px 12px; border-radius:999px; }
+
+.rc-system{ text-align:center; font-size:.72rem; color:var(--ink-soft); background:var(--white); border:1px solid var(--line); border-radius:10px; padding:7px 12px; margin:6px auto 12px; max-width:88%; }
+.rc-system i{ color:var(--teal); margin-right:5px; }
+
+.rc-row{ display:flex; margin:3px 0; }
+.rc-row.sent{ justify-content:flex-end; }
+.rc-row.received{ justify-content:flex-start; }
+
+.rc-bubble{ max-width:78%; padding:9px 12px; border-radius:14px; font-size:.85rem; line-height:1.45; position:relative; box-shadow:0 1px 1px rgba(27,31,35,.05); }
+.rc-row.sent .rc-bubble{ background:var(--navy-deep); color:var(--paper); border-bottom-right-radius:4px; }
+.rc-row.received .rc-bubble{ background:var(--white); color:var(--ink); border:1px solid var(--line); border-bottom-left-radius:4px; }
+
+.rc-bubble__img{ display:block; max-width:220px; border-radius:10px; margin-bottom:4px; cursor:zoom-in; }
+.rc-bubble__foot{ display:flex; align-items:center; gap:5px; justify-content:flex-end; margin-top:3px; font-size:.62rem; opacity:.7; }
+.rc-row.sent .rc-bubble__foot{ color:rgba(251,243,231,.75); }
+.rc-row.received .rc-bubble__foot{ color:var(--ink-soft); }
+.rc-bubble__foot i.read{ color:var(--teal); }
+
+.rc-mod-flag{ display:inline-flex; align-items:center; gap:4px; font-size:.62rem; font-weight:700; margin-top:5px; padding:2px 7px; border-radius:999px; }
+.rc-row.sent .rc-mod-flag{ background:rgba(251,243,231,.15); color:var(--marigold); }
+.rc-row.received .rc-mod-flag{ background:#FFF3EA; color:var(--marigold-deep); }
+
+.rc-empty{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; color:var(--ink-soft); text-align:center; padding:20px; }
+.rc-empty i{ font-size:1.6rem; color:var(--line); }
+.rc-empty span{ font-size:.8rem; max-width:24ch; }
+
+.rc-jump{ position:absolute; bottom:12px; left:50%; transform:translateX(-50%); display:none; align-items:center; gap:6px; background:var(--navy-deep); color:#fff; border:none; padding:6px 14px; border-radius:999px; font-size:.72rem; font-weight:700; box-shadow:0 8px 18px rgba(14,35,56,.3); z-index:5; }
+.rc-jump.show{ display:flex; }
+
+/* ---- security / moderation notices ---- */
+.rc-notice{ padding:9px 14px; font-size:.76rem; font-weight:600; display:flex; align-items:center; gap:8px; flex-shrink:0; }
+.rc-notice.warn{ background:#FFF3EA; color:var(--marigold-deep); border-top:1px solid #F0DCB8; }
+.rc-notice.blocked{ background:#FBE4DD; color:var(--brick); border-top:1px solid #F0BBA9; }
+.rc-notice i{ font-size:.85rem; }
+
+/* ---- composer ---- */
+.rc-composer{ display:flex; align-items:flex-end; gap:8px; padding:10px 12px; padding-bottom:calc(10px + env(safe-area-inset-bottom)); border-top:1px solid var(--line); background:var(--white); flex-shrink:0; }
+.rc-composer__attach{ width:36px; height:36px; border-radius:50%; border:1px solid var(--line); background:var(--paper); color:var(--ink-soft); display:flex; align-items:center; justify-content:center; flex-shrink:0; cursor:pointer; }
+.rc-composer__attach:hover{ border-color:var(--teal); color:var(--teal-deep); }
+.rc-composer__attach input{ display:none; }
+.rc-composer__field{ flex:1; min-width:0; resize:none; max-height:96px; padding:9px 14px; border:1px solid var(--line); border-radius:20px; font-size:.85rem; font-family:inherit; background:var(--paper); }
+.rc-composer__field:focus{ outline:none; border-color:var(--teal); background:var(--white); }
+.rc-composer__send{ width:38px; height:38px; border-radius:50%; border:none; background:var(--marigold); color:var(--navy-deep); display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 5px 12px -4px rgba(217,143,31,.5); }
+.rc-composer__send:disabled{ opacity:.5; cursor:not-allowed; box-shadow:none; }
+.rc-composer.is-disabled .rc-composer__field, .rc-composer.is-disabled .rc-composer__attach{ opacity:.5; pointer-events:none; }
+
+.rc-restricted-banner{ display:flex; align-items:center; gap:10px; padding:12px 14px; background:#FBE4DD; color:var(--brick); font-size:.8rem; font-weight:600; flex-shrink:0; border-top:1px solid #F0BBA9; }
+.rc-restricted-banner i{ font-size:1rem; }
+
+/* ---- loading skeleton for the thread ---- */
+.rc-skel-row{ display:flex; gap:9px; margin-bottom:14px; }
+.rc-skel-row.sent{ justify-content:flex-end; }
+.rc-skel-bubble{ height:38px; width:60%; border-radius:14px; background:linear-gradient(100deg,var(--line) 30%,var(--paper-dim) 50%,var(--line) 70%); background-size:200% 100%; animation:shimmer 1.3s infinite; }

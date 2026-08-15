@@ -265,12 +265,7 @@
 .rfq-confirm-box .row{ display:flex; gap:10px; }
 .rfq-confirm-box .row .btn{ flex:1; }
 
-/* mobile: chat becomes a full-screen overlay instead of a sticky column */
-@media(max-width:959px){
-  .chat-panel{ position:fixed; inset:0; z-index:9997; border-radius:0; height:100%; display:none; }
-  .chat-panel.mobile-open{ display:flex; }
-  .rfq-layout{ padding-bottom:20px; }
-}
+
 
 .toast-notice{ /* reuses #toast styling already in theme.css */ }
 
@@ -472,3 +467,62 @@ html[data-theme="dark"] .rfq-sheet-backdrop{
 @media(prefers-reduced-motion:reduce){
   .rfq-sheet, .rfq-sheet-backdrop{ transition:none; }
 }
+
+
+
+
+
+/* ============================================================
+   FULLSCREEN CHAT MODAL — replaces the old mobile-only overlay
+   hack. Now used at every screen size: centered floating card on
+   desktop/tablet, edge-to-edge on phones. Opened from any offer's
+   "Message" button, closed via the X, backdrop click, or Escape.
+   ============================================================ */
+.rc-modal-overlay{
+  position:fixed; inset:0; z-index:600;
+  background:rgba(21,22,26,.55);
+  backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px);
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none; transition:opacity .22s ease;
+}
+.rc-modal-overlay.open{ opacity:1; pointer-events:auto; }
+
+.rc-modal{
+  width:100%; height:100%;
+  background:var(--surface);
+  display:flex; flex-direction:column;
+  transform:translateY(16px);
+  transition:transform .25s cubic-bezier(.22,1,.36,1);
+}
+.rc-modal-overlay.open .rc-modal{ transform:translateY(0); }
+
+@media(min-width:720px){
+  .rc-modal{
+    width:min(560px, 92vw); height:min(720px, 90vh);
+    border-radius:var(--radius-lg); overflow:hidden;
+    box-shadow:0 30px 70px rgba(10,11,15,.4);
+  }
+}
+
+body.rc-modal-lock{ overflow:hidden; }
+
+.rc-modal__head{
+  display:flex; align-items:center; gap:12px;
+  padding:14px 12px 14px 16px;
+  border-bottom:1px solid var(--line);
+  background:var(--surface); flex-shrink:0;
+}
+.rc-head__id{ display:flex; align-items:center; gap:11px; flex:1; min-width:0; }
+.rc-modal__close{
+  width:36px; height:36px; border-radius:50%; border:none;
+  background:var(--bg-page); color:var(--ink-soft);
+  display:flex; align-items:center; justify-content:center; font-size:1rem;
+  flex-shrink:0; cursor:pointer; transition:.15s ease;
+}
+.rc-modal__close:hover{ background:var(--line); color:var(--ink); }
+
+/* the chat panel's own placeholder now stays a static, non-interactive
+   info card in the layout — no launcher button needed since each offer's
+   "Message" button opens the modal directly */
+.chat-panel{ height:auto; min-height:220px; }
+@media(min-width:960px){ .chat-panel{ position:sticky; top:96px; } }

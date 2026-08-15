@@ -65,6 +65,38 @@
   </div>
 </div>
 
+
+<!-- ===== FULLSCREEN CHAT MODAL ===== -->
+<div class="rc-modal-overlay" id="rcModalOverlay">
+  <div class="rc-modal" id="rcModal">
+    <div class="rc-modal__head">
+      <div class="rc-head__id">
+        <div class="rfq-avatar" id="rcAvatar">?</div>
+        <div class="chat-header__info">
+          <div class="chat-header__name" id="rcLabel">Seller</div>
+          <div class="chat-header__sub" id="rcSub"></div>
+        </div>
+      </div>
+      <button class="rc-modal__close" id="rcModalClose" type="button" aria-label="Close chat">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div id="chatModerationNotice"></div>
+    <div id="chatRestrictedBanner"></div>
+    <div class="chat-messages" id="chatMessages"></div>
+    <div id="chatImagePreviewBar"></div>
+    <div class="chat-input-bar" id="chatInputBar">
+      <label class="chat-attach-btn" title="Attach a photo">
+        <i class="fa-solid fa-paperclip"></i>
+        <input type="file" id="chatImageInput" accept="image/*">
+      </label>
+      <textarea id="chatTextInput" placeholder="Type a message..." rows="1"></textarea>
+      <button class="chat-send-btn" id="chatSendBtn" title="Send"><i class="fa-solid fa-paper-plane"></i></button>
+    </div>
+  </div>
+</div>
+
+
 <footer class="site-footer" id="site-footer"></footer>
 <a href="#" class="wa-float" id="wa-float"></a>
 <div id="toast"></div>
