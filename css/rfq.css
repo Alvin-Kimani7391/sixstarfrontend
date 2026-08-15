@@ -12,7 +12,7 @@
    this same form, sharing field markup/ids with the section above
    so js/rfq.js's SS_RFQ_FORM controller can drive either one.
    ============================================================ */
-
+*{ box-sizing:border-box; margin:0; padding:0; }
 /* ---------- shared page shell ---------- */
 .rfq-page-hero{
   background:linear-gradient(135deg, var(--ink) 0%, #232530 100%);
