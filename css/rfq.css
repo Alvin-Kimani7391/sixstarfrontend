@@ -469,17 +469,11 @@ html[data-theme="dark"] .rfq-sheet-backdrop{
 }
 
 
-
-
-
 /* ============================================================
-   FULLSCREEN CHAT MODAL — replaces the old mobile-only overlay
-   hack. Now used at every screen size: centered floating card on
-   desktop/tablet, edge-to-edge on phones. Opened from any offer's
-   "Message" button, closed via the X, backdrop click, or Escape.
+   FULLSCREEN CHAT MODAL
    ============================================================ */
 .rc-modal-overlay{
-  position:fixed; inset:0; z-index:600;
+  position:fixed; inset:0; z-index:9999;
   background:rgba(21,22,26,.55);
   backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px);
   display:flex; align-items:center; justify-content:center;
@@ -504,25 +498,72 @@ html[data-theme="dark"] .rfq-sheet-backdrop{
   }
 }
 
+/* belt-and-suspenders: hide the sticky header entirely while the
+   modal is open, so no ancestor z-index/stacking-context in
+   theme.css can ever poke through the overlay again */
 body.rc-modal-lock{ overflow:hidden; }
+body.rc-modal-lock .site-header{ visibility:hidden; }
 
-.rc-modal__head{
-  display:flex; align-items:center; gap:12px;
-  padding:14px 12px 14px 16px;
-  border-bottom:1px solid var(--line);
-  background:var(--surface); flex-shrink:0;
-}
+.rc-modal__head{ display:flex; align-items:center; gap:12px; padding:14px 12px 14px 16px; border-bottom:1px solid var(--line); background:var(--surface); flex-shrink:0; }
 .rc-head__id{ display:flex; align-items:center; gap:11px; flex:1; min-width:0; }
-.rc-modal__close{
-  width:36px; height:36px; border-radius:50%; border:none;
-  background:var(--bg-page); color:var(--ink-soft);
-  display:flex; align-items:center; justify-content:center; font-size:1rem;
-  flex-shrink:0; cursor:pointer; transition:.15s ease;
-}
+.rc-head__avatar{ width:38px; height:38px; border-radius:50%; background:linear-gradient(135deg,var(--brand),var(--brand-dark)); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:.85rem; flex-shrink:0; }
+.rc-head__text{ min-width:0; flex:1; }
+.rc-head__label{ font-weight:700; font-size:13.5px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:flex; align-items:center; gap:6px; }
+.rc-head__label i{ color:var(--price); font-size:11px; }
+.rc-head__sub{ font-size:11px; color:var(--ink-faint); display:flex; align-items:center; gap:5px; }
+.rc-head__sub i{ font-size:10px; color:var(--brand); }
+.rc-modal__close{ width:36px; height:36px; border-radius:50%; border:none; background:var(--bg-page); color:var(--ink-soft); display:flex; align-items:center; justify-content:center; font-size:1rem; flex-shrink:0; cursor:pointer; transition:.15s ease; }
 .rc-modal__close:hover{ background:var(--line); color:var(--ink); }
 
-/* the chat panel's own placeholder now stays a static, non-interactive
-   info card in the layout — no launcher button needed since each offer's
-   "Message" button opens the modal directly */
-.chat-panel{ height:auto; min-height:220px; }
-@media(min-width:960px){ .chat-panel{ position:sticky; top:96px; } }
+.rc-thread{ flex:1; overflow-y:auto; padding:14px 12px; display:flex; flex-direction:column; gap:2px; background:#FAFAFB; position:relative; }
+.rc-thread::-webkit-scrollbar{ width:6px; }
+.rc-thread::-webkit-scrollbar-thumb{ background:var(--line); border-radius:10px; }
+
+.rc-daydivider{ display:flex; justify-content:center; margin:12px 0; }
+.rc-daydivider span{ background:var(--bg-page); color:var(--ink-faint); font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; padding:4px 12px; border-radius:999px; }
+
+.rc-system{ text-align:center; font-size:11.5px; color:var(--ink-faint); background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:7px 12px; margin:6px auto 12px; max-width:88%; }
+.rc-system i{ color:var(--brand); margin-right:5px; }
+
+.rc-row{ display:flex; margin:3px 0; }
+.rc-row.sent{ justify-content:flex-end; }
+.rc-row.received{ justify-content:flex-start; }
+
+.rc-bubble{ max-width:78%; padding:9px 12px; border-radius:14px; font-size:13px; line-height:1.45; position:relative; box-shadow:0 1px 1px rgba(21,22,26,.05); word-break:break-word; }
+.rc-row.sent .rc-bubble{ background:linear-gradient(135deg,var(--brand),var(--brand-dark)); color:#fff; border-bottom-right-radius:4px; }
+.rc-row.received .rc-bubble{ background:#fff; color:var(--ink); border:1px solid var(--line); border-bottom-left-radius:4px; }
+
+.rc-bubble__img{ display:block; max-width:220px; border-radius:10px; margin-bottom:4px; cursor:zoom-in; }
+.rc-bubble__foot{ display:flex; align-items:center; gap:5px; justify-content:flex-end; margin-top:3px; font-size:9.5px; opacity:.75; }
+
+.rc-mod-flag{ display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:700; margin-top:5px; padding:2px 7px; border-radius:999px; background:rgba(255,255,255,.2); }
+.rc-row.received .rc-mod-flag{ background:#FFF3EA; color:var(--brand-dark); }
+
+.rc-empty{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; color:var(--ink-faint); text-align:center; padding:20px; }
+.rc-empty i{ font-size:1.6rem; color:var(--line); }
+.rc-empty span{ font-size:13px; max-width:24ch; }
+
+.rc-jump{ position:absolute; bottom:12px; left:50%; transform:translateX(-50%); display:none; align-items:center; gap:6px; background:var(--ink); color:#fff; border:none; padding:6px 14px; border-radius:999px; font-size:11.5px; font-weight:700; box-shadow:0 8px 18px rgba(10,11,15,.3); z-index:5; cursor:pointer; }
+.rc-jump.show{ display:flex; }
+
+.rc-notice{ padding:9px 14px; font-size:12px; font-weight:600; display:flex; align-items:center; gap:8px; flex-shrink:0; }
+.rc-notice.warn{ background:#FFF3EA; color:var(--brand-dark); border-top:1px solid var(--line); }
+.rc-notice.blocked{ background:#FBE4DD; color:var(--danger); border-top:1px solid var(--line); }
+
+.rc-composer{ display:flex; align-items:flex-end; gap:8px; padding:12px 14px; padding-bottom:calc(12px + env(safe-area-inset-bottom)); border-top:1px solid var(--line); background:var(--surface); flex-shrink:0; }
+.rc-composer__attach{ width:38px; height:38px; border-radius:50%; border:1.5px solid var(--line); background:var(--surface); color:var(--ink-soft); display:flex; align-items:center; justify-content:center; flex-shrink:0; cursor:pointer; position:relative; transition:.18s ease; }
+.rc-composer__attach:hover{ border-color:var(--brand); color:var(--brand); }
+.rc-composer__attach input{ position:absolute; inset:0; opacity:0; cursor:pointer; }
+.rc-composer__field{ flex:1; min-width:0; resize:none; max-height:96px; padding:10px 16px; border:1.5px solid var(--line); border-radius:20px; font-size:13.5px; font-family:var(--font-body); background:var(--surface); outline:none; transition:.18s ease; }
+.rc-composer__field:focus{ border-color:var(--brand); box-shadow:0 0 0 4px rgba(255,90,31,.1); }
+.rc-composer__send{ width:38px; height:38px; border-radius:50%; border:none; background:linear-gradient(135deg,var(--brand),var(--brand-dark)); color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; cursor:pointer; transition:.18s ease; }
+.rc-composer__send:hover{ transform:scale(1.06); }
+.rc-composer__send:disabled{ opacity:.4; cursor:not-allowed; transform:none; }
+.rc-composer.is-disabled .rc-composer__field, .rc-composer.is-disabled .rc-composer__attach{ opacity:.5; pointer-events:none; }
+
+.rc-restricted-banner{ display:flex; align-items:center; gap:10px; padding:12px 14px; background:#FBE4DD; color:var(--danger); font-size:12.5px; font-weight:600; flex-shrink:0; border-top:1px solid var(--line); }
+
+.rc-skel-row{ display:flex; gap:9px; margin-bottom:14px; padding:0 2px; }
+.rc-skel-row.sent{ justify-content:flex-end; }
+.rc-skel-bubble{ height:38px; width:60%; border-radius:14px; background:linear-gradient(100deg,var(--line) 30%,var(--bg-page) 50%,var(--line) 70%); background-size:200% 100%; animation:shimmer 1.3s infinite; }
+@keyframes shimmer{ from{ background-position:200% 0; } to{ background-position:-200% 0; } }

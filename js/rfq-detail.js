@@ -57,13 +57,24 @@
     return `<div class="rfq-avatar ${size}" data-hue="${hue}">${esc(initials)}</div>`;
   }
 
+  /* ---------------- page state ---------------- */
   let rfq = null;
   let offers = [];
-  let currentCounterpart = null; // { id, label, initials, isVerified, ... } of whichever seller's chat is open
+  let currentCounterpart = null; // { id, label, initials, isVerified } of whichever seller's chat is open
   let chatPollTimer = null;
   let pendingBidId = null;
-  let pendingImageFile = null;
   let modalOpen = false;
+
+  /* ---------------- chat state ---------------- */
+  let messages = [];
+  let knownIds = new Set();
+  let buyerRestricted = false; // account-level; persists across conversations once tripped
+
+  const MOD_FLAG_LABEL = {
+    phone_number: 'Phone number hidden', email_address: 'Email hidden', whatsapp: 'WhatsApp mention hidden',
+    telegram: 'Telegram mention hidden', social_handle: 'Social handle hidden',
+    external_payment: 'Payment detail hidden', external_link: 'Link hidden',
+  };
 
   /* ---------------- static modal elements (bound once) ---------------- */
   const rcModalOverlay = document.getElementById('rcModalOverlay');
@@ -71,14 +82,12 @@
   const rcAvatar = document.getElementById('rcAvatar');
   const rcLabel = document.getElementById('rcLabel');
   const rcSub = document.getElementById('rcSub');
-  const chatMessagesEl = document.getElementById('chatMessages');
-  const chatModerationNoticeEl = document.getElementById('chatModerationNotice');
-  const chatRestrictedBannerEl = document.getElementById('chatRestrictedBanner');
-  const chatImagePreviewBarEl = document.getElementById('chatImagePreviewBar');
-  const chatInputBarEl = document.getElementById('chatInputBar');
-  const chatTextInput = document.getElementById('chatTextInput');
-  const chatSendBtn = document.getElementById('chatSendBtn');
-  const chatImageInput = document.getElementById('chatImageInput');
+  const rcThread = document.getElementById('rcThread');
+  const rcNoticeSlot = document.getElementById('rcNoticeSlot');
+  const rcComposer = document.getElementById('rcComposer');
+  const rcField = document.getElementById('rcField');
+  const rcSend = document.getElementById('rcSend');
+  const rcImageInput = document.getElementById('rcImageInput');
 
   /* ================================================================ */
   /* REQUEST HERO + COUNTDOWN                                          */
@@ -283,72 +292,79 @@
   /* FULLSCREEN CHAT MODAL                                              */
   /* ================================================================ */
 
-  function messageRowHTML(msg, isMine) {
-    let bubbleInner;
-    if (msg.messageType === 'image') {
-      bubbleInner = `<img src="${esc(msg.imageUrl)}" alt="Photo" onclick="window.open('${esc(msg.imageUrl)}','_blank')">`;
-    } else if (msg.moderationAction === 'masked') {
-      bubbleInner = `<i class="fa-solid fa-shield-halved"></i>${esc(msg.message)}`;
-    } else {
-      bubbleInner = esc(msg.message);
-    }
-    const bubbleClass = msg.moderationAction === 'masked' ? 'chat-bubble masked' : 'chat-bubble';
+  function dayKey(d) { const x = new Date(d); return `${x.getFullYear()}-${x.getMonth()}-${x.getDate()}`; }
+
+  function isThreadNearBottom() {
+    return rcThread.scrollTop + rcThread.clientHeight >= rcThread.scrollHeight - 140;
+  }
+  function scrollThreadToBottom(smooth = true) {
+    rcThread.scrollTo({ top: rcThread.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+    hideJump();
+  }
+  function showJump() { document.getElementById('rcJump')?.classList.add('show'); }
+  function hideJump() { document.getElementById('rcJump')?.classList.remove('show'); }
+
+  function bubbleHTML(msg) {
+    const mine = String(msg.sender) === String(user.id || user._id) || String(msg.sender?._id) === String(user.id || user._id);
+    const isImage = msg.messageType === 'image';
+    const flagLabel = (msg.moderationFlags || []).map((f) => MOD_FLAG_LABEL[f] || 'Hidden for security')[0];
     return `
-      <div class="chat-row ${isMine ? 'mine' : ''}">
-        ${!isMine ? avatarHTML(currentCounterpart, 'rfq-avatar--sm') : ''}
-        <div>
-          <div class="${bubbleClass}">${bubbleInner}</div>
+      <div class="rc-row ${mine ? 'sent' : 'received'}">
+        <div class="rc-bubble">
+          ${isImage
+            ? `<img class="rc-bubble__img" src="${esc(msg.imageUrl)}" alt="Shared photo" data-lightbox="${esc(msg.imageUrl)}" loading="lazy">`
+            : `<span>${esc(msg.message)}</span>`}
+          ${msg.moderationAction === 'masked' ? `<div class="rc-mod-flag"><i class="fa-solid fa-shield-halved"></i>${esc(flagLabel)}</div>` : ''}
+          <div class="rc-bubble__foot"><span>${fmtTime(msg.createdAt)}</span></div>
         </div>
-      </div>
-      <div class="chat-meta-row ${isMine ? 'mine' : ''}">${fmtTime(msg.createdAt)}</div>
-    `;
+      </div>`;
   }
 
-  function renderMessages(messages) {
+  function renderThread() {
     if (!messages.length) {
-      chatMessagesEl.innerHTML = `<div class="chat-panel__placeholder" style="height:100%;"><i class="fa-regular fa-comment-dots"></i><p>Say hello — ask about specs, availability, or delivery.</p></div>`;
+      rcThread.innerHTML = `
+        <div class="rc-empty"><i class="fa-regular fa-comments"></i><span>Say hello — ask about specs, availability, or delivery.</span></div>
+        <button class="rc-jump" id="rcJump" type="button"><i class="fa-solid fa-arrow-down"></i> New messages</button>`;
       return;
     }
-    let html = '';
-    let lastDay = null;
+    let html = `<div class="rc-system"><i class="fa-solid fa-lock"></i>Keep all communication on Six Star Suppliers — contact details are automatically hidden.</div>`;
+    let lastKey = null;
     messages.forEach((m) => {
-      const day = dayLabel(m.createdAt);
-      if (day !== lastDay) {
-        html += `<div class="chat-day-divider">${day}</div>`;
-        lastDay = day;
-      }
-      html += messageRowHTML(m, String(m.sender) === String(user.id || user._id));
+      const key = dayKey(m.createdAt);
+      if (key !== lastKey) { html += `<div class="rc-daydivider"><span>${dayLabel(m.createdAt)}</span></div>`; lastKey = key; }
+      html += bubbleHTML(m);
     });
-    chatMessagesEl.innerHTML = html;
-    chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+    html += `<button class="rc-jump" id="rcJump" type="button"><i class="fa-solid fa-arrow-down"></i> New messages</button>`;
+    rcThread.innerHTML = html;
   }
 
   function openChatModal(sellerIdentity) {
     currentCounterpart = sellerIdentity;
-    pendingImageFile = null;
+    messages = [];
+    knownIds = new Set();
 
-    // reset composer / notice state for this conversation
-    chatImagePreviewBarEl.innerHTML = '';
-    chatImageInput.value = '';
-    chatModerationNoticeEl.innerHTML = '';
-    chatRestrictedBannerEl.innerHTML = '';
-    chatInputBarEl.style.display = 'flex';
-    chatTextInput.value = '';
-    chatTextInput.style.height = 'auto';
-    chatMessagesEl.innerHTML = `<div class="chat-panel__placeholder" style="height:100%;"><i class="fa-solid fa-spinner fa-spin"></i></div>`;
+    rcNoticeSlot.innerHTML = '';
+    rcComposer.classList.toggle('is-disabled', buyerRestricted);
+    if (buyerRestricted) {
+      rcNoticeSlot.innerHTML = `<div class="rc-restricted-banner"><i class="fa-solid fa-ban"></i><span>Your messaging privileges are currently restricted pending review. Please contact support.</span></div>`;
+    }
 
     rcAvatar.textContent = sellerIdentity.initials || '?';
-    rcAvatar.dataset.hue = hashHue(sellerIdentity.label || sellerIdentity.initials);
-    rcLabel.innerHTML = `${esc(sellerIdentity.label)} ${sellerIdentity.isVerified ? '<i class="fa-solid fa-circle-check verified"></i>' : ''}`;
-    rcSub.textContent = rfq ? rfq.productName : '';
+    rcLabel.innerHTML = `${esc(sellerIdentity.label)} ${sellerIdentity.isVerified ? '<i class="fa-solid fa-badge-check"></i>' : ''}`;
+    rcSub.innerHTML = `<i class="fa-solid fa-lock"></i>Private conversation${sellerIdentity.isVerified ? ' · Verified' : ''}`;
+
+    rcThread.innerHTML = `
+      <div class="rc-skel-row"><div class="rc-skel-bubble"></div></div>
+      <div class="rc-skel-row sent"><div class="rc-skel-bubble" style="width:45%;"></div></div>
+      <div class="rc-skel-row"><div class="rc-skel-bubble" style="width:70%;"></div></div>`;
 
     modalOpen = true;
     rcModalOverlay.classList.add('open');
     document.body.classList.add('rc-modal-lock');
 
-    loadConversation();
+    loadConversation({ initial: true });
     startChatPolling();
-    setTimeout(() => chatTextInput.focus({ preventScroll: true }), 260);
+    setTimeout(() => rcField.focus({ preventScroll: true }), 260);
   }
 
   function closeChatModal() {
@@ -357,127 +373,104 @@
     document.body.classList.remove('rc-modal-lock');
     stopChatPolling();
     currentCounterpart = null;
-    pendingImageFile = null;
   }
 
   rcModalClose.addEventListener('click', closeChatModal);
   rcModalOverlay.addEventListener('click', (e) => { if (e.target === rcModalOverlay) closeChatModal(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modalOpen) closeChatModal(); });
 
-  // composer listeners — bound once, since the modal markup is static
-  chatTextInput.addEventListener('keydown', (e) => {
+  rcField.addEventListener('input', () => {
+    rcField.style.height = 'auto';
+    rcField.style.height = Math.min(rcField.scrollHeight, 96) + 'px';
+  });
+  rcField.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendTextMessage(); }
   });
-  chatTextInput.addEventListener('input', () => {
-    chatTextInput.style.height = 'auto';
-    chatTextInput.style.height = Math.min(chatTextInput.scrollHeight, 90) + 'px';
-  });
-  chatSendBtn.addEventListener('click', () => {
-    if (pendingImageFile) sendImageMessage(); else sendTextMessage();
-  });
-  chatImageInput.addEventListener('change', () => {
-    const file = chatImageInput.files[0];
+  rcSend.addEventListener('click', sendTextMessage);
+  rcImageInput.addEventListener('change', () => {
+    const file = rcImageInput.files[0];
     if (!file) return;
-    if (file.size > 3 * 1024 * 1024) { toast('Image must be under 3MB', 'fa-circle-exclamation'); chatImageInput.value = ''; return; }
-    pendingImageFile = file;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      chatImagePreviewBarEl.innerHTML = `
-        <div class="chat-image-preview-bar">
-          <img src="${e.target.result}">
-          <span>Photo ready to send</span>
-          <button id="cancelImageBtn"><i class="fa-solid fa-xmark"></i></button>
-        </div>`;
-      document.getElementById('cancelImageBtn').addEventListener('click', () => {
-        pendingImageFile = null;
-        chatImageInput.value = '';
-        chatImagePreviewBarEl.innerHTML = '';
-      });
-    };
-    reader.readAsDataURL(file);
+    if (file.size > 5 * 1024 * 1024) { toast('Image must be under 5MB', 'fa-circle-exclamation'); rcImageInput.value = ''; return; }
+    sendImageMessage(file);
+    rcImageInput.value = '';
+  });
+  rcThread.addEventListener('scroll', () => { if (isThreadNearBottom()) hideJump(); });
+  rcThread.addEventListener('click', (e) => {
+    const img = e.target.closest('[data-lightbox]');
+    if (img) window.open(img.dataset.lightbox, '_blank', 'noopener');
+    if (e.target.closest('#rcJump')) scrollThreadToBottom();
   });
 
-  async function loadConversation() {
+  async function loadConversation({ isPoll = false, initial = false } = {}) {
     if (!currentCounterpart) return;
     try {
       const res = await SS_API.getRFQConversation(rfqId, currentCounterpart.id);
-      renderMessages(res.messages || []);
-      chatRestrictedBannerEl.innerHTML = '';
+      const newMessages = res.messages || [];
+      const hasNew = newMessages.some((m) => !knownIds.has(m._id));
+      const wasNear = isThreadNearBottom();
+      messages = newMessages;
+      messages.forEach((m) => knownIds.add(m._id));
+      renderThread();
+      if (initial) scrollThreadToBottom(false);
+      else if (isPoll && hasNew) { if (wasNear) scrollThreadToBottom(); else showJump(); }
     } catch (err) {
-      chatRestrictedBannerEl.innerHTML = `<div class="chat-restricted-banner"><i class="fa-solid fa-triangle-exclamation"></i> ${esc(err.message || 'Could not load this conversation.')}</div>`;
+      rcThread.innerHTML = `<div class="rc-empty"><i class="fa-solid fa-triangle-exclamation"></i><span>${esc(err.message || 'Could not load this conversation.')}</span></div>`;
     }
   }
 
-  function showModerationNotice(text) {
-    chatModerationNoticeEl.innerHTML = `<div class="chat-moderation-notice"><i class="fa-solid fa-shield-halved"></i> ${esc(text)}</div>`;
-    setTimeout(() => { chatModerationNoticeEl.innerHTML = ''; }, 6000);
+  function flashNotice(text, kind) {
+    rcNoticeSlot.innerHTML = `<div class="rc-notice ${kind}"><i class="fa-solid fa-shield-halved"></i>${esc(text)}</div>`;
+    if (kind === 'warn') setTimeout(() => { rcNoticeSlot.innerHTML = ''; }, 6000);
   }
 
-  function disableChatInput(message) {
-    chatInputBarEl.style.display = 'none';
-    chatRestrictedBannerEl.innerHTML = `<div class="chat-restricted-banner"><i class="fa-solid fa-ban"></i> ${esc(message)}</div>`;
+  function onRestricted(message) {
+    buyerRestricted = true;
+    rcComposer.classList.add('is-disabled');
+    rcNoticeSlot.innerHTML = `<div class="rc-restricted-banner"><i class="fa-solid fa-ban"></i><span>${esc(message || 'Your messaging privileges are currently restricted pending review. Please contact support.')}</span></div>`;
   }
 
   async function sendTextMessage() {
-    const text = chatTextInput.value.trim();
+    if (buyerRestricted) return;
+    const text = rcField.value.trim();
     if (!text || !currentCounterpart) return;
-    chatSendBtn.disabled = true;
+    rcSend.disabled = true;
     try {
       const res = await SS_API.sendRFQMessage(rfqId, { receiverId: currentCounterpart.id, message: text });
-      chatTextInput.value = '';
-      chatTextInput.style.height = 'auto';
-      appendMessage(res.message);
-      if (res.notice) showModerationNotice(res.notice);
+      rcField.value = '';
+      rcField.style.height = 'auto';
+      messages.push(res.message);
+      knownIds.add(res.message._id);
+      renderThread();
+      scrollThreadToBottom();
+      if (res.notice) flashNotice(res.notice, 'warn');
     } catch (err) {
-      if (err.status === 403) {
-        disableChatInput(err.message || 'Your messaging privileges are currently restricted.');
-      } else {
-        toast(err.message || 'Could not send message', 'fa-circle-exclamation');
-      }
+      if (err.status === 403) onRestricted(err.message);
+      else toast(err.message || 'Could not send message', 'fa-circle-exclamation');
     } finally {
-      chatSendBtn.disabled = false;
+      rcSend.disabled = false;
     }
   }
 
-  async function sendImageMessage() {
-    if (!pendingImageFile || !currentCounterpart) return;
-    chatSendBtn.disabled = true;
+  async function sendImageMessage(file) {
+    if (buyerRestricted || !currentCounterpart) return;
     const fd = new FormData();
     fd.append('receiverId', currentCounterpart.id);
-    fd.append('image', pendingImageFile);
+    fd.append('image', file);
     try {
       const res = await SS_API.sendRFQMessage(rfqId, fd, true);
-      pendingImageFile = null;
-      chatImagePreviewBarEl.innerHTML = '';
-      chatImageInput.value = '';
-      appendMessage(res.message);
+      messages.push(res.message);
+      knownIds.add(res.message._id);
+      renderThread();
+      scrollThreadToBottom();
     } catch (err) {
-      if (err.status === 403) {
-        disableChatInput(err.message || 'Your messaging privileges are currently restricted.');
-      } else {
-        toast(err.message || 'Could not send photo', 'fa-circle-exclamation');
-      }
-    } finally {
-      chatSendBtn.disabled = false;
+      if (err.status === 403) onRestricted(err.message);
+      else toast(err.message || 'Could not send photo', 'fa-circle-exclamation');
     }
-  }
-
-  function appendMessage(msg) {
-    const placeholder = chatMessagesEl.querySelector('.chat-panel__placeholder');
-    if (placeholder) chatMessagesEl.innerHTML = '';
-    const dividers = chatMessagesEl.querySelectorAll('.chat-day-divider');
-    const lastDivider = dividers.length ? dividers[dividers.length - 1] : null;
-    const today = dayLabel(msg.createdAt);
-    if (!lastDivider || lastDivider.textContent !== today) {
-      chatMessagesEl.insertAdjacentHTML('beforeend', `<div class="chat-day-divider">${today}</div>`);
-    }
-    chatMessagesEl.insertAdjacentHTML('beforeend', messageRowHTML(msg, true));
-    chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
   }
 
   function startChatPolling() {
     stopChatPolling();
-    chatPollTimer = setInterval(() => { if (modalOpen && currentCounterpart) loadConversation(); }, 7000);
+    chatPollTimer = setInterval(() => { if (modalOpen && currentCounterpart) loadConversation({ isPoll: true }); }, 7000);
   }
   function stopChatPolling() {
     if (chatPollTimer) clearInterval(chatPollTimer);
@@ -487,7 +480,7 @@
   document.addEventListener('visibilitychange', () => {
     if (!modalOpen) return;
     if (document.hidden) stopChatPolling();
-    else { loadConversation(); startChatPolling(); }
+    else { loadConversation({ isPoll: true }); startChatPolling(); }
   });
 
   /* ================================================================ */
