@@ -2,70 +2,171 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Buyer Requests | Six Star Suppliers Seller Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/seller-rfq.css">
+<meta name="theme-color" content="#0E2338">
+<script>
+  (function () {
+    try {
+      var saved = localStorage.getItem('ss-seller-chat-theme');
+      var theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-seller-theme', theme);
+    } catch (e) { /* default light applies */ }
+  })();
+</script>
 </head>
-<body>
+<body data-page="seller-rfq.html" class="sc-body">
 
 <div id="pageLoader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
 
-<header class="site-header">
-  <div class="header-row">
-    <a href="seller-dashboard.html" class="brand">
-      <div class="brand-mark"><img src="/images/logo.jpg" alt="Six Star Suppliers logo"></div>
-      <div>
-        <div class="brand-name">Six Star Suppliers</div>
-        <div class="brand-tag">Buyer Requests</div>
+<div class="sc-app" id="scApp">
+
+  <!-- ===== TOP BAR ===== -->
+  <header class="sc-topbar">
+    <button class="sc-iconbtn" id="scMenuBtn" type="button" aria-label="Open menu" aria-expanded="false">
+      <span class="sc-hamburger"><span></span><span></span><span></span></span>
+    </button>
+
+    <div class="sc-topbar__id">
+      <div class="sc-topbar__avatar"><i class="fa-solid fa-file-signature"></i></div>
+      <div class="sc-topbar__text">
+        <span class="sc-topbar__title">Buyer Requests</span>
+        <span class="sc-topbar__status"><i class="sc-pulse-dot"></i>Live · refreshes automatically</span>
       </div>
-    </a>
-    <a href="seller-dashboard.html" class="iconbtn" title="Back to dashboard">
-      <i class="fa-solid fa-gauge"></i>
-    </a>
-  </div>
-</header>
-
-<main class="wrap" style="max-width:1160px; padding-top:20px; padding-bottom:60px;">
-
-  <div class="rfq-page-hero">
-    <h1><i class="fa-solid fa-file-signature"></i> Buyer Requests</h1>
-    <p>Browse quote requests posted by buyers and submit a private offer. Once you've bid on a request, you can message the buyer directly to work out the details.</p>
-  </div>
-
-  <div class="rfq-tabs" id="rfqTabs">
-    <button class="rfq-tab active" data-tab="open">Open Requests <span class="tab-count" id="tabCountOpen">0</span></button>
-    <button class="rfq-tab" data-tab="mine">My Offers <span class="tab-count" id="tabCountMine">0</span></button>
-  </div>
-
-  <!-- ===== OPEN REQUESTS ===== -->
-  <div class="rfq-tab-panel" id="panelOpen">
-    <div class="rfq-search-row">
-      <input type="text" id="requestSearchInput" placeholder="Search by product or location...">
     </div>
-    <div class="rfq-card-grid" id="openRequestsGrid">
-      <div class="skel orders-skel" style="height:220px;"></div>
-      <div class="skel orders-skel" style="height:220px;"></div>
-      <div class="skel orders-skel" style="height:220px;"></div>
+
+    <div class="sc-topbar__actions">
+      <button class="sc-iconbtn" id="scSearchBtn" type="button" aria-label="Search requests" aria-pressed="false">
+        <i class="fa-solid fa-magnifying-glass"></i>
+      </button>
+      <button class="sc-iconbtn sc-theme-toggle" id="scThemeToggle" type="button" aria-label="Toggle dark mode">
+        <i class="fa-solid fa-moon sc-theme-toggle__moon"></i>
+        <i class="fa-solid fa-sun sc-theme-toggle__sun"></i>
+      </button>
     </div>
+  </header>
+
+  <!-- collapsible search row -->
+  <div class="sc-searchbar" id="scSearchBar">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <input type="text" id="scSearchInput" placeholder="Search by product, location..." autocomplete="off">
+    <button type="button" id="scSearchClear" aria-label="Clear search"><i class="fa-solid fa-xmark"></i></button>
   </div>
 
-  <!-- ===== MY OFFERS ===== -->
-  <div class="rfq-tab-panel" id="panelMine" style="display:none;">
-    <div id="myOffersList" style="display:flex; flex-direction:column; gap:12px;">
-      <div class="skel orders-skel" style="height:100px;"></div>
-      <div class="skel orders-skel" style="height:100px;"></div>
-    </div>
+  <!-- filter chips -->
+  <div class="sc-filters" id="scFilters">
+    <button class="sc-chip is-active" data-filter="all" type="button">All <b id="scCountAll">0</b></button>
+    <button class="sc-chip" data-filter="open" type="button"><i class="fa-solid fa-circle sc-chip__dot sc-chip__dot--open"></i>Open <b id="scCountOpen">0</b></button>
+    <button class="sc-chip" data-filter="bidding" type="button"><i class="fa-solid fa-circle sc-chip__dot sc-chip__dot--bidding"></i>Receiving offers <b id="scCountBidding">0</b></button>
+    <button class="sc-chip" data-filter="mine" type="button"><i class="fa-solid fa-circle sc-chip__dot sc-chip__dot--mine"></i>My Offers <b id="scCountMine">0</b></button>
+    <button class="sc-chip" data-filter="accepted" type="button"><i class="fa-solid fa-circle sc-chip__dot sc-chip__dot--accepted"></i>Accepted <b id="scCountAccepted">0</b></button>
+    <button class="sc-chip" data-filter="archived" type="button"><i class="fa-solid fa-circle sc-chip__dot sc-chip__dot--archived"></i>Archived <b id="scCountArchived">0</b></button>
   </div>
 
-</main>
+  <!-- ===== FEED ===== -->
+  <main class="sc-chatwrap" id="scMessages">
+    <div class="sc-loading" id="scLoading">
+      <div class="sc-skel-row"><div class="sc-skel sc-skel--avatar"></div><div class="sc-skel sc-skel--bubble"></div></div>
+      <div class="sc-skel-row"><div class="sc-skel sc-skel--avatar"></div><div class="sc-skel sc-skel--bubble" style="width:72%"></div></div>
+      <div class="sc-skel-row"><div class="sc-skel sc-skel--avatar"></div><div class="sc-skel sc-skel--bubble" style="width:58%"></div></div>
+    </div>
+  </main>
 
-<footer class="footer-bottom">© 2026 Six Star Suppliers. All rights reserved.</footer>
+  <button class="sc-jump" id="scJump" type="button" style="display:none;">
+    <i class="fa-solid fa-arrow-down"></i> New requests
+  </button>
 
-<!-- ===== Withdraw-offer confirm ===== -->
+</div>
+
+<!-- ===== SLIDE-IN MENU ===== -->
+<div class="sc-menu-backdrop" id="scMenuBackdrop"></div>
+<nav class="sc-menu" id="scMenu" aria-hidden="true">
+  <div class="sc-menu__profile">
+    <button class="sc-menu__close" id="scMenuClose" type="button" aria-label="Close menu"><i class="fa-solid fa-xmark"></i></button>
+    <div class="sc-menu__avatar"><i class="fa-solid fa-file-signature"></i></div>
+    <div class="sc-menu__brand">Six Star Suppliers</div>
+    <div class="sc-menu__sub">Buyer Requests Board</div>
+  </div>
+
+  <div class="sc-menu__list">
+    <a href="seller-dashboard.html"><i class="fa-solid fa-gauge"></i>Dashboard</a>
+    <a href="#" id="scMenuMineLink"><i class="fa-solid fa-hand-holding-dollar"></i>My Offers</a>
+  </div>
+
+  <div class="sc-menu__theme-row">
+    <span><i class="fa-solid fa-circle-half-stroke"></i>Dark mode</span>
+    <label class="sc-switch">
+      <input type="checkbox" id="scThemeSwitch">
+      <span class="sc-switch__track"><span class="sc-switch__thumb"></span></span>
+    </label>
+  </div>
+
+  <div class="sc-menu__foot">
+    <i class="fa-solid fa-shield-halved"></i>
+    <span>Buyer identity stays masked until you submit an offer. Contact details are never shared.</span>
+  </div>
+</nav>
+
+<!-- ===== BID SHEET (Submit / Update Offer) ===== -->
+<div class="bid-sheet-backdrop" id="bidSheetBackdrop"></div>
+<div class="bid-sheet" id="bidSheet" role="dialog" aria-modal="true" aria-labelledby="bidSheetTitleText" aria-hidden="true">
+  <div class="bid-sheet__handle-wrap" id="bidSheetHandle"><span class="bid-sheet__handle"></span></div>
+
+  <div class="bid-sheet__header">
+    <div class="bid-sheet__title">
+      <h2 id="bidSheetTitleText"><i class="fa-solid fa-hand-holding-dollar"></i><span id="bidSheetHeading">Submit an Offer</span></h2>
+      <p id="bidSheetProductLine">—</p>
+    </div>
+    <button class="bid-sheet__close" id="bidSheetClose" type="button" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+
+  <div class="bid-sheet__body">
+    <div id="bidExistingNote"></div>
+    <form id="bidForm">
+      <div class="bid-form-grid">
+        <div class="rfq-field">
+          <label>Unit price (KES) <span class="req">*</span></label>
+          <input type="number" id="bidUnitPrice" min="0" step="0.01" required placeholder="e.g. 580">
+        </div>
+        <div class="rfq-field">
+          <label>Quantity available <span class="req">*</span></label>
+          <input type="number" id="bidQuantity" min="1" required placeholder="e.g. 500">
+        </div>
+        <div class="rfq-field">
+          <label>Delivery fee (KES)</label>
+          <input type="number" id="bidDeliveryFee" min="0" step="0.01" placeholder="e.g. 2000">
+        </div>
+        <div class="rfq-field">
+          <label>Delivery time</label>
+          <input type="text" id="bidDeliveryTime" placeholder="e.g. 3 days">
+        </div>
+        <div class="rfq-field">
+          <label>Offer valid until</label>
+          <input type="date" id="bidValidUntil">
+        </div>
+        <div class="rfq-field full">
+          <label>Message to buyer <span class="label-soft" style="font-weight:400;">(optional)</span></label>
+          <textarea id="bidMessage" placeholder="Any details worth mentioning — quality, packaging, MOQ, etc. Contact info and external links aren't allowed here."></textarea>
+        </div>
+      </div>
+      <div class="alert alert-error" id="bidFormError"></div>
+    </form>
+  </div>
+
+  <div class="bid-sheet__footer">
+    <button type="button" class="btn btn-outline" id="bidWithdrawBtn" style="display:none; color:var(--brick); border-color:var(--brick);"><i class="fa-solid fa-ban"></i> Withdraw</button>
+    <button type="submit" form="bidForm" class="btn btn-primary bid-sheet__submit" id="bidSubmitBtn">
+      <i class="fa-solid fa-paper-plane"></i> Submit Offer
+    </button>
+  </div>
+</div>
+
+<!-- ===== Withdraw confirm ===== -->
 <div class="rfq-confirm-overlay" id="withdrawOverlay">
   <div class="rfq-confirm-box">
     <i class="fa-solid fa-triangle-exclamation"></i>
@@ -74,6 +175,36 @@
     <div class="row">
       <button class="btn btn-outline" id="withdrawDismiss">Cancel</button>
       <button class="btn btn-dark" id="withdrawConfirm" style="background:var(--brick);">Yes, withdraw</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== FULLSCREEN CHAT MODAL (message buyer) ===== -->
+<div class="rc-modal-overlay" id="rcModalOverlay">
+  <div class="rc-modal" id="rcModal">
+    <div class="rc-modal__head">
+      <div class="rc-head__id">
+        <div class="rc-head__avatar" id="rcAvatar">B</div>
+        <div class="rc-head__text">
+          <div class="rc-head__label" id="rcLabel">Buyer</div>
+          <div class="rc-head__sub" id="rcSub"><i class="fa-solid fa-lock"></i>Private conversation</div>
+        </div>
+      </div>
+      <button class="rc-modal__close" id="rcModalClose" type="button" aria-label="Close chat">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <div class="rc-thread" id="rcThread"></div>
+    <div id="rcNoticeSlot"></div>
+
+    <div class="rc-composer" id="rcComposer">
+      <label class="rc-composer__attach" title="Attach a photo">
+        <i class="fa-solid fa-paperclip"></i>
+        <input type="file" id="rcImageInput" accept="image/*">
+      </label>
+      <textarea class="rc-composer__field" id="rcField" rows="1" placeholder="Message the buyer..."></textarea>
+      <button class="rc-composer__send" id="rcSend" type="button"><i class="fa-solid fa-paper-plane"></i></button>
     </div>
   </div>
 </div>
