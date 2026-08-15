@@ -1,5 +1,6 @@
 import { apiGet, apiPost, apiPut, apiPatch, apiDelete } from './api.js';
 import { showToast } from './toast.js';
+import { wireRFQTab, loadRFQs } from './admin-rfq.js';
 
 // ===================================================================
 // STATE
@@ -106,6 +107,7 @@ async function init() {
   wireModalCloseButtons();
   wireStaticButtons();
   populateLegalTypeSelect();
+  wireRFQTab();                 // <-- ADD THIS LINE
   await checkAuth();
 }
 
@@ -217,6 +219,7 @@ function switchTab(tab) {
   if (tab === 'orders') loadOrdersTab();
   if (tab === 'users') loadUsers();
   if (tab === 'agents') loadAgents();
+  if (tab === 'rfq') loadRFQs();      // <-- ADD THIS LINE
 }
 
 // ===================================================================

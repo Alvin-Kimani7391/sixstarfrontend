@@ -1479,3 +1479,88 @@ table.dtable img.thumb{ width:38px; height:38px; border-radius:6px; object-fit:c
   .fs-mini-progress{ min-width:90px; }
   .fs-review-img{ width:60px; height:60px; }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ============================================================
+   APPEND TO css/styles.css — RFQ / Live Quotes moderation
+   Reuses existing tokens (--navy-deep, --marigold, --teal, --brick,
+   --paper-dim, --line, --font-mono, --shadow-card, .pill, .dtable,
+   .verif-section, .chip, .dash-card, .row-actions) — no new design
+   system introduced.
+   ============================================================ */
+
+/* ---- RFQ status pills (lowercase status keys) ---- */
+.pill-open, .pill-bidding{ background:#DEEFE9; color:var(--teal-deep); }
+.pill-seller_selected{ background:#E6DEF7; color:#4B2E83; }
+.pill-closed{ background:#E4D6BD; color:#5B564C; }
+.pill-expired{ background:#FDE7CF; color:#94530E; }
+.pill-cancelled{ background:#FBE4DD; color:var(--brick); }
+
+/* ---- small notification badge next to the "Flagged Users" subtab ---- */
+.rfq-badge-count{
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:18px; height:18px; padding:0 5px; margin-left:6px;
+  background:var(--brick); color:#fff; font-family:var(--font-mono);
+  font-size:.65rem; font-weight:700; border-radius:999px;
+}
+
+/* ---- chat-thread picker chips inside the RFQ detail modal ---- */
+#rfqModalThreadPicker .chip{ cursor:pointer; transition:background .15s ease, color .15s ease, border-color .15s ease; }
+#rfqModalThreadPicker .chip:hover{ border-color:var(--teal); }
+#rfqModalThreadPicker .chip.active{ background:var(--navy-deep); border-color:var(--navy-deep); color:var(--paper); }
+
+/* ---- moderation review thread view ---- */
+.rfq-admin-thread{
+  max-height:420px; overflow-y:auto;
+  display:flex; flex-direction:column; gap:10px;
+  background:var(--paper-dim);
+  border:1px solid var(--line);
+  border-radius:var(--radius-m);
+  padding:16px;
+}
+
+.rfq-admin-msg{
+  background:var(--white);
+  border:1px solid var(--line);
+  border-radius:var(--radius-s);
+  padding:10px 14px;
+}
+.rfq-admin-msg__head{
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  font-size:.78rem; font-weight:700; color:var(--navy-deep);
+  margin-bottom:6px;
+}
+.rfq-admin-msg__body{ font-size:.86rem; color:var(--ink); line-height:1.5; word-break:break-word; }
+.rfq-admin-msg__body a{ color:var(--teal-deep); font-weight:700; }
+.rfq-admin-msg__flags{
+  margin-top:6px; font-size:.72rem; color:var(--brick); font-weight:600;
+}
+
+/* masked message: something got filtered, shown but flagged */
+.rfq-admin-msg.flagged{ border-color:var(--marigold-deep); background:#FFFBF0; }
+.rfq-admin-msg.flagged .rfq-admin-msg__head{ color:var(--marigold-deep); }
+
+/* blocked attempt: message never reached the other party at all */
+.rfq-admin-msg.blocked{ border-color:var(--brick); background:#FFF3F0; }
+.rfq-admin-msg.blocked .rfq-admin-msg__head{ color:var(--brick); }
+
+@media (max-width:480px){
+  .rfq-admin-thread{ max-height:320px; padding:12px; }
+  .rfq-admin-msg{ padding:9px 11px; }
+  .rfq-admin-msg__head{ font-size:.72rem; }
+  .rfq-admin-msg__body{ font-size:.8rem; }
+}

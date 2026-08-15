@@ -146,6 +146,7 @@
       <button data-tab="orders"><i class="fa-solid fa-receipt"></i> Orders &amp; Payments</button>
       <button data-tab="users"><i class="fa-solid fa-users"></i> Users</button>
       <button data-tab="agents"><i class="fa-solid fa-user-tie"></i> Agents</button>
+      <button data-tab="rfq"><i class="fa-solid fa-comments"></i> Live Quotes</button>
     </nav>
     <div class="admin-sidebar__foot">
       Logged in as <strong id="adminNameLabel" style="color:#fff;">-</strong>
@@ -425,6 +426,74 @@
         </div>
       </div>
 
+
+
+ <!-- ============================================================
+     INSERTION POINT 2 — main tab panel
+     Paste this whole <div class="tab-panel" id="panel-rfq">...</div>
+     block right after the closing </div> of
+     <div class="tab-panel" id="panel-agents">...</div>
+     (i.e. as the last tab-panel inside .admin-body-inner).
+     ============================================================ -->
+<div class="tab-panel" id="panel-rfq">
+
+  <div class="tabbar order-subtab" id="rfqSubtabBar">
+    <button class="active" data-rfq-subtab="requests">All Requests</button>
+    <button data-rfq-subtab="flagged">Flagged Users <span class="rfq-badge-count" id="rfqFlaggedBadge" style="display:none;">0</span></button>
+  </div>
+
+  <!-- ===== ALL REQUESTS ===== -->
+  <div id="rfqPanelRequests" class="dash-card">
+    <div class="dash-card__head">
+      <h3>Requests for Quote</h3>
+      <div class="dash-toolbar">
+        <input type="text" id="rfqSearchInput" placeholder="Search by product or buyer...">
+        <select id="rfqStatusSelect">
+          <option value="">All statuses</option>
+          <option value="OPEN">Open</option>
+          <option value="BIDDING">Receiving Offers</option>
+          <option value="SELLER_SELECTED">Seller Selected</option>
+          <option value="CLOSED">Closed</option>
+          <option value="EXPIRED">Expired</option>
+          <option value="CANCELLED">Cancelled</option>
+        </select>
+        <label style="display:flex; align-items:center; gap:8px; font-size:.82rem; font-weight:600; color:var(--ink-soft);">
+          <input type="checkbox" id="rfqFlaggedOnlyCheck"> Flagged only
+        </label>
+      </div>
+    </div>
+    <p class="text-muted" style="padding:0 18px;">Every request buyers post, with real buyer contact visible only here (never shown to sellers). Suspend a request to instantly pull it from the public board, or remove it permanently. Open any row to review its bids and the full private chat between the buyer and each seller.</p>
+    <div class="table-scroll">
+      <table class="dtable">
+        <thead>
+          <tr><th>Product</th><th>Buyer</th><th>Status</th><th>Bids</th><th>Flags</th><th>Created</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="rfqRequestsBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== FLAGGED USERS ===== -->
+  <div id="rfqPanelFlagged" class="dash-card" style="display:none;">
+    <div class="dash-card__head">
+      <h3>Flagged Users</h3>
+    </div>
+    <p class="text-muted" style="padding:0 18px;">Users whose RFQ chat or bid messages repeatedly tripped the off-platform-contact filter (phone numbers, external links, WhatsApp mentions, etc). 5+ attempts auto-restricts messaging; 10+ also flags the account for review here. Lifting a restriction resets their warning count to zero.</p>
+    <div class="table-scroll">
+      <table class="dtable">
+        <thead>
+          <tr><th>Name</th><th>Email</th><th>Role</th><th>Warnings</th><th>Messaging</th><th>Flagged</th><th>Restricted Since</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="rfqFlaggedBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+
+
+
       <!-- ===== AGENTS ===== -->
       <div class="tab-panel" id="panel-agents">
         <div class="dash-card">
@@ -449,6 +518,86 @@
 </div>
 
 <!-- ===================== MODALS ===================== -->
+
+
+
+<!-- ============================================================
+     INSERTION POINT 3 — modals
+     Paste both of these anywhere inside the "MODALS" section of
+     admin.html, alongside your other <div class="modal-overlay">
+     blocks (e.g. right after #sellerOrdersModal).
+     ============================================================ -->
+
+<!-- RFQ detail / moderation modal -->
+<div class="modal-overlay" id="rfqDetailModal">
+  <div class="modal modal-lg">
+    <div class="modal-head">
+      <div>
+        <h3><span id="rfqModalProductName"></span></h3>
+        <div class="text-muted" id="rfqModalBuyerLine" style="font-size:.8rem; margin-top:2px;"></div>
+      </div>
+      <button class="modal-close" data-close-modal="rfqDetailModal">&times;</button>
+    </div>
+
+    <div class="verif-summary-grid">
+      <div><div class="text-muted">Status</div><span id="rfqModalStatusPill" class="pill"></span></div>
+      <div><div class="text-muted">Bids</div><div id="rfqModalBidCount"></div></div>
+      <div><div class="text-muted">Location</div><div id="rfqModalLocation"></div></div>
+      <div><div class="text-muted">Required by</div><div id="rfqModalRequiredDate"></div></div>
+      <div><div class="text-muted">Posted</div><div id="rfqModalCreatedAt"></div></div>
+      <div><div class="text-muted">Flags</div><div id="rfqModalFlags"></div></div>
+    </div>
+
+    <div id="rfqModalSuspendNote" class="alert alert-error" style="display:none; margin-bottom:16px;"></div>
+
+    <div class="verif-section">
+      <h4><i class="fa-solid fa-file-lines"></i> Request Details</h4>
+      <div class="verif-field-grid" id="rfqModalDetailGrid"></div>
+      <p class="text-muted" id="rfqModalDescription" style="margin-top:12px;"></p>
+    </div>
+
+    <!-- ===== Bids ===== -->
+    <div class="verif-section">
+      <h4><i class="fa-solid fa-hand-holding-dollar"></i> Bids <span class="text-muted" id="rfqModalBidsCountLabel"></span></h4>
+      <div class="table-scroll">
+        <table class="dtable">
+          <thead><tr><th>Seller</th><th>Price</th><th>Qty</th><th>Delivery Fee</th><th>Status</th><th>Message</th><th>Submitted</th></tr></thead>
+          <tbody id="rfqModalBidsBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== Chat moderation review ===== -->
+    <div class="verif-section">
+      <h4><i class="fa-solid fa-shield-halved"></i> Private Chat — Moderation Review</h4>
+      <p class="text-muted" style="margin-bottom:12px;">Every message across every buyer↔seller thread on this request, oldest first. Masked or blocked messages are highlighted — this is the real, unmasked view for investigating a report.</p>
+      <div id="rfqModalThreadPicker" class="chip-row" style="margin-bottom:12px;"></div>
+      <div id="rfqModalMessages" class="rfq-admin-thread"></div>
+    </div>
+
+    <div class="shop-modal-actions" id="rfqModalActions"></div>
+  </div>
+</div>
+
+<!-- RFQ suspend-reason modal -->
+<div class="modal-overlay" id="rfqSuspendModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Suspend Request</h3>
+      <button class="modal-close" data-close-modal="rfqSuspendModal">&times;</button>
+    </div>
+    <form id="rfqSuspendForm" class="form-grid">
+      <div class="form-field">
+        <label for="rfqSuspendReason">Reason (internal — not shown to buyer or sellers)</label>
+        <textarea id="rfqSuspendReason" required placeholder="e.g. Description contains prohibited content"></textarea>
+      </div>
+      <button type="submit" class="btn btn-dark btn-block">Suspend Request</button>
+    </form>
+  </div>
+</div>
+
+
+
 
 <!-- Approve product modal -->
 <div class="modal-overlay" id="approveModal">
@@ -1073,6 +1222,9 @@
     </form>
   </div>
 </div>
+
+
+
 
 <div id="toast"></div>
 
