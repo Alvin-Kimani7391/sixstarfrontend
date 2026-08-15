@@ -177,15 +177,15 @@
 .similar-products-rail{ margin-bottom:10px; }
 
 /* ============================================================
-   CHAT PANEL — real chat-app feel: header w/ avatar + status,
-   scrollable bubble stream w/ grouped timestamps, sticky input bar
-   with attach + send, moderation notice banner.
+   CHAT PANEL (legacy sidebar placeholder) — the interactive chat
+   itself now lives entirely in the FULLSCREEN CHAT MODAL below.
+   This panel only ever shows the static "select Message on an
+   offer" placeholder in the layout.
    ============================================================ */
 .chat-panel{
   background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-lg);
-  display:flex; flex-direction:column; height:600px; overflow:hidden; box-shadow:var(--shadow-soft);
+  display:flex; flex-direction:column; overflow:hidden; box-shadow:var(--shadow-soft);
 }
-@media(min-width:960px){ .chat-panel{ position:sticky; top:96px; } }
 
 .chat-panel__placeholder{
   flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -193,67 +193,6 @@
 }
 .chat-panel__placeholder i{ font-size:34px; }
 .chat-panel__placeholder p{ font-size:13px; max-width:220px; }
-
-.chat-header{ display:flex; align-items:center; gap:12px; padding:14px 16px; border-bottom:1px solid var(--line); background:var(--surface); flex-shrink:0; }
-.chat-header__info{ flex:1; min-width:0; }
-.chat-header__name{ font-weight:700; font-size:13.5px; color:var(--ink); display:flex; align-items:center; gap:6px; }
-.chat-header__name .verified{ color:var(--price); font-size:11px; }
-.chat-header__sub{ font-size:11px; color:var(--ink-faint); }
-.chat-header__close{ width:30px; height:30px; border-radius:50%; border:none; background:var(--bg-page); color:var(--ink-soft); cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-.chat-header__close:hover{ background:var(--line); }
-
-.chat-messages{ flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:4px; background:#FAFAFB; }
-.chat-day-divider{ text-align:center; font-size:10.5px; color:var(--ink-faint); font-weight:700; text-transform:uppercase; letter-spacing:.4px; margin:14px 0 8px; }
-
-.chat-row{ display:flex; gap:8px; max-width:82%; margin-bottom:2px; }
-.chat-row.mine{ align-self:flex-end; flex-direction:row-reverse; }
-.chat-row .rfq-avatar{ width:26px; height:26px; font-size:10px; margin-top:auto; flex-shrink:0; }
-.chat-row.mine .rfq-avatar{ display:none; }
-
-.chat-bubble{ padding:10px 13px; border-radius:16px; font-size:13px; line-height:1.5; position:relative; word-break:break-word; }
-.chat-row:not(.mine) .chat-bubble{ background:#fff; border:1px solid var(--line); color:var(--ink); border-bottom-left-radius:4px; }
-.chat-row.mine .chat-bubble{ background:linear-gradient(135deg,var(--brand),var(--brand-dark)); color:#fff; border-bottom-right-radius:4px; }
-.chat-bubble img{ max-width:220px; border-radius:10px; display:block; cursor:pointer; }
-.chat-bubble.masked{ font-style:italic; opacity:.85; }
-.chat-bubble.masked i{ margin-right:5px; }
-
-.chat-meta-row{ display:flex; gap:6px; align-items:center; font-size:9.5px; color:var(--ink-faint); margin:2px 2px 8px; }
-.chat-row.mine + .chat-meta-row, .chat-meta-row.mine{ justify-content:flex-end; }
-
-.chat-moderation-notice{
-  background:#FFF3EA; color:var(--brand-dark); font-size:11.5px; font-weight:600;
-  padding:8px 14px; display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--line); flex-shrink:0;
-}
-.chat-moderation-notice i{ font-size:13px; }
-
-.chat-restricted-banner{
-  background:#FBE4DD; color:var(--danger); font-size:12px; font-weight:600;
-  padding:10px 14px; text-align:center; flex-shrink:0;
-}
-
-.chat-input-bar{ display:flex; align-items:flex-end; gap:8px; padding:12px 14px; border-top:1px solid var(--line); background:var(--surface); flex-shrink:0; }
-.chat-attach-btn{
-  width:38px; height:38px; border-radius:50%; border:1.5px solid var(--line); background:var(--surface);
-  color:var(--ink-soft); cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; position:relative; transition:.18s ease;
-}
-.chat-attach-btn:hover{ border-color:var(--brand); color:var(--brand); }
-.chat-attach-btn input[type=file]{ position:absolute; inset:0; opacity:0; cursor:pointer; }
-.chat-input-bar textarea{
-  flex:1; resize:none; border:1.5px solid var(--line); border-radius:20px; padding:10px 16px;
-  font-family:var(--font-body); font-size:13.5px; max-height:90px; outline:none; transition:.18s ease;
-}
-.chat-input-bar textarea:focus{ border-color:var(--brand); box-shadow:0 0 0 4px rgba(255,90,31,.1); }
-.chat-send-btn{
-  width:38px; height:38px; border-radius:50%; border:none; cursor:pointer; flex-shrink:0;
-  background:linear-gradient(135deg,var(--brand),var(--brand-dark)); color:#fff; display:flex; align-items:center; justify-content:center; transition:.18s ease;
-}
-.chat-send-btn:hover{ transform:scale(1.06); }
-.chat-send-btn:disabled{ opacity:.4; cursor:not-allowed; transform:none; }
-
-.chat-image-preview-bar{ display:flex; align-items:center; gap:10px; padding:8px 14px; background:#FFF6EF; border-top:1px solid var(--line); flex-shrink:0; }
-.chat-image-preview-bar img{ width:44px; height:44px; object-fit:cover; border-radius:8px; }
-.chat-image-preview-bar span{ font-size:12px; color:var(--ink-soft); flex:1; }
-.chat-image-preview-bar button{ background:none; border:none; color:var(--danger); cursor:pointer; font-size:16px; }
 
 /* confirm overlay reused (accept offer, cancel request) */
 .rfq-confirm-overlay{ position:fixed; inset:0; background:rgba(21,22,26,.5); z-index:250; display:none; align-items:center; justify-content:center; padding:20px; }
@@ -468,10 +407,6 @@ html[data-theme="dark"] .rfq-sheet-backdrop{
   .rfq-sheet, .rfq-sheet-backdrop{ transition:none; }
 }
 
-
-
-
-
 /* ============================================================
    FULLSCREEN CHAT MODAL — replaces the old mobile-only overlay
    hack. Now used at every screen size: centered floating card on
@@ -505,7 +440,12 @@ html[data-theme="dark"] .rfq-sheet-backdrop{
 }
 
 body.rc-modal-lock{ overflow:hidden; }
+/* belt-and-suspenders: hide the sticky site header entirely while
+   the modal is open, so no ancestor z-index/stacking-context can
+   ever poke through the overlay. */
+body.rc-modal-lock .site-header{ visibility:hidden; }
 
+/* ---- modal header: seller identity + close ---- */
 .rc-modal__head{
   display:flex; align-items:center; gap:12px;
   padding:14px 12px 14px 16px;
@@ -513,6 +453,17 @@ body.rc-modal-lock{ overflow:hidden; }
   background:var(--surface); flex-shrink:0;
 }
 .rc-head__id{ display:flex; align-items:center; gap:11px; flex:1; min-width:0; }
+.rc-head__avatar{
+  width:38px; height:38px; border-radius:50%; flex-shrink:0;
+  background:linear-gradient(135deg,var(--brand),var(--brand-dark)); color:#fff;
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-display); font-weight:700; font-size:14px;
+}
+.rc-head__text{ min-width:0; flex:1; }
+.rc-head__label{ font-weight:700; font-size:13.5px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:flex; align-items:center; gap:6px; }
+.rc-head__label i{ color:var(--price); font-size:12px; }
+.rc-head__sub{ font-size:11px; color:var(--ink-faint); display:flex; align-items:center; gap:5px; }
+.rc-head__sub i{ font-size:10px; color:var(--brand); }
 .rc-modal__close{
   width:36px; height:36px; border-radius:50%; border:none;
   background:var(--bg-page); color:var(--ink-soft);
@@ -521,21 +472,71 @@ body.rc-modal-lock{ overflow:hidden; }
 }
 .rc-modal__close:hover{ background:var(--line); color:var(--ink); }
 
-/* the chat panel's own placeholder now stays a static, non-interactive
-   info card in the layout — no launcher button needed since each offer's
-   "Message" button opens the modal directly */
+/* ---- thread ---- */
+.rc-thread{ flex:1; overflow-y:auto; padding:14px 12px; display:flex; flex-direction:column; gap:2px; background:var(--bg-page); position:relative; }
+.rc-thread::-webkit-scrollbar{ width:6px; }
+.rc-thread::-webkit-scrollbar-thumb{ background:var(--line); border-radius:10px; }
+
+.rc-daydivider{ display:flex; justify-content:center; margin:12px 0; }
+.rc-daydivider span{ background:var(--surface); border:1px solid var(--line); color:var(--ink-faint); font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; padding:4px 12px; border-radius:999px; }
+
+.rc-system{ text-align:center; font-size:11.5px; color:var(--ink-faint); background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:7px 12px; margin:6px auto 12px; max-width:88%; }
+.rc-system i{ color:var(--brand); margin-right:5px; }
+
+.rc-row{ display:flex; margin:3px 0; }
+.rc-row.sent{ justify-content:flex-end; }
+.rc-row.received{ justify-content:flex-start; }
+
+.rc-bubble{ max-width:78%; padding:9px 12px; border-radius:14px; font-size:13.5px; line-height:1.45; position:relative; box-shadow:0 1px 1px rgba(15,16,20,.05); word-break:break-word; }
+.rc-row.sent .rc-bubble{ background:linear-gradient(135deg,var(--brand),var(--brand-dark)); color:#fff; border-bottom-right-radius:4px; }
+.rc-row.received .rc-bubble{ background:var(--surface); color:var(--ink); border:1px solid var(--line); border-bottom-left-radius:4px; }
+
+.rc-bubble__img{ display:block; max-width:220px; border-radius:10px; margin-bottom:4px; cursor:zoom-in; }
+.rc-bubble__foot{ display:flex; align-items:center; gap:5px; justify-content:flex-end; margin-top:3px; font-size:10.5px; opacity:.75; }
+.rc-row.sent .rc-bubble__foot{ color:rgba(255,255,255,.8); }
+.rc-row.received .rc-bubble__foot{ color:var(--ink-faint); }
+.rc-bubble__foot i.read{ color:var(--price); }
+
+.rc-mod-flag{ display:inline-flex; align-items:center; gap:4px; font-size:10.5px; font-weight:700; margin-top:5px; padding:2px 7px; border-radius:999px; }
+.rc-row.sent .rc-mod-flag{ background:rgba(255,255,255,.2); color:#fff; }
+.rc-row.received .rc-mod-flag{ background:#FFF3EA; color:var(--brand-dark); }
+
+.rc-empty{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; color:var(--ink-faint); text-align:center; padding:20px; }
+.rc-empty i{ font-size:1.6rem; color:var(--line); }
+.rc-empty span{ font-size:13px; max-width:24ch; }
+
+.rc-jump{ position:absolute; bottom:12px; left:50%; transform:translateX(-50%); display:none; align-items:center; gap:6px; background:var(--ink); color:#fff; border:none; padding:6px 14px; border-radius:999px; font-size:11.5px; font-weight:700; box-shadow:0 8px 18px rgba(15,16,20,.28); z-index:5; cursor:pointer; }
+.rc-jump.show{ display:flex; }
+
+/* ---- security / moderation notices ---- */
+.rc-notice{ padding:9px 14px; font-size:12px; font-weight:600; display:flex; align-items:center; gap:8px; flex-shrink:0; }
+.rc-notice.warn{ background:#FFF3EA; color:var(--brand-dark); border-top:1px solid #F0DCB8; }
+.rc-notice.blocked{ background:#FBE4DD; color:var(--danger); border-top:1px solid #F0BBA9; }
+.rc-notice i{ font-size:13px; }
+
+/* ---- composer ---- */
+.rc-composer{ display:flex; align-items:flex-end; gap:8px; padding:10px 12px; padding-bottom:calc(10px + env(safe-area-inset-bottom)); border-top:1px solid var(--line); background:var(--surface); flex-shrink:0; }
+.rc-composer__attach{ width:36px; height:36px; border-radius:50%; border:1px solid var(--line); background:var(--bg-page); color:var(--ink-soft); display:flex; align-items:center; justify-content:center; flex-shrink:0; cursor:pointer; position:relative; }
+.rc-composer__attach:hover{ border-color:var(--brand); color:var(--brand); }
+.rc-composer__attach input{ position:absolute; inset:0; opacity:0; cursor:pointer; }
+.rc-composer__field{ flex:1; min-width:0; resize:none; max-height:96px; padding:9px 14px; border:1px solid var(--line); border-radius:20px; font-size:13.5px; font-family:var(--font-body); background:var(--bg-page); outline:none; transition:.18s ease; }
+.rc-composer__field:focus{ border-color:var(--brand); background:var(--surface); box-shadow:0 0 0 4px rgba(255,90,31,.1); }
+.rc-composer__send{ width:38px; height:38px; border-radius:50%; border:none; background:linear-gradient(135deg,var(--brand),var(--brand-dark)); color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; cursor:pointer; box-shadow:0 5px 12px -4px rgba(255,90,31,.5); transition:.18s ease; }
+.rc-composer__send:hover{ transform:scale(1.06); }
+.rc-composer__send:disabled{ opacity:.5; cursor:not-allowed; box-shadow:none; transform:none; }
+.rc-composer.is-disabled .rc-composer__field, .rc-composer.is-disabled .rc-composer__attach{ opacity:.5; pointer-events:none; }
+
+.rc-restricted-banner{ display:flex; align-items:center; gap:10px; padding:12px 14px; background:#FBE4DD; color:var(--danger); font-size:12.5px; font-weight:600; flex-shrink:0; border-top:1px solid #F0BBA9; }
+.rc-restricted-banner i{ font-size:1rem; }
+
+/* ---- loading skeleton for the thread ---- */
+.rc-skel-row{ display:flex; gap:9px; margin-bottom:14px; }
+.rc-skel-row.sent{ justify-content:flex-end; }
+.rc-skel-bubble{ height:38px; width:60%; border-radius:14px; background:linear-gradient(100deg,var(--line) 30%,var(--bg-page) 50%,var(--line) 70%); background-size:200% 100%; animation:rc-shimmer 1.3s infinite; }
+@keyframes rc-shimmer{ from{ background-position:200% 0; } to{ background-position:-200% 0; } }
+
+/* the chat panel's own placeholder stays a static, non-interactive
+   info card in the layout — no launcher button needed since each
+   offer's "Message" button opens the fullscreen modal directly */
 .chat-panel{ height:auto; min-height:220px; }
 @media(min-width:960px){ .chat-panel{ position:sticky; top:96px; } }
-
-
-
-
-
-
-
-
-
-
-
-
-
