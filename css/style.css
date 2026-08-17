@@ -2309,3 +2309,188 @@ body.drawer-lock {
   .skel-card__body{ padding:10px 11px 13px; gap:7px; }
   .skel-line{ height:10px; }
 }
+
+
+
+
+/* ============================================================
+   DRAWER — Chat badge + "Request a Quote" signature row
+   Dark, muted palette pulled from theme.css (--ink/--ink-soft/
+   --surface) — brand orange & sun-yellow are now accent-only
+   highlights, not full-bleed gradients.
+   ============================================================ */
+
+/* ---- Chat link's open-quotes count badge ---- */
+.drawer-links__chat{ position:relative; }
+.drawer-badge{
+  margin-left:auto;
+  min-width:20px;
+  height:20px;
+  padding:0 6px;
+  border-radius:999px;
+  background:#2A2B32;
+  border:1px solid rgba(255,255,255,.1);
+  color:var(--sun);
+  font-family:var(--font-mono);
+  font-size:11px;
+  font-weight:800;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:inset 0 0 0 1px rgba(255,201,60,.15);
+  flex-shrink:0;
+}
+
+/* ---- "Request a Quote" — set apart with a dark card instead of a
+   bright gradient, brand color kept to a thin left rule + icon ---- */
+.drawer-links__rfq{
+  position:relative;
+  margin:6px 14px;
+  border-radius:14px;
+  background:#1D1E24;
+  border:1px solid rgba(255,255,255,.07);
+  border-left:3px solid var(--brand) !important;
+  padding:14px 16px !important;
+  overflow:hidden;
+}
+.drawer-links__rfq::before{
+  content:"";
+  position:absolute; inset:0;
+  background:repeating-linear-gradient(115deg, rgba(255,255,255,.03) 0 2px, transparent 2px 22px);
+  pointer-events:none;
+}
+.drawer-links__rfq i{ color:var(--sun); font-size:17px; position:relative; }
+.drawer-links__rfq:hover{
+  background:#24252C;
+  border-left-color:var(--sun) !important;
+  padding-left:16px !important;
+}
+.drawer-pill-new{
+  margin-left:auto;
+  background:rgba(255,201,60,.14);
+  color:var(--sun);
+  border:1px solid rgba(255,201,60,.35);
+  font-size:9.5px;
+  font-weight:900;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  padding:3px 8px;
+  border-radius:999px;
+  position:relative;
+}
+
+/* ============================================================
+   RFQ INTRO MODAL — educates buyers about Request-a-Quote
+   Dark ink hero instead of a bright orange/purple splash;
+   accent colors used sparingly for icons and CTAs only.
+   ============================================================ */
+.rfq-intro-overlay{
+  position:fixed; inset:0; z-index:999998;
+  background:rgba(10,10,12,.7);
+  backdrop-filter:blur(4px);
+  display:flex; align-items:center; justify-content:center;
+  padding:20px;
+  opacity:0; visibility:hidden;
+  transition:opacity .25s ease, visibility .25s ease;
+}
+.rfq-intro-overlay.active{ opacity:1; visibility:visible; }
+
+.rfq-intro-modal{
+  position:relative;
+  width:100%; max-width:440px;
+  background:var(--surface);
+  border-radius:24px;
+  overflow:hidden;
+  box-shadow:0 30px 70px rgba(0,0,0,.45);
+  transform:translateY(16px) scale(.97);
+  transition:transform .3s cubic-bezier(.22,1,.36,1);
+  max-height:92vh;
+  overflow-y:auto;
+}
+.rfq-intro-overlay.active .rfq-intro-modal{ transform:translateY(0) scale(1); }
+
+.rfq-intro-modal__close{
+  position:absolute; top:14px; right:14px; z-index:2;
+  width:32px; height:32px; border-radius:50%;
+  background:rgba(255,255,255,.12); color:#fff; border:none;
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+  backdrop-filter:blur(3px);
+}
+.rfq-intro-modal__close:hover{ background:rgba(255,255,255,.22); }
+
+.rfq-intro-modal__hero{
+  padding:34px 26px 26px;
+  text-align:center;
+  background:linear-gradient(165deg,var(--ink) 0%,#23242B 60%,#1A1B20 100%);
+  color:#fff;
+  position:relative;
+}
+.rfq-intro-modal__hero::after{
+  content:"";
+  position:absolute; inset:0;
+  background:repeating-linear-gradient(120deg, rgba(255,255,255,.03) 0 2px, transparent 2px 26px);
+  pointer-events:none;
+}
+.rfq-intro-modal__hero-ico{
+  width:60px; height:60px; margin:0 auto 14px;
+  border-radius:18px;
+  background:rgba(255,90,31,.14);
+  border:1px solid rgba(255,90,31,.3);
+  display:flex; align-items:center; justify-content:center;
+  font-size:24px; color:var(--brand);
+  position:relative;
+}
+.rfq-intro-modal__eyebrow{
+  display:inline-block; position:relative;
+  font-size:10.5px; font-weight:800; letter-spacing:.08em; text-transform:uppercase;
+  background:rgba(255,201,60,.12); color:var(--sun);
+  border:1px solid rgba(255,201,60,.25);
+  padding:4px 12px; border-radius:999px;
+  margin-bottom:10px;
+}
+.rfq-intro-modal__hero h2{
+  font-family:var(--font-display); font-size:21px; font-weight:600; line-height:1.25;
+  margin-bottom:8px; color:#fff; position:relative;
+}
+.rfq-intro-modal__hero p{
+  font-size:13px; color:#B9BAC2; line-height:1.55; max-width:32ch; margin:0 auto; position:relative;
+}
+
+.rfq-intro-modal__features{ padding:22px 24px 4px; display:flex; flex-direction:column; gap:16px; }
+.rfq-intro-feature{ display:flex; gap:13px; align-items:flex-start; }
+.rfq-intro-feature__ico{
+  flex-shrink:0; width:38px; height:38px; border-radius:12px;
+  background:var(--bg-page);
+  border:1px solid var(--line);
+  color:var(--brand-dark);
+  display:flex; align-items:center; justify-content:center; font-size:15px;
+}
+.rfq-intro-feature strong{ display:block; font-size:13.5px; color:var(--ink); margin-bottom:2px; }
+.rfq-intro-feature span{ font-size:12.5px; color:var(--ink-soft); line-height:1.5; }
+
+.rfq-intro-modal__dontshow{
+  display:flex; align-items:center; gap:8px;
+  margin:18px 24px 0; font-size:12px; color:var(--ink-faint); font-weight:600; cursor:pointer;
+}
+.rfq-intro-modal__dontshow input{ accent-color:var(--brand); width:15px; height:15px; cursor:pointer; }
+
+.rfq-intro-modal__actions{ display:flex; gap:10px; padding:20px 24px 26px; }
+.rfq-intro-modal__actions .btn{ flex:1; }
+.rfq-intro-modal__actions .btn-primary{
+  background:var(--ink);
+  box-shadow:none;
+}
+.rfq-intro-modal__actions .btn-primary:hover{
+  background:#000;
+  transform:translateY(-2px);
+  box-shadow:0 10px 22px rgba(0,0,0,.25);
+}
+
+@media(max-width:480px){
+  .rfq-intro-modal{ border-radius:20px; }
+  .rfq-intro-modal__hero{ padding:28px 20px 22px; }
+  .rfq-intro-modal__hero h2{ font-size:18.5px; }
+  .rfq-intro-modal__features{ padding:18px 18px 2px; gap:14px; }
+  .rfq-intro-modal__actions{ flex-direction:column; padding:16px 18px 22px; }
+  .rfq-intro-modal__dontshow{ margin:14px 18px 0; }
+}
