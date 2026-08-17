@@ -613,11 +613,51 @@
 
 @media (max-width: 860px) {
   .earn-stat-cards { grid-template-columns: repeat(2, 1fr); }
-  .earn-products-grid { grid-template-columns: 1fr; }
+  .earn-products-grid { grid-template-columns: 1fr; gap: 22px; }
 }
+
+@media (max-width: 640px) {
+  .earn-hero { padding: 20px; border-radius: 16px; }
+  .earn-hero__value { font-size: 26px; }
+  .earn-pending-banner { font-size: 12px; padding: 11px 13px; }
+}
+
 @media (max-width: 480px) {
-  .earn-hero__value { font-size: 27px; }
-  .earn-stat-card__value { font-size: 16.5px; }
+  .earn-hero { padding: 16px; border-radius: 14px; margin-bottom: 16px; }
+  .earn-hero__label { font-size: 10.5px; gap: 6px; }
+  .earn-hero__value { font-size: 22px; }
+  .earn-hero__sub { font-size: 11px; }
+
+  .earn-stat-cards { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 16px; }
+  .earn-stat-card { padding: 11px 12px; border-radius: 12px; }
+  .earn-stat-card__icon { width: 28px; height: 28px; font-size: 11px; margin-bottom: 6px; }
+  .earn-stat-card__label { font-size: 9.5px; letter-spacing: .02em; }
+  .earn-stat-card__value { font-size: 14.5px; }
+  .earn-stat-card__note { font-size: 9px; }
+
+  .earn-pending-banner { padding: 10px 11px; font-size: 11px; gap: 8px; margin-bottom: 18px; }
+  .earn-pending-banner__sub { font-size: 10.5px; }
+
+  .earn-trend { height: 92px; padding: 8px; gap: 4px; }
+  .earn-trend .analytics-trend-bar-wrap { gap: 4px; }
+
+  .earn-products-grid { gap: 18px; margin-top: 20px; }
+  .earn-products-col__title { font-size: 12px; margin-bottom: 9px; }
+  .earn-product-row-empty { padding: 18px 8px; font-size: 11.5px; }
+
+  /* shared with the Analytics page's own product/trend rows */
+  .analytics-stat-cards { gap: 8px; margin-bottom: 16px; }
+  .analytics-product-row { padding: 10px; gap: 10px; }
+  .analytics-product-row img { width: 38px; height: 38px; }
+  .analytics-product-name { font-size: 12px; }
+  .analytics-product-views { font-size: 13px; min-width: 54px; }
+  .analytics-trend-label { font-size: 8.5px; }
+}
+
+@media (max-width: 360px) {
+  .earn-stat-cards { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .earn-hero__value { font-size: 19px; }
+  .earn-stat-card { padding: 9px 10px; }
 }
 
 /* ============================================================
@@ -683,15 +723,86 @@
 }
 .commission-card__skel-line:last-child { width: 60%; margin-bottom: 0; }
 @keyframes cmPulse { 0%,100% { opacity: .45; } 50% { opacity: 1; } }
+
+/* ============================================================
+   ---- Mobile header: hamburger menu (phone sizes) ----
+   Groups every header icon except Orders + Logout behind a
+   3-line / X trigger, styled with the storefront's navy/marigold
+   palette. Icon-bar animation lives in css/style.css.
+   ============================================================ */
+
+.header-feature-icons{ display:flex; align-items:center; gap:10px; }
+.hamburger-btn{ display:none; }
+
+.dash-mobile-menu-backdrop{
+  position:fixed; inset:0; z-index:1050; background:rgba(14,35,56,.45);
+  opacity:0; pointer-events:none; transition:opacity .2s ease;
+}
+.dash-mobile-menu-backdrop.active{ opacity:1; pointer-events:auto; }
+
+.dash-mobile-menu{
+  position:fixed; top:0; right:0; height:100%; width:80%; max-width:300px; z-index:1060;
+  background:var(--white,#fffdf8); box-shadow:-16px 0 40px rgba(14,35,56,.28);
+  transform:translateX(105%); transition:transform .28s ease;
+  display:flex; flex-direction:column; padding:10px 0 22px; overflow-y:auto;
+}
+.dash-mobile-menu.active{ transform:translateX(0); }
+
+.dash-mobile-menu__head{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 18px; margin-bottom:6px; border-bottom:1px solid var(--line,#e4d6bd);
+  font-family:var(--font-display,serif); font-weight:700; font-size:1.02rem; color:var(--navy-deep,#16324f);
+}
+.dash-mobile-menu__close{
+  width:32px; height:32px; border-radius:50%; border:none; background:var(--paper-dim,#f1e4ce);
+  color:var(--navy-deep,#16324f); display:flex; align-items:center; justify-content:center; font-size:.85rem;
+}
+
+.dash-mobile-menu__item{
+  display:flex; align-items:center; gap:13px; width:100%; padding:13px 18px; border:none; background:none;
+  text-align:left; font-size:.9rem; font-weight:600; color:var(--ink,#1b1f23);
+  border-bottom:1px solid var(--line,#e4d6bd);
+}
+.dash-mobile-menu__item:active{ background:var(--paper-dim,#f1e4ce); }
+.dash-mobile-menu__ico{
+  width:36px; height:36px; border-radius:10px; flex-shrink:0;
+  background:rgba(242,169,59,.14); color:var(--marigold-deep,#d98c1f);
+  display:flex; align-items:center; justify-content:center; font-size:.95rem;
+}
+.dash-mobile-menu__label{ flex:1; }
+
+/* RFQ "active bids" badges — styled explicitly so they render
+   consistently regardless of any base .orders-badge rules */
+#rfqToggleBtn{ position:relative; }
+#rfqBadge{
+  position:absolute; top:-6px; right:-6px; z-index:2;
+  background:var(--brick,#b8442e); color:#fff; font-family:var(--font-mono,monospace);
+  font-size:.65rem; min-width:18px; height:18px; padding:0 4px; border-radius:999px;
+  align-items:center; justify-content:center; line-height:1; display:none;
+}
+#rfqBadgeMobile{
+  position:static; margin-left:auto; flex-shrink:0;
+  background:var(--brick,#b8442e); color:#fff; font-family:var(--font-mono,monospace);
+  font-size:.68rem; min-width:20px; height:20px; padding:0 6px; border-radius:999px;
+  align-items:center; justify-content:center; line-height:1; display:none;
+}
+
+@media (max-width: 680px){
+  .header-feature-icons{ display:none; }
+  .hamburger-btn{ display:flex; }
+}
 </style>
 </head>
 <body>
 
 <div id="pageLoader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
 
-<!-- ============ HEADER ============ -->
 <header class="site-header">
   <div class="header-row">
+    <button class="iconbtn hamburger-btn" id="dashMenuBtn" title="Menu" aria-label="Open menu" aria-expanded="false">
+      <span class="hamburger-icon"><span></span><span></span><span></span></span>
+    </button>
+
     <a href="seller-rfq.html" class="brand">
       <div class="brand-mark"><img src="/images/logo.jpg" alt="Six Star Suppliers logo"></div>
       <div>
@@ -699,28 +810,71 @@
         <div class="brand-tag">Seller Dashboard</div>
       </div>
     </a>
-    <button class="iconbtn" id="myShopToggleBtn" title="My Shop">
-      <i class="fa-solid fa-shop"></i>
-    </button>
-    <button class="iconbtn" id="earningsToggleBtn" title="Earnings">
-      <i class="fa-solid fa-sack-dollar"></i>
-    </button>
-    <button class="iconbtn" id="analyticsToggleBtn" title="Analytics">
-      <i class="fa-solid fa-chart-line"></i>
-    </button>
-    <button class="iconbtn" id="flashSaleToggleBtn" title="Flash Sale">
-      <i class="fa-solid fa-bolt"></i>
-    </button>
+
+    <div class="header-feature-icons">
+      <button class="iconbtn" id="myShopToggleBtn" title="My Shop">
+        <i class="fa-solid fa-shop"></i>
+      </button>
+      <button class="iconbtn" id="earningsToggleBtn" title="Earnings">
+        <i class="fa-solid fa-sack-dollar"></i>
+      </button>
+      <button class="iconbtn" id="analyticsToggleBtn" title="Analytics">
+        <i class="fa-solid fa-chart-line"></i>
+      </button>
+      <button class="iconbtn" id="rfqToggleBtn" title="Buyer Requests (RFQs)">
+        <i class="fa-solid fa-file-lines"></i>
+        <span class="orders-badge" id="rfqBadge" style="display:none;">0</span>
+      </button>
+      <button class="iconbtn" id="flashSaleToggleBtn" title="Flash Sale">
+        <i class="fa-solid fa-bolt"></i>
+      </button>
+      <a href="seller-profile.html" class="iconbtn" title="My Profile">
+        <i class="fa-solid fa-user-gear"></i>
+      </a>
+    </div>
+
     <button class="iconbtn orders-bell" id="ordersToggleBtn" title="Orders" aria-expanded="false">
       <i class="fa-solid fa-bell"></i>
       <span class="orders-badge" id="ordersBadge">0</span>
     </button>
-    <a href="seller-profile.html" class="iconbtn" title="My Profile">
-      <i class="fa-solid fa-user-gear"></i>
-    </a>
     <button class="iconbtn" id="logoutBtn" title="Log out"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
   </div>
 </header>
+
+<div class="dash-mobile-menu-backdrop" id="dashMobileMenuBackdrop"></div>
+<nav class="dash-mobile-menu" id="dashMobileMenu" aria-hidden="true">
+  <div class="dash-mobile-menu__head">
+    <span>Menu</span>
+    <button type="button" class="dash-mobile-menu__close" id="dashMobileMenuClose" aria-label="Close menu">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  </div>
+  <button type="button" class="dash-mobile-menu__item" data-mobile-action="shop">
+    <span class="dash-mobile-menu__ico"><i class="fa-solid fa-shop"></i></span>
+    <span class="dash-mobile-menu__label">My Shop</span>
+  </button>
+  <button type="button" class="dash-mobile-menu__item" data-mobile-action="earnings">
+    <span class="dash-mobile-menu__ico"><i class="fa-solid fa-sack-dollar"></i></span>
+    <span class="dash-mobile-menu__label">Earnings</span>
+  </button>
+  <button type="button" class="dash-mobile-menu__item" data-mobile-action="analytics">
+    <span class="dash-mobile-menu__ico"><i class="fa-solid fa-chart-line"></i></span>
+    <span class="dash-mobile-menu__label">Analytics</span>
+  </button>
+  <button type="button" class="dash-mobile-menu__item" data-mobile-action="rfq">
+    <span class="dash-mobile-menu__ico"><i class="fa-solid fa-file-lines"></i></span>
+    <span class="dash-mobile-menu__label">Buyer Requests</span>
+    <span class="orders-badge" id="rfqBadgeMobile" style="display:none;">0</span>
+  </button>
+  <button type="button" class="dash-mobile-menu__item" data-mobile-action="flashsale">
+    <span class="dash-mobile-menu__ico"><i class="fa-solid fa-bolt"></i></span>
+    <span class="dash-mobile-menu__label">Flash Sale</span>
+  </button>
+  <button type="button" class="dash-mobile-menu__item" data-mobile-action="profile">
+    <span class="dash-mobile-menu__ico"><i class="fa-solid fa-user-gear"></i></span>
+    <span class="dash-mobile-menu__label">My Profile</span>
+  </button>
+</nav>
 
 <!-- ============ HERO + STATS ============ -->
 <section class="dash-hero">

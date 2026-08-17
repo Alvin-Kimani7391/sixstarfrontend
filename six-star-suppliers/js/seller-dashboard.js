@@ -285,6 +285,14 @@ try {
 
     logoutBtn: document.getElementById("logoutBtn"),
 
+        dashMenuBtn: document.getElementById("dashMenuBtn"),
+    dashMobileMenu: document.getElementById("dashMobileMenu"),
+    dashMobileMenuBackdrop: document.getElementById("dashMobileMenuBackdrop"),
+    dashMobileMenuClose: document.getElementById("dashMobileMenuClose"),
+    rfqToggleBtn: document.getElementById("rfqToggleBtn"),
+    rfqBadge: document.getElementById("rfqBadge"),
+    rfqBadgeMobile: document.getElementById("rfqBadgeMobile"),
+
     countDraft: document.getElementById("countDraft"),
     countPending: document.getElementById("countPending"),
     countActive: document.getElementById("countActive"),
@@ -534,15 +542,92 @@ try {
     };
   }
 
+  // ---------- mobile hamburger menu ----------
+  function openDashMobileMenu() {
+    els.dashMobileMenu?.classList.add("active");
+    els.dashMobileMenuBackdrop?.classList.add("active");
+    els.dashMenuBtn?.classList.add("active");
+    els.dashMenuBtn?.setAttribute("aria-expanded", "true");
+    els.dashMobileMenu?.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+  }
+  function closeDashMobileMenu() {
+    els.dashMobileMenu?.classList.remove("active");
+    els.dashMobileMenuBackdrop?.classList.remove("active");
+    els.dashMenuBtn?.classList.remove("active");
+    els.dashMenuBtn?.setAttribute("aria-expanded", "false");
+    els.dashMobileMenu?.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+  }
+  if (els.dashMenuBtn) {
+    els.dashMenuBtn.addEventListener("click", () => {
+      if (els.dashMobileMenu?.classList.contains("active")) closeDashMobileMenu();
+      else openDashMobileMenu();
+    });
+  }
+  if (els.dashMobileMenuBackdrop) els.dashMobileMenuBackdrop.addEventListener("click", closeDashMobileMenu);
+  if (els.dashMobileMenuClose) els.dashMobileMenuClose.addEventListener("click", closeDashMobileMenu);
+  if (els.dashMobileMenu) {
+    els.dashMobileMenu.addEventListener("click", (e) => {
+      const item = e.target.closest("[data-mobile-action]");
+      if (!item) return;
+      const action = item.dataset.mobileAction;
+      closeDashMobileMenu();
+      if (action === "shop") openMyShop();
+      else if (action === "earnings") openEarnings();
+      else if (action === "analytics") openAnalytics();
+      else if (action === "rfq") location.href = "seller-rfq.html";
+      else if (action === "flashsale") openFlashSaleOverlay();
+      else if (action === "profile") location.href = "seller-profile.html";
+    });
+  }
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && els.dashMobileMenu?.classList.contains("active")) closeDashMobileMenu();
+  });
+
+  // ---------- RFQ (buyer requests) button + active-bid badge ----------
+  if (els.rfqToggleBtn) {
+    els.rfqToggleBtn.addEventListener("click", () => {
+      location.href = "seller-rfq.html";
+    });
+  }
+
+  function updateRfqBadge(count) {
+    [els.rfqBadge, els.rfqBadgeMobile].forEach((el) => {
+      if (!el) return;
+      if (count > 0) {
+        el.textContent = count > 99 ? "99+" : String(count);
+        el.style.display = "flex";
+      } else {
+        el.style.display = "none";
+      }
+    });
+  }
+
+  async function loadActiveBidCount() {
+    try {
+      const res = await SS_API.getMyBids();
+      const bids = res.bids || [];
+      // "active" = still in play: awaiting a decision, or currently accepted
+      const activeCount = bids.filter((b) => b.status === "pending" || b.status === "accepted").length;
+      updateRfqBadge(activeCount);
+    } catch (err) {
+      console.error("ACTIVE BID COUNT LOAD FAILED:", err);
+    }
+  }
+
+
   console.log("Starting data load");
 
-  loadCategoryTree();
+    loadCategoryTree();
   loadMyProducts();
   loadSellerOrders();
+  loadActiveBidCount();
 
   setInterval(() => {
     loadSellerOrders();
     loadMyProducts({ silent: true });
+    loadActiveBidCount();
     if (els.flashSaleOverlay?.classList.contains("active")) loadMyFlashSales();
     if (els.earningsOverlay?.classList.contains("active")) loadEarnings();
   }, POLL_INTERVAL_MS);

@@ -326,17 +326,11 @@ function ssRenderHeader(active = "") {
   drawer.innerHTML = `
     <button class="drawer-close" id="drawerCloseBtn" aria-label="Close menu">&times;</button>
     ${userCardHtml}
-    <div class="drawer-links">
+        <div class="drawer-links">
       ${link("/index.html", "Home", "fa-house")}
       ${link("/product.html", "All Products", "fa-bag-shopping")}
 
-      <!-- ---- Expandable "Shop by Category" accordion ----
-           Collapsed by default. First tap fetches the real category
-           tree (SS_API.getCategoryTree()) and lazily builds the
-           accordion — see ssRenderDrawerCategories() below. Each
-           leaf/category name is a direct link into product.html
-           pre-filtered by that category id; the chevrons only expand
-           the next level, they never navigate. -->
+      <!-- ---- Expandable "Shop by Category" accordion ---- -->
       <button type="button" class="drawer-cat-toggle" id="drawerCatToggle">
         <span><i class="fa-solid fa-layer-group"></i> Shop by Category</span>
         <i class="fa-solid fa-chevron-down drawer-cat-toggle__chevron"></i>
@@ -347,7 +341,17 @@ function ssRenderHeader(active = "") {
 
       ${link("/shop.html", "Shops", "fa-solid fa-shop")}
       ${link("/wholesale.html", "Wholesale", "fa-boxes-stacked")}
-      ${link("/chat.html", "Chat", "fa-comments")}
+
+      <a href="/chat.html" class="${active === "/chat.html" ? "active" : ""} drawer-links__chat">
+        <i class="fa-solid fa-comments"></i> Chat
+        <span class="drawer-badge" id="drawerChatBadge" style="display:none;">0</span>
+      </a>
+
+      <a href="/rfq.html" id="drawerRfqLink" class="drawer-links__rfq">
+        <i class="fa-solid fa-file-signature"></i> Request a Quote
+        <span class="drawer-pill-new">New</span>
+      </a>
+
       ${link("/about.html", "About", "fa-circle-info")}
       ${authLinkHtml}
       ${link("/register.html", "Sell With Us", "fa-store")}
@@ -386,6 +390,24 @@ function ssRenderHeader(active = "") {
       e.preventDefault();
       close();
       ssLogout();
+    });
+  }
+
+  /* ---- "Request a Quote" drawer row: shows an educational modal
+     the first time, then goes straight to rfq.html for anyone who
+     ticked "Don't show this again". ---- */
+  const drawerRfqLink = document.getElementById("drawerRfqLink");
+  if (drawerRfqLink) {
+    drawerRfqLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      close();
+      let skip = false;
+      try { skip = localStorage.getItem("ss-rfq-intro-dismissed") === "1"; } catch (_) {}
+      if (skip) {
+        location.href = "/rfq.html";
+      } else {
+        setTimeout(() => ssShowRfqIntroModal(), 260); // let the drawer finish closing first
+      }
     });
   }
 
@@ -1348,9 +1370,111 @@ async function ssRenderSubcategoryGrid(targetId, count = 6) {
 
 
 
+
+/* ============================================================
+   RFQ INTRO MODAL — a one-time (dismissible) explainer shown the
+   first time a buyer taps "Request a Quote" in the drawer. Built
+   lazily and cached on document.body so repeat opens are instant.
+   ============================================================ */
+function ssEnsureRfqIntroModal() {
+  let overlay = document.getElementById("rfqIntroOverlay");
+  if (overlay) return overlay;
+
+  overlay = document.createElement("div");
+  overlay.className = "rfq-intro-overlay";
+  overlay.id = "rfqIntroOverlay";
+  overlay.innerHTML = `
+    <div class="rfq-intro-modal" role="dialog" aria-modal="true" aria-labelledby="rfqIntroTitle">
+      <button type="button" class="rfq-intro-modal__close" id="rfqIntroClose" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+
+      <div class="rfq-intro-modal__hero">
+        <div class="rfq-intro-modal__hero-ico"><i class="fa-solid fa-file-signature"></i></div>
+        <span class="rfq-intro-modal__eyebrow">New on Six Star Suppliers</span>
+        <h2 id="rfqIntroTitle">Can't find it? Just ask for it.</h2>
+        <p>Post exactly what you need and your budget — verified sellers come to you with real offers.</p>
+      </div>
+
+      <div class="rfq-intro-modal__features">
+        <div class="rfq-intro-feature">
+          <div class="rfq-intro-feature__ico"><i class="fa-solid fa-bolt"></i></div>
+          <div><strong>Get offers fast</strong><span>Verified sellers start sending quotes within minutes of you posting a request.</span></div>
+        </div>
+        <div class="rfq-intro-feature">
+          <div class="rfq-intro-feature__ico"><i class="fa-solid fa-comments"></i></div>
+          <div><strong>Chat in real time</strong><span>Message sellers directly to compare offers, ask questions, and negotiate before you commit.</span></div>
+        </div>
+        <div class="rfq-intro-feature">
+          <div class="rfq-intro-feature__ico"><i class="fa-solid fa-shield-halved"></i></div>
+          <div><strong>Only verified sellers</strong><span>Every offer comes from a vetted seller — your contact details stay private throughout.</span></div>
+        </div>
+      </div>
+
+      <label class="rfq-intro-modal__dontshow">
+        <input type="checkbox" id="rfqIntroDontShow">
+        <span>Don't show this again</span>
+      </label>
+
+      <div class="rfq-intro-modal__actions">
+        <button type="button" class="btn btn-outline" id="rfqIntroLater">Maybe later</button>
+        <a href="/rfq.html" class="btn btn-primary" id="rfqIntroCta"><i class="fa-solid fa-paper-plane"></i> Request a Quote</a>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const close = () => overlay.classList.remove("active");
+  overlay.querySelector("#rfqIntroClose").addEventListener("click", close);
+  overlay.querySelector("#rfqIntroLater").addEventListener("click", close);
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
+  overlay.querySelector("#rfqIntroCta").addEventListener("click", () => {
+    const dontShow = overlay.querySelector("#rfqIntroDontShow");
+    if (dontShow && dontShow.checked) {
+      try { localStorage.setItem("ss-rfq-intro-dismissed", "1"); } catch (_) {}
+    }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && overlay.classList.contains("active")) close();
+  });
+
+  return overlay;
+}
+
+function ssShowRfqIntroModal() {
+  const overlay = ssEnsureRfqIntroModal();
+  overlay.classList.add("active");
+}
+
+/* ============================================================
+   Drawer badges — currently just the Chat link's "active
+   quotes/bids" count: total offers received across the buyer's
+   still-open Request-a-Quote posts.
+   ============================================================ */
+async function ssLoadDrawerBadges() {
+  const badgeEl = document.getElementById("drawerChatBadge");
+  if (!badgeEl) return;
+
+  // Public count — mirrors chat.html's own "Open" filter chip, so the
+  // number in the drawer always matches what someone sees once they
+  // open the board. No login required, since chat.html itself is public.
+  try {
+    const { rfqs } = await SS_API.getRFQs();
+    const openCount = (rfqs || []).filter((r) => r.status === "OPEN").length;
+
+    if (openCount > 0) {
+      badgeEl.textContent = openCount > 99 ? "99+" : String(openCount);
+      badgeEl.style.display = "inline-flex";
+    } else {
+      badgeEl.style.display = "none";
+    }
+  } catch (_) {
+    badgeEl.style.display = "none";
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   ssRenderHeader(document.body.dataset.page || "");
   ssRenderFooter();
   ssRenderWhatsApp();
   ssHideLoader();
+  ssLoadDrawerBadges();
+  setInterval(ssLoadDrawerBadges, 30000);
 });

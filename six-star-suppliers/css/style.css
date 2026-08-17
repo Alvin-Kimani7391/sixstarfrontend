@@ -113,6 +113,24 @@ p{ margin:0; }
   font-size:.65rem; min-width:18px; height:18px; border-radius:999px; display:flex; align-items:center; justify-content:center; padding:0 4px;
 }
 
+
+
+/* ---------- generic hamburger trigger (3 lines -> X) ---------- */
+.hamburger-icon{ position:relative; width:18px; height:13px; display:inline-block; }
+.hamburger-icon span{
+  position:absolute; left:0; right:0; height:2px; border-radius:2px;
+  background:var(--navy-deep);
+  transition:transform .25s ease, opacity .2s ease, top .25s ease;
+}
+.hamburger-icon span:nth-child(1){ top:0; }
+.hamburger-icon span:nth-child(2){ top:5.5px; }
+.hamburger-icon span:nth-child(3){ top:11px; }
+
+.hamburger-btn.active{ background:rgba(242,169,59,.16); border-color:var(--marigold); }
+.hamburger-btn.active .hamburger-icon span:nth-child(1){ top:5.5px; transform:rotate(45deg); background:var(--marigold-deep); }
+.hamburger-btn.active .hamburger-icon span:nth-child(2){ opacity:0; }
+.hamburger-btn.active .hamburger-icon span:nth-child(3){ top:5.5px; transform:rotate(-45deg); background:var(--marigold-deep); }
+
 .main-nav{ display:none; gap:22px; align-items:center; padding:0 20px 14px; max-width:1240px; margin:0 auto; }
 .main-nav a{ font-size:.9rem; font-weight:600; color:var(--ink-soft); }
 .main-nav a:hover, .main-nav a.active{ color:var(--teal-deep); }
