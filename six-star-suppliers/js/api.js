@@ -21,6 +21,13 @@
      requests, submit/update/withdraw an offer, list "My Offers", and the
      shared private chat endpoints used to talk to the buyer once a bid
      is on the table.
+   - Marketplace commission (NEW): resolve the effective commission % for
+     a category (own rate, inherited from an ancestor, or the platform
+     default) — used by the seller product-creation wizard to show a live
+     "Marketplace commission for this category: X%" notice.
+   - Earnings (NEW): the seller's own earnings dashboard — confirmed
+     revenue, marketplace commission taken, net payout, pending-confirmation
+     figures, a 30-day trend, and top/least selling products.
    ============================================================ */
 
 const SS_API = (() => {
@@ -398,6 +405,13 @@ const SS_API = (() => {
     getSellerOrders() {
       return request("/orders/seller-orders", { method: "GET", requiresAuth: true });
     },
+    // Seller's own earnings dashboard (NEW): confirmed revenue, marketplace
+    // commission taken, net payout, pending-confirmation figures, a 30-day
+    // trend, and top/least selling products. Powers the seller dashboard's
+    // Earnings screen.
+    getMyEarnings() {
+      return request("/orders/my-earnings", { requiresAuth: true });
+    },
     updateOrderStatus(id, orderStatus) {
       return request(`/orders/${id}/status`, { method: "PATCH", body: { orderStatus }, requiresAuth: true });
     },
@@ -463,6 +477,14 @@ const SS_API = (() => {
     // fields (Brand, Size, Color, ...) render on the product creation form.
     getCategoryAttributes(categoryId) {
       return request(`/categories/${categoryId}/attributes`, { requiresAuth: false });
+    },
+    // Effective marketplace commission % for a category — its own rate if set,
+    // otherwise inherited from the nearest ancestor category, otherwise the
+    // platform default. Returns { commissionRate, inherited, source, sourceName }.
+    // Public (no auth) so the seller product wizard can show it live while
+    // picking a category, and the admin category form can preview it too.
+    getCategoryCommission(categoryId) {
+      return request(`/categories/${categoryId}/commission`, { requiresAuth: false });
     },
 
     // ============================================================

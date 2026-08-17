@@ -29,6 +29,21 @@
                      (free delivery, or fixed / per-unit / negotiated
                      charges). Retailers never see any of this section.
 
+   Marketplace commission (NEW):
+     - As soon as a leaf category is picked (Step 1), a compact pill
+       under the category picker shows the effective commission rate
+       for that category (its own rate, inherited from an ancestor, or
+       the platform default), via GET /api/categories/:id/commission.
+     - In Step 2 (Pricing & stock), a fuller "Marketplace commission"
+       card repeats that same info next to the asking-price field and
+       live-recalculates an estimated payout ("you'll keep ~KES X per
+       unit") as the seller types their asking price.
+     - This is a client-side estimate off the seller's OWN asking price
+       for orientation only — the real commission is always computed
+       server-side off the admin-set final buyer-facing price at the
+       moment of purchase (see resolveLineCommission in
+       backend/controllers/orderController.js).
+
    Analytics:
    - A new header button opens a full-page Analytics overlay showing
      total views, a 14-day trend bar chart, and a per-product view
@@ -86,6 +101,7 @@
      PATCH  /api/products/:id/submit
      GET    /api/categories/tree
      GET    /api/categories/:id/attributes
+     GET    /api/categories/:id/commission
      GET    /api/orders/seller-orders
      PATCH  /api/orders/:id/status
      GET    /api/shops/my-shop
@@ -242,6 +258,15 @@ try {
   let tierRowSeq = 0;
   let currentDeliveryType = "heavy"; // 'simple' | 'heavy' — drives which fields show/submit
 
+  // ---------- marketplace commission state (NEW) ----------
+  // Cached result of GET /api/categories/:id/commission for whichever leaf
+  // category is currently selected in the product wizard — shape:
+  // { success, commissionRate, inherited, source, sourceName }. null until
+  // a category has been picked (or if the lookup fails / a category has no
+  // ID yet, e.g. mid-cascade).
+  let currentCommissionInfo = null;
+  let commissionRequestSeq = 0; // guards against a slow, stale request overwriting a newer one
+
   const els = {
     greeting: document.getElementById("greeting"),
     businessLine: document.getElementById("businessLine"),
@@ -300,6 +325,7 @@ try {
     pStock: document.getElementById("pStock"),
     stockVariantNote: document.getElementById("stockVariantNote"),
 
+    pPrice: document.getElementById("pPrice"),
     pDiscount: document.getElementById("pDiscount"),
     dropzone: document.getElementById("dropzone"),
     pImages: document.getElementById("pImages"),
@@ -311,6 +337,11 @@ try {
     attributesSection: document.getElementById("attributesSection"),
     dynamicAttributesGrid: document.getElementById("dynamicAttributesGrid"),
     noAttributesNote: document.getElementById("noAttributesNote"),
+
+    // marketplace commission (NEW)
+    commissionMiniBadge: document.getElementById("commissionMiniBadge"),
+    commissionNoticeWrap: document.getElementById("commissionNoticeWrap"),
+    commissionCard: document.getElementById("commissionCard"),
 
     // variants
     variantsSection: document.getElementById("variantsSection"),
@@ -378,6 +409,29 @@ try {
     statTopProductLabel: document.getElementById("statTopProductLabel"),
     analyticsTrend: document.getElementById("analyticsTrend"),
     analyticsProductList: document.getElementById("analyticsProductList"),
+
+    // Earnings "page" (NEW)
+    earningsToggleBtn: document.getElementById("earningsToggleBtn"),
+    earningsOverlay: document.getElementById("earningsOverlay"),
+    earningsBack: document.getElementById("earningsBack"),
+    earningsLoading: document.getElementById("earningsLoading"),
+    earningsContent: document.getElementById("earningsContent"),
+    earningsEmpty: document.getElementById("earningsEmpty"),
+    earningsErrorState: document.getElementById("earningsErrorState"),
+    earningsErrorMsg: document.getElementById("earningsErrorMsg"),
+    earnNetPayout: document.getElementById("earnNetPayout"),
+    earnNetPayoutSub: document.getElementById("earnNetPayoutSub"),
+    earnGrossSales: document.getElementById("earnGrossSales"),
+    earnCommission: document.getElementById("earnCommission"),
+    earnCommissionRateNote: document.getElementById("earnCommissionRateNote"),
+    earnUnitsSold: document.getElementById("earnUnitsSold"),
+    earnOrderCount: document.getElementById("earnOrderCount"),
+    earnAvgOrderNote: document.getElementById("earnAvgOrderNote"),
+    earnPendingBanner: document.getElementById("earnPendingBanner"),
+    earnPendingHeadline: document.getElementById("earnPendingHeadline"),
+    earnTrend: document.getElementById("earnTrend"),
+    earnTopProducts: document.getElementById("earnTopProducts"),
+    earnLeastProducts: document.getElementById("earnLeastProducts"),
 
     // Flash Sale "page"
     flashSaleToggleBtn: document.getElementById("flashSaleToggleBtn"),
@@ -490,6 +544,7 @@ try {
     loadSellerOrders();
     loadMyProducts({ silent: true });
     if (els.flashSaleOverlay?.classList.contains("active")) loadMyFlashSales();
+    if (els.earningsOverlay?.classList.contains("active")) loadEarnings();
   }, POLL_INTERVAL_MS);
 
   // ---------- products ----------
@@ -607,6 +662,9 @@ try {
       els.categoryPathHint.textContent = "Loading the details this category needs…";
     }
     await loadAttributesForCategory(categoryId);
+    // NEW: fire off the commission lookup for this leaf category — it renders
+    // both the Step 1 mini badge and the Step 2 full card once it resolves.
+    loadCommissionForCategory(categoryId);
   }
 
   function clearCategoryDrivenUI() {
@@ -621,6 +679,8 @@ try {
     if (els.categoryPathHint) {
       els.categoryPathHint.textContent = "Selecting a category loads its required product details automatically.";
     }
+    // NEW: no category selected (yet) -> hide the commission notice everywhere
+    clearCommissionUI();
     renderWizard();
   }
 
@@ -644,6 +704,167 @@ try {
       console.error("Category attributes error:", err);
       ssToast("Couldn't load details for that category", "fa-triangle-exclamation");
     }
+  }
+
+  // =========================================================
+  // ---------- MARKETPLACE COMMISSION (NEW) ----------
+  // Shows the seller, live, what cut Six Star Suppliers takes on the
+  // category they've picked — both a compact pill right after the
+  // category cascade (Step 1) and a fuller card next to the asking
+  // price (Step 2), including a running "you'll keep about KES X per
+  // unit" estimate as they type their price.
+  // =========================================================
+
+  function clearCommissionUI() {
+    currentCommissionInfo = null;
+    if (els.commissionMiniBadge) {
+      els.commissionMiniBadge.style.display = "none";
+      els.commissionMiniBadge.innerHTML = "";
+    }
+    if (els.commissionNoticeWrap) els.commissionNoticeWrap.style.display = "none";
+    if (els.commissionCard) els.commissionCard.innerHTML = "";
+  }
+
+  async function loadCommissionForCategory(categoryId) {
+    if (!categoryId) {
+      clearCommissionUI();
+      return;
+    }
+
+    const requestId = ++commissionRequestSeq;
+    renderCommissionLoading();
+
+    try {
+      const res = await SS_API.getCategoryCommission(categoryId);
+      if (requestId !== commissionRequestSeq) return; // a newer category was picked meanwhile
+      currentCommissionInfo = res;
+      renderCommissionInfo(res);
+    } catch (err) {
+      if (requestId !== commissionRequestSeq) return;
+      console.error("Commission lookup failed:", err);
+      currentCommissionInfo = null;
+      renderCommissionError();
+    }
+  }
+
+  function commissionTone(info) {
+    if (!info) return "default";
+    if (info.source === "default") return "default";
+    if (info.inherited) return "inherited";
+    return "own";
+  }
+
+  function commissionSourceLabel(info) {
+    if (info.source === "default") return "Platform default";
+    if (info.inherited) return `Inherited from "${info.sourceName}"`;
+    return "Set for this category";
+  }
+
+  function renderCommissionLoading() {
+    if (els.commissionMiniBadge) {
+      els.commissionMiniBadge.style.display = "inline-flex";
+      els.commissionMiniBadge.className = "commission-mini-badge";
+      els.commissionMiniBadge.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Checking marketplace commission…`;
+    }
+    if (els.commissionNoticeWrap) els.commissionNoticeWrap.style.display = "block";
+    if (els.commissionCard) {
+      els.commissionCard.className = "commission-card";
+      els.commissionCard.innerHTML = `
+        <div class="commission-card__icon"><i class="fa-solid fa-circle-notch fa-spin"></i></div>
+        <div class="commission-card__body">
+          <div class="commission-card__skel-line" style="width:40%;"></div>
+          <div class="commission-card__skel-line"></div>
+        </div>`;
+    }
+  }
+
+  function renderCommissionError() {
+    if (els.commissionMiniBadge) els.commissionMiniBadge.style.display = "none";
+    if (els.commissionNoticeWrap) els.commissionNoticeWrap.style.display = "block";
+    if (els.commissionCard) {
+      els.commissionCard.className = "commission-card tone-default";
+      els.commissionCard.innerHTML = `
+        <div class="commission-card__icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <div class="commission-card__body">
+          <div class="commission-card__desc">Couldn't load the marketplace commission for this category right now — you can still continue, the rate will still apply as usual.</div>
+        </div>`;
+    }
+  }
+
+  function renderCommissionInfo(info) {
+    const tone = commissionTone(info);
+    const rate = Number(info.commissionRate) || 0;
+    const sourceLabel = commissionSourceLabel(info);
+
+    // ---- Step 1: compact pill ----
+    if (els.commissionMiniBadge) {
+      els.commissionMiniBadge.style.display = "inline-flex";
+      els.commissionMiniBadge.className = `commission-mini-badge ${tone === "default" ? "cm-default" : tone === "inherited" ? "cm-inherited" : ""}`;
+      els.commissionMiniBadge.innerHTML = `
+        <i class="fa-solid fa-percent"></i>
+        Marketplace commission: <span class="cm-rate">${rate}%</span>
+        ${tone !== "own" ? `<span style="opacity:.75;">(${escapeHtml(sourceLabel)})</span>` : ""}`;
+    }
+
+    // ---- Step 2: full card + live payout estimate ----
+    if (els.commissionNoticeWrap) els.commissionNoticeWrap.style.display = "block";
+    if (els.commissionCard) {
+      els.commissionCard.className = `commission-card tone-${tone}`;
+      const icon = tone === "default" ? "fa-store" : tone === "inherited" ? "fa-sitemap" : "fa-tag";
+      const badgeClass = tone === "default" ? "default" : tone === "inherited" ? "inherited" : "own";
+
+      els.commissionCard.innerHTML = `
+        <div class="commission-card__icon"><i class="fa-solid ${icon}"></i></div>
+        <div class="commission-card__body">
+          <div class="commission-card__rate-row">
+            <span class="commission-card__rate">${rate}%</span>
+            <span class="commission-card__source ${badgeClass}">${escapeHtml(sourceLabel)}</span>
+          </div>
+          <div class="commission-card__desc">
+            Six Star Suppliers keeps ${rate}% of the buyer-facing price for products in this category
+            ${tone === "inherited" ? `, inherited from its parent category "${escapeHtml(info.sourceName)}"` : tone === "default" ? " — no custom rate has been set for this category, so the platform default applies" : ""}.
+            The rest goes to you as your payout.
+          </div>
+          <div class="commission-card__payout" id="commissionPayoutRow" style="display:none;">
+            <span class="commission-card__payout-label">Estimated payout on your asking price, per unit</span>
+            <span class="commission-card__payout-value" id="commissionPayoutValue">—</span>
+          </div>
+        </div>`;
+    }
+
+    updateCommissionPayoutPreview();
+  }
+
+  // Recalculates the "estimated payout" line inside the Step 2 commission
+  // card, off whatever the seller currently has typed into the asking-price
+  // field. Purely client-side orientation — the real commission is always
+  // resolved and snapshotted server-side against the admin's final price.
+  function updateCommissionPayoutPreview() {
+    const payoutRow = document.getElementById("commissionPayoutRow");
+    const payoutValue = document.getElementById("commissionPayoutValue");
+    if (!payoutRow || !payoutValue) return;
+
+    if (!currentCommissionInfo) {
+      payoutRow.style.display = "none";
+      return;
+    }
+
+    const price = Number(els.pPrice?.value);
+    if (!price || price <= 0) {
+      payoutRow.style.display = "none";
+      return;
+    }
+
+    const rate = Number(currentCommissionInfo.commissionRate) || 0;
+    const commission = Math.round(price * (rate / 100));
+    const payout = Math.max(0, price - commission);
+
+    payoutValue.textContent = `KES ${payout.toLocaleString()}`;
+    payoutRow.style.display = "flex";
+  }
+
+  if (els.pPrice) {
+    els.pPrice.addEventListener("input", updateCommissionPayoutPreview);
   }
 
   // ---------- dynamic attribute fields ----------
@@ -1350,7 +1571,8 @@ try {
       !els.orderDetailOverlay?.classList.contains("active") &&
       !els.analyticsOverlay?.classList.contains("active") &&
       !els.flashSaleOverlay?.classList.contains("active") &&
-      !els.myShopOverlay?.classList.contains("active")
+      !els.myShopOverlay?.classList.contains("active") &&
+      !els.earningsOverlay?.classList.contains("active")
     ) {
       document.body.style.overflow = "";
     }
@@ -1434,7 +1656,8 @@ try {
       !els.ordersListOverlay?.classList.contains("active") &&
       !els.orderDetailOverlay?.classList.contains("active") &&
       !els.flashSaleOverlay?.classList.contains("active") &&
-      !els.myShopOverlay?.classList.contains("active")
+      !els.myShopOverlay?.classList.contains("active") &&
+      !els.earningsOverlay?.classList.contains("active")
     ) {
       document.body.style.overflow = "";
     }
@@ -1522,6 +1745,150 @@ try {
   }
 
   // =========================================================
+  // ---------- EARNINGS "page" (opened by the header wallet icon) ----------
+  // Seller's own sales/commission/payout dashboard, powered by
+  // GET /api/orders/my-earnings. Confirmed-payment orders only count
+  // toward the headline figures; anything still awaiting M-Pesa
+  // confirmation shows separately in the pending banner so it's visible
+  // without inflating "real" earnings.
+  // =========================================================
+  function openEarnings() {
+    if (!els.earningsOverlay) return;
+    els.earningsOverlay.classList.add("active");
+    document.body.style.overflow = "hidden";
+    loadEarnings();
+  }
+
+  function closeEarnings() {
+    if (els.earningsOverlay) els.earningsOverlay.classList.remove("active");
+    if (
+      !els.ordersListOverlay?.classList.contains("active") &&
+      !els.orderDetailOverlay?.classList.contains("active") &&
+      !els.analyticsOverlay?.classList.contains("active") &&
+      !els.flashSaleOverlay?.classList.contains("active") &&
+      !els.myShopOverlay?.classList.contains("active")
+    ) {
+      document.body.style.overflow = "";
+    }
+  }
+
+  if (els.earningsToggleBtn) els.earningsToggleBtn.addEventListener("click", openEarnings);
+  if (els.earningsBack) els.earningsBack.addEventListener("click", closeEarnings);
+
+  async function loadEarnings() {
+    if (els.earningsLoading) els.earningsLoading.style.display = "block";
+    if (els.earningsContent) els.earningsContent.style.display = "none";
+    if (els.earningsEmpty) els.earningsEmpty.style.display = "none";
+    if (els.earningsErrorState) els.earningsErrorState.style.display = "none";
+
+    try {
+      const res = await SS_API.getMyEarnings();
+      renderEarnings(res);
+    } catch (err) {
+      console.error("EARNINGS LOAD FAILED:", err);
+      if (els.earningsLoading) els.earningsLoading.style.display = "none";
+      if (els.earningsErrorState) {
+        els.earningsErrorState.style.display = "block";
+        if (els.earningsErrorMsg) els.earningsErrorMsg.textContent = err.message || "Please try again shortly.";
+      }
+    }
+  }
+
+  function renderEarnings(data) {
+    if (els.earningsLoading) els.earningsLoading.style.display = "none";
+
+    const hasAnyConfirmed = (data.confirmedOrderCount || 0) > 0;
+    const hasAnyPending = (data.pendingOrderCount || 0) > 0;
+
+    if (!hasAnyConfirmed && !hasAnyPending) {
+      if (els.earningsEmpty) els.earningsEmpty.style.display = "block";
+      return;
+    }
+
+    if (els.earningsContent) els.earningsContent.style.display = "block";
+
+    const kes = (n) => `KES ${Math.round(n || 0).toLocaleString()}`;
+
+    // ---- Hero: net payout ----
+    if (els.earnNetPayout) els.earnNetPayout.textContent = kes(data.totalPayout);
+    if (els.earnNetPayoutSub) {
+      els.earnNetPayoutSub.textContent = hasAnyConfirmed
+        ? `From ${data.confirmedOrderCount} confirmed order${data.confirmedOrderCount === 1 ? "" : "s"}`
+        : "No confirmed orders yet — see pending below";
+    }
+
+    // ---- Stat cards ----
+    if (els.earnGrossSales) els.earnGrossSales.textContent = kes(data.totalRevenue);
+    if (els.earnCommission) els.earnCommission.textContent = kes(data.totalCommission);
+    if (els.earnCommissionRateNote) {
+      els.earnCommissionRateNote.textContent = `avg. ${data.effectiveCommissionRate || 0}% taken`;
+    }
+    if (els.earnUnitsSold) els.earnUnitsSold.textContent = (data.totalUnitsSold || 0).toLocaleString();
+    if (els.earnOrderCount) els.earnOrderCount.textContent = (data.confirmedOrderCount || 0).toLocaleString();
+    if (els.earnAvgOrderNote) {
+      els.earnAvgOrderNote.textContent = `avg. ${kes(data.averageOrderValue)} / order`;
+    }
+
+    // ---- Pending-confirmation banner ----
+    if (els.earnPendingBanner) {
+      if (hasAnyPending) {
+        els.earnPendingBanner.style.display = "flex";
+        if (els.earnPendingHeadline) {
+          els.earnPendingHeadline.textContent = `${kes(data.pendingPayout)} across ${data.pendingOrderCount} order${
+            data.pendingOrderCount === 1 ? "" : "s"
+          } awaiting payment confirmation`;
+        }
+      } else {
+        els.earnPendingBanner.style.display = "none";
+      }
+    }
+
+    // ---- 30-day trend (net payout) ----
+    if (els.earnTrend) {
+      const trend = data.dailyTrend || [];
+      const maxPayout = Math.max(1, ...trend.map((d) => d.payout || 0));
+      els.earnTrend.innerHTML = trend
+        .map((d) => {
+          const heightPct = Math.max(4, Math.round(((d.payout || 0) / maxPayout) * 100));
+          const label = new Date(d.date).toLocaleDateString("en-KE", { day: "numeric", month: "short" });
+          return `<div class="analytics-trend-bar-wrap" title="${label}: KES ${Math.round(d.payout || 0).toLocaleString()}">
+            <div class="analytics-trend-bar" style="height:${heightPct}%"></div>
+            <span class="analytics-trend-label">${new Date(d.date).getDate()}</span>
+          </div>`;
+        })
+        .join("");
+    }
+
+    // ---- Top / least selling products ----
+    renderEarningsProductList(els.earnTopProducts, data.topProducts || [], "No confirmed sales yet.");
+    renderEarningsProductList(els.earnLeastProducts, data.leastProducts || [], "No confirmed sales yet.");
+  }
+
+  function renderEarningsProductList(container, products, emptyText) {
+    if (!container) return;
+    if (!products.length) {
+      container.innerHTML = `<div class="earn-product-row-empty">${escapeHtml(emptyText)}</div>`;
+      return;
+    }
+
+    const maxUnits = Math.max(1, ...products.map((p) => p.unitsSold || 0));
+    container.innerHTML = products
+      .map((p) => {
+        const pct = Math.max(2, Math.round(((p.unitsSold || 0) / maxUnits) * 100));
+        const cover = p.image || "https://placehold.co/60x60/E4D6BD/5B564C?text=%20";
+        return `<div class="analytics-product-row">
+          <img src="${cover}" alt="" />
+          <div class="analytics-product-info">
+            <div class="analytics-product-name">${escapeHtml(p.name || "Product")}</div>
+            <div class="analytics-product-bar-track"><div class="analytics-product-bar-fill" style="width:${pct}%"></div></div>
+          </div>
+          <div class="analytics-product-views">${(p.unitsSold || 0).toLocaleString()} sold</div>
+        </div>`;
+      })
+      .join("");
+  }
+
+  // =========================================================
   // ---------- FLASH SALE "page" (opened by the header bolt icon) ----------
   // =========================================================
   function openFlashSaleOverlay() {
@@ -1537,7 +1904,8 @@ try {
       !els.ordersListOverlay?.classList.contains("active") &&
       !els.orderDetailOverlay?.classList.contains("active") &&
       !els.analyticsOverlay?.classList.contains("active") &&
-      !els.myShopOverlay?.classList.contains("active")
+      !els.myShopOverlay?.classList.contains("active") &&
+      !els.earningsOverlay?.classList.contains("active")
     ) {
       document.body.style.overflow = "";
     }
@@ -1788,7 +2156,8 @@ try {
       !els.ordersListOverlay?.classList.contains("active") &&
       !els.orderDetailOverlay?.classList.contains("active") &&
       !els.analyticsOverlay?.classList.contains("active") &&
-      !els.flashSaleOverlay?.classList.contains("active")
+      !els.flashSaleOverlay?.classList.contains("active") &&
+      !els.earningsOverlay?.classList.contains("active")
     ) {
       document.body.style.overflow = "";
     }
@@ -2566,6 +2935,7 @@ try {
       // Tree hasn't loaded yet, or this category isn't in it — just select the leaf directly.
       selectedCategoryId = leafId;
       await loadAttributesForCategory(leafId);
+      loadCommissionForCategory(leafId); // NEW: show commission info when editing too
       restoreAttributeAndVariantValues(product);
       return;
     }
@@ -2584,6 +2954,7 @@ try {
 
     selectedCategoryId = leafId;
     await loadAttributesForCategory(leafId);
+    loadCommissionForCategory(leafId); // NEW: show commission info when editing too
     restoreAttributeAndVariantValues(product);
   }
 

@@ -539,6 +539,150 @@
   .shop-badge-row { justify-content: center; }
   .shop-card__actions { justify-content: center; }
 }
+
+/* ============================================================
+   ---- Earnings page (NEW) ----
+   Signature idea: a big "net payout" hero card up top (the number sellers
+   actually care about most), a row of supporting stat cards underneath,
+   a soft amber "pending confirmation" banner so awaiting-M-Pesa money is
+   visible but clearly not counted yet, then the same 30-day trend/product
+   list visual language already established by the Analytics page so it
+   feels like part of the same dashboard rather than a bolted-on screen.
+   ============================================================ */
+
+.earn-hero {
+  border-radius: 18px; padding: 22px 24px; margin-bottom: 20px;
+  background: linear-gradient(135deg, #1f7a44 0%, #16324f 120%);
+  color: #fff; position: relative; overflow: hidden;
+  box-shadow: 0 14px 30px -16px rgba(22,50,79,.5);
+}
+.earn-hero::before {
+  content: ""; position: absolute; inset: 0; opacity: .12;
+  background: repeating-linear-gradient(135deg, #fff 0 2px, transparent 2px 26px);
+}
+.earn-hero__label {
+  font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+  opacity: .85; display: flex; align-items: center; gap: 8px; margin-bottom: 8px; position: relative;
+}
+.earn-hero__value {
+  font-family: var(--font-mono, monospace); font-weight: 800; font-size: 34px; line-height: 1.1;
+  position: relative;
+}
+.earn-hero__sub { font-size: 12.5px; opacity: .8; margin-top: 6px; position: relative; }
+
+.earn-stat-cards {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;
+}
+.earn-stat-card {
+  background: var(--white, #fff); border: 1px solid var(--line, #e4d6bd); border-radius: 14px;
+  padding: 14px 16px;
+}
+.earn-stat-card__icon {
+  width: 34px; height: 34px; border-radius: 50%; background: rgba(242,169,59,.14);
+  color: var(--marigold-deep, #d98c1f); display: flex; align-items: center; justify-content: center;
+  font-size: 14px; margin-bottom: 10px;
+}
+.earn-stat-card.tone-commission .earn-stat-card__icon { background: rgba(194,62,15,.12); color: #c23e0f; }
+.earn-stat-card__label { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-soft, #7a7268); font-weight: 700; }
+.earn-stat-card__value { font-family: var(--font-mono, monospace); font-weight: 800; font-size: 19px; color: var(--navy-deep, #16324f); margin-top: 4px; }
+.earn-stat-card__note { font-size: 10.5px; color: var(--ink-faint, #a89f92); margin-top: 4px; }
+
+.earn-pending-banner {
+  display: flex; gap: 10px; align-items: flex-start;
+  background: rgba(242,169,59,.08); border: 1px solid rgba(242,169,59,.28); color: #a86a12;
+  padding: 12px 14px; border-radius: 12px; font-size: 12.5px; margin-bottom: 22px; line-height: 1.55;
+}
+.earn-pending-banner i { margin-top: 2px; flex-shrink: 0; }
+.earn-pending-banner__sub { color: var(--ink-soft, #7a7268); margin-top: 2px; }
+
+.earn-trend .analytics-trend-bar { background: linear-gradient(180deg, #1f7a44, #16324f); }
+
+.earn-products-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 26px;
+}
+.earn-products-col__title {
+  font-size: 13px; font-weight: 700; color: var(--ink-soft, #7a7268); margin-bottom: 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+.earn-products-col__title i { color: var(--marigold-deep, #d98c1f); }
+.earn-products-col:last-child .earn-products-col__title i { color: #a89f92; }
+.earn-product-row-empty {
+  text-align: center; padding: 24px 10px; color: var(--ink-faint, #a89f92); font-size: 12.5px;
+  border: 1px dashed var(--line, #e4d6bd); border-radius: 12px;
+}
+
+@media (max-width: 860px) {
+  .earn-stat-cards { grid-template-columns: repeat(2, 1fr); }
+  .earn-products-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+  .earn-hero__value { font-size: 27px; }
+  .earn-stat-card__value { font-size: 16.5px; }
+}
+
+/* ============================================================
+   ---- Category commission notice (NEW) ----
+   Shown to sellers while creating/editing a product so they know
+   exactly what cut the marketplace takes on their chosen category,
+   before and while they set their asking price.
+   ============================================================ */
+
+/* Compact pill shown right under the category picker (Step 1) */
+.commission-mini-badge {
+  display: inline-flex; align-items: center; gap: 7px; margin-top: 10px;
+  font-size: 11.5px; font-weight: 700; padding: 6px 12px; border-radius: 999px;
+  background: rgba(242,169,59,.12); color: var(--marigold-deep, #d98c1f);
+  border: 1px solid rgba(242,169,59,.32);
+}
+.commission-mini-badge i { font-size: 10px; }
+.commission-mini-badge .cm-rate { font-family: var(--font-mono, monospace); font-weight: 800; }
+.commission-mini-badge.cm-default { background: rgba(120,120,120,.12); color: #5c5c5c; border-color: rgba(120,120,120,.28); }
+.commission-mini-badge.cm-inherited { background: rgba(59,130,246,.10); color: #1d4ed8; border-color: rgba(59,130,246,.26); }
+
+/* Full card shown in Step 2 (Pricing & stock), next to the asking price */
+.commission-card {
+  position: relative; display: flex; gap: 12px; align-items: flex-start;
+  padding: 14px 16px; border-radius: 14px; margin-top: 10px;
+  background: linear-gradient(135deg, rgba(242,169,59,.10), rgba(217,140,31,.04));
+  border: 1px solid rgba(242,169,59,.3);
+}
+.commission-card.tone-default {
+  background: linear-gradient(135deg, rgba(120,120,120,.08), rgba(120,120,120,.03));
+  border-color: rgba(120,120,120,.25);
+}
+.commission-card.tone-inherited {
+  background: linear-gradient(135deg, rgba(59,130,246,.08), rgba(59,130,246,.03));
+  border-color: rgba(59,130,246,.25);
+}
+.commission-card__icon {
+  flex-shrink: 0; width: 38px; height: 38px; border-radius: 50%;
+  background: rgba(242,169,59,.18); color: var(--marigold-deep, #d98c1f);
+  display: flex; align-items: center; justify-content: center; font-size: 15px;
+}
+.tone-default .commission-card__icon { background: rgba(120,120,120,.16); color: #5c5c5c; }
+.tone-inherited .commission-card__icon { background: rgba(59,130,246,.16); color: #1d4ed8; }
+.commission-card__body { flex: 1; min-width: 0; }
+.commission-card__rate-row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.commission-card__rate { font-family: var(--font-mono, monospace); font-weight: 800; font-size: 19px; color: var(--navy-deep, #16324f); }
+.commission-card__source {
+  font-size: 10.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px;
+  text-transform: uppercase; letter-spacing: .03em; white-space: nowrap;
+}
+.commission-card__source.own { background: rgba(56,161,105,.14); color: #1f7a44; }
+.commission-card__source.inherited { background: rgba(59,130,246,.14); color: #1d4ed8; }
+.commission-card__source.default { background: rgba(120,120,120,.14); color: #5c5c5c; }
+.commission-card__desc { font-size: 12px; color: var(--ink-soft, #7a7268); line-height: 1.5; }
+.commission-card__payout {
+  margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(242,169,59,.35);
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+}
+.commission-card__payout-label { font-size: 11.5px; color: var(--ink-soft, #7a7268); font-weight: 600; max-width: 60%; line-height: 1.4; }
+.commission-card__payout-value { font-family: var(--font-mono, monospace); font-weight: 800; font-size: 15.5px; color: #1f7a44; white-space: nowrap; }
+.commission-card__skel-line {
+  height: 13px; border-radius: 6px; background: rgba(0,0,0,.07); margin-bottom: 6px; animation: cmPulse 1.3s ease-in-out infinite;
+}
+.commission-card__skel-line:last-child { width: 60%; margin-bottom: 0; }
+@keyframes cmPulse { 0%,100% { opacity: .45; } 50% { opacity: 1; } }
 </style>
 </head>
 <body>
@@ -557,6 +701,9 @@
     </a>
     <button class="iconbtn" id="myShopToggleBtn" title="My Shop">
       <i class="fa-solid fa-shop"></i>
+    </button>
+    <button class="iconbtn" id="earningsToggleBtn" title="Earnings">
+      <i class="fa-solid fa-sack-dollar"></i>
     </button>
     <button class="iconbtn" id="analyticsToggleBtn" title="Analytics">
       <i class="fa-solid fa-chart-line"></i>
@@ -689,6 +836,8 @@
             </select>
           </div>
           <p class="form-hint" id="categoryPathHint">Selecting a category loads its required product details automatically.</p>
+          <!-- NEW: compact "what will Six Star Suppliers keep" pill, shown as soon as a leaf category is picked -->
+          <div class="commission-mini-badge" id="commissionMiniBadge" style="display:none;"></div>
         </div>
 
         <div class="form-field">
@@ -710,6 +859,12 @@
             <input type="number" id="pPrice" min="1" step="0.01" required placeholder="e.g. 4500" />
             <p class="form-hint">Admin reviews this and sets the final listed price before it goes live.</p>
           </div>
+        </div>
+
+        <!-- NEW: full marketplace-commission notice + live payout estimate for this category -->
+        <div class="form-field" id="commissionNoticeWrap" style="display:none;">
+          <label>Marketplace commission for this category</label>
+          <div class="commission-card" id="commissionCard"></div>
         </div>
 
         <div class="form-field">
@@ -992,6 +1147,105 @@
         <i class="fa-solid fa-chart-line"></i>
         <h3>No views yet</h3>
         <p>Once buyers start opening your product pages, views will show up here.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ EARNINGS "PAGE" ============ -->
+<div class="orders-page-overlay" id="earningsOverlay">
+  <div class="orders-page">
+    <div class="orders-page__head">
+      <button type="button" class="order-detail-back" id="earningsBack">
+        <i class="fa-solid fa-arrow-left"></i>
+      </button>
+      <div class="orders-page__title">
+        <h2>Earnings</h2>
+        <p>Your sales, marketplace commission, and net payout</p>
+      </div>
+    </div>
+
+    <div class="orders-page__body">
+      <div id="earningsLoading" class="orders-skel-wrap">
+        <div class="skel orders-skel"></div>
+        <div class="skel orders-skel"></div>
+        <div class="skel orders-skel"></div>
+      </div>
+
+      <div id="earningsContent" style="display:none;">
+
+        <!-- Headline payout card -->
+        <div class="earn-hero">
+          <div class="earn-hero__label"><i class="fa-solid fa-wallet"></i> Net payout so far</div>
+          <div class="earn-hero__value" id="earnNetPayout">KES 0</div>
+          <div class="earn-hero__sub" id="earnNetPayoutSub">From confirmed orders only</div>
+        </div>
+
+        <!-- Core stat cards -->
+        <div class="earn-stat-cards">
+          <div class="earn-stat-card">
+            <div class="earn-stat-card__icon"><i class="fa-solid fa-coins"></i></div>
+            <div class="earn-stat-card__label">Gross sales</div>
+            <div class="earn-stat-card__value" id="earnGrossSales">KES 0</div>
+          </div>
+          <div class="earn-stat-card tone-commission">
+            <div class="earn-stat-card__icon"><i class="fa-solid fa-percent"></i></div>
+            <div class="earn-stat-card__label">Marketplace commission</div>
+            <div class="earn-stat-card__value" id="earnCommission">KES 0</div>
+            <div class="earn-stat-card__note" id="earnCommissionRateNote">avg. 0% taken</div>
+          </div>
+          <div class="earn-stat-card">
+            <div class="earn-stat-card__icon"><i class="fa-solid fa-boxes-stacked"></i></div>
+            <div class="earn-stat-card__label">Units sold</div>
+            <div class="earn-stat-card__value" id="earnUnitsSold">0</div>
+          </div>
+          <div class="earn-stat-card">
+            <div class="earn-stat-card__icon"><i class="fa-solid fa-receipt"></i></div>
+            <div class="earn-stat-card__label">Confirmed orders</div>
+            <div class="earn-stat-card__value" id="earnOrderCount">0</div>
+            <div class="earn-stat-card__note" id="earnAvgOrderNote">avg. KES 0 / order</div>
+          </div>
+        </div>
+
+        <!-- Pending confirmation banner -->
+        <div class="earn-pending-banner" id="earnPendingBanner" style="display:none;">
+          <i class="fa-solid fa-hourglass-half"></i>
+          <div>
+            <strong id="earnPendingHeadline">—</strong>
+            <div class="earn-pending-banner__sub">Not counted in the totals above yet — these become real earnings once the buyer's M-Pesa payment is confirmed.</div>
+          </div>
+        </div>
+
+        <!-- 30-day trend -->
+        <div class="analytics-trend-wrap">
+          <div class="analytics-trend-title">Net payout — last 30 days</div>
+          <div class="analytics-trend earn-trend" id="earnTrend"></div>
+        </div>
+
+        <!-- Top / least selling products -->
+        <div class="earn-products-grid">
+          <div class="earn-products-col">
+            <div class="earn-products-col__title"><i class="fa-solid fa-arrow-trend-up"></i> Top selling products</div>
+            <div class="analytics-product-list" id="earnTopProducts"></div>
+          </div>
+          <div class="earn-products-col">
+            <div class="earn-products-col__title"><i class="fa-solid fa-arrow-trend-down"></i> Least selling products</div>
+            <div class="analytics-product-list" id="earnLeastProducts"></div>
+          </div>
+        </div>
+
+      </div>
+
+      <div id="earningsEmpty" class="analytics-empty" style="display:none;">
+        <i class="fa-solid fa-sack-dollar"></i>
+        <h3>No confirmed sales yet</h3>
+        <p>Once a buyer's payment is confirmed for one of your orders, your earnings will show up here.</p>
+      </div>
+
+      <div id="earningsErrorState" style="display:none;" class="analytics-empty">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <h3>Couldn't load your earnings</h3>
+        <p id="earningsErrorMsg">Please try again shortly.</p>
       </div>
     </div>
   </div>

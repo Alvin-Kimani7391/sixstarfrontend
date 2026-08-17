@@ -11,6 +11,9 @@ let attributesCache = []; // all attribute definitions (admin management + assig
 let productFilters = { status: '', search: '', category: '', page: 1 };
 let userFilters = { role: '' };
 let orderSubTab = 'pending-payment';
+let earningsFilters = { paymentStatus: 'confirmed', from: '', to: '', search: '', page: 1 };
+let earningsOrdersCache = [];
+let expandedCategoryIds = new Set();
 
 // caches backing the expandable rows
 let allOrdersCache = [];      // last fetched "all orders" list, keyed by lookup below
@@ -220,6 +223,7 @@ function switchTab(tab) {
   if (tab === 'users') loadUsers();
   if (tab === 'agents') loadAgents();
   if (tab === 'rfq') loadRFQs();      // <-- ADD THIS LINE
+  if (tab === 'earnings') loadEarnings();
 }
 
 // ===================================================================
@@ -547,6 +551,21 @@ function wireStaticButtons() {
       showToast(err.message, 'error');
     }
   });
+
+  // earnings
+  document.getElementById('earningsFilterBtn').addEventListener('click', () => {
+    earningsFilters.paymentStatus = document.getElementById('earningsPaymentStatusSelect').value;
+    earningsFilters.from = document.getElementById('earningsFromDate').value;
+    earningsFilters.to = document.getElementById('earningsToDate').value;
+    earningsFilters.page = 1;
+    loadEarnings();
+  });
+
+  document.getElementById('earningsOrderSearch').addEventListener('input', debounce(() => {
+    earningsFilters.search = document.getElementById('earningsOrderSearch').value.trim();
+    earningsFilters.page = 1;
+    loadEarningsOrders();
+  }, 400));
 }
 
 function openRejectModal(productId) {
@@ -734,97 +753,117 @@ async function submitProductEdit(e) {
 }
 
 // ===================================================================
-// CATEGORIES
+// CATEGORIES — expandable tree
 // ===================================================================
+function buildCategoryChildrenMap(categories) {
+  const map = {};
+  categories.forEach((c) => {
+    const pid = c.parentCategory?._id || c.parentCategory || 'root';
+    if (!map[pid]) map[pid] = [];
+    map[pid].push(c);
+  });
+  Object.values(map).forEach((arr) => arr.sort((a, b) => a.name.localeCompare(b.name)));
+  return map;
+}
+
 async function loadCategoriesTable() {
-  const tbody = document.getElementById('categoriesBody');
-  tbody.innerHTML = `<tr><td colspan="5"><div class="spinner"></div></td></tr>`;
+  const wrap = document.getElementById('categoriesTree');
+  wrap.innerHTML = `<div class="spinner"></div>`;
   try {
     const { categories } = await apiGet('/admin/categories');
     categoriesCache = categories;
 
     if (categories.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5"><div class="dash-empty"><i class="fa-solid fa-tags"></i><p>No categories yet. Add your first one.</p></div></td></tr>`;
+      wrap.innerHTML = `<div class="dash-empty"><i class="fa-solid fa-tags"></i><p>No categories yet. Add your first one.</p></div>`;
       return;
     }
 
-    const ordered = orderCategoriesAsTree(categories);
+    const childrenMap = buildCategoryChildrenMap(categories);
+    wrap.innerHTML = renderCategoryNodes(childrenMap['root'] || [], childrenMap);
+    wireCategoryTreeEvents(categories);
+  } catch (err) {
+    wrap.innerHTML = `<div class="dash-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>${err.message}</p></div>`;
+  }
+}
 
-    tbody.innerHTML = ordered
-      .map(({ c, depth }) => {
-        const leaf = isLeafCategoryLocal(c._id);
+function renderCategoryNodes(nodes, childrenMap) {
+  if (!nodes || nodes.length === 0) return '';
+  return (
+    `<ul class="cat-tree__list">` +
+    nodes
+      .map((c) => {
+        const kids = childrenMap[c._id] || [];
+        const hasKids = kids.length > 0;
+        const expanded = expandedCategoryIds.has(c._id);
+        const commissionCell =
+          c.commissionRate !== null && c.commissionRate !== undefined
+            ? `<span class="commission-pill">${c.commissionRate}%</span>`
+            : `<span class="commission-pill inherited">Inherited</span>`;
+
         return `
-      <tr>
-        <td>${c.image ? `<img class="thumb" src="${c.image}" alt="">` : ''}</td>
-        <td><strong>${'— '.repeat(depth)}${escapeHtml(c.name)}</strong><div class="text-muted">${c.slug}</div></td>
-        <td>
+      <li class="cat-tree__node" data-cat-id="${c._id}">
+        <div class="cat-tree__row">
+          <button type="button" class="cat-tree__toggle ${hasKids ? '' : 'is-empty'}" data-cat-toggle="${c._id}" ${hasKids ? '' : 'disabled tabindex="-1"'}>
+            <i class="fa-solid ${hasKids ? (expanded ? 'fa-chevron-down' : 'fa-chevron-right') : 'fa-circle'}"></i>
+          </button>
+          ${c.image ? `<img class="cat-tree__thumb" src="${c.image}" alt="">` : `<span class="cat-tree__thumb cat-tree__thumb--empty"><i class="fa-solid fa-tag"></i></span>`}
+          <div class="cat-tree__info">
+            <strong>${escapeHtml(c.name)}${!c.isActive ? ' <span class="text-muted">(inactive)</span>' : ''}</strong>
+            <span class="text-muted">${c.slug}</span>
+          </div>
+          ${commissionCell}
           <label class="switch">
             <input type="checkbox" ${c.isActive ? 'checked' : ''} data-toggle-cat="${c._id}">
             <span class="track"></span>
           </label>
-        </td>
-        <td>
-          ${leaf
-            ? `<button class="act-edit" data-manage-attrs="${c._id}">Manage Attributes</button>`
-            : `<span class="text-muted">Has subcategories</span>`}
-        </td>
-        <td>
-          <div class="row-actions">
-            <button class="act-edit" data-edit-cat="${c._id}">Edit</button>
-          </div>
-        </td>
-      </tr>`;
+          ${hasKids
+            ? `<span class="cat-tree__haskids text-muted">${kids.length} sub${kids.length > 1 ? 's' : ''}</span>`
+            : `<button class="act-edit" data-manage-attrs="${c._id}">Attributes</button>`}
+          <button class="act-edit" data-edit-cat="${c._id}">Edit</button>
+        </div>
+        ${hasKids ? `<div class="cat-tree__children" style="display:${expanded ? 'block' : 'none'}">${renderCategoryNodes(kids, childrenMap)}</div>` : ''}
+      </li>`;
       })
-      .join('');
-
-    tbody.querySelectorAll('[data-edit-cat]').forEach((btn) =>
-      btn.addEventListener('click', () => openCategoryModal(categories.find((c) => c._id === btn.dataset.editCat)))
-    );
-    tbody.querySelectorAll('[data-manage-attrs]').forEach((btn) =>
-      btn.addEventListener('click', () => openCategoryAttributesModal(categories.find((c) => c._id === btn.dataset.manageAttrs)))
-    );
-    tbody.querySelectorAll('[data-toggle-cat]').forEach((toggle) =>
-      toggle.addEventListener('change', async () => {
-        try {
-          await apiPut(`/categories/${toggle.dataset.toggleCat}`, { isActive: toggle.checked });
-          showToast(`Category ${toggle.checked ? 'activated' : 'deactivated'}`);
-        } catch (err) {
-          showToast(err.message, 'error');
-          loadCategoriesTable();
-        }
-      })
-    );
-  } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="5"><div class="dash-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>${err.message}</p></div></td></tr>`;
-  }
+      .join('') +
+    `</ul>`
+  );
 }
 
-// Walks the flat category list into parent-then-children order with a depth for indentation
-function orderCategoriesAsTree(categories) {
-  const byParent = {};
-  categories.forEach((c) => {
-    const parentId = c.parentCategory?._id || c.parentCategory || 'root';
-    if (!byParent[parentId]) byParent[parentId] = [];
-    byParent[parentId].push(c);
-  });
+function wireCategoryTreeEvents(categories) {
+  const wrap = document.getElementById('categoriesTree');
 
-  const result = [];
-  function walk(parentId, depth) {
-    const kids = byParent[parentId] || [];
-    kids.forEach((c) => {
-      result.push({ c, depth });
-      walk(c._id, depth + 1);
-    });
-  }
-  walk('root', 0);
+  wrap.querySelectorAll('[data-cat-toggle]:not(.is-empty)').forEach((btn) =>
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.catToggle;
+      const li = wrap.querySelector(`[data-cat-id="${id}"]`);
+      const childrenEl = li?.querySelector(':scope > .cat-tree__children');
+      if (!childrenEl) return;
+      const isOpen = childrenEl.style.display !== 'none';
+      childrenEl.style.display = isOpen ? 'none' : 'block';
+      const icon = btn.querySelector('i');
+      icon.className = isOpen ? 'fa-solid fa-chevron-right' : 'fa-solid fa-chevron-down';
+      if (isOpen) expandedCategoryIds.delete(id);
+      else expandedCategoryIds.add(id);
+    })
+  );
 
-  // safety net: any category whose parent got filtered out (e.g. inactive parent) still shows up
-  const seenIds = new Set(result.map((r) => r.c._id));
-  categories.forEach((c) => {
-    if (!seenIds.has(c._id)) result.push({ c, depth: 0 });
-  });
-
-  return result;
+  wrap.querySelectorAll('[data-edit-cat]').forEach((btn) =>
+    btn.addEventListener('click', () => openCategoryModal(categories.find((c) => c._id === btn.dataset.editCat)))
+  );
+  wrap.querySelectorAll('[data-manage-attrs]').forEach((btn) =>
+    btn.addEventListener('click', () => openCategoryAttributesModal(categories.find((c) => c._id === btn.dataset.manageAttrs)))
+  );
+  wrap.querySelectorAll('[data-toggle-cat]').forEach((toggle) =>
+    toggle.addEventListener('change', async () => {
+      try {
+        await apiPut(`/categories/${toggle.dataset.toggleCat}`, { isActive: toggle.checked });
+        showToast(`Category ${toggle.checked ? 'activated' : 'deactivated'}`);
+      } catch (err) {
+        showToast(err.message, 'error');
+        loadCategoriesTable();
+      }
+    })
+  );
 }
 
 function openCategoryModal(category) {
@@ -852,6 +891,27 @@ function openCategoryModal(category) {
       .map((c) => `<option value="${c._id}" ${c._id === currentParentId ? 'selected' : ''}>${'— '.repeat(c.level)}${escapeHtml(c.name)}</option>`)
       .join('');
 
+  // ---- Marketplace commission ----
+  const commissionInput = document.getElementById('categoryCommission');
+  const effEl = document.getElementById('categoryCommissionEffective');
+  commissionInput.value = category?.commissionRate ?? '';
+
+  if (category?._id) {
+    effEl.textContent = 'Checking effective commission…';
+    apiGet(`/categories/${category._id}/commission`)
+      .then((res) => {
+        effEl.textContent =
+          category.commissionRate !== null && category.commissionRate !== undefined
+            ? `This category's own rate: ${res.commissionRate}%.`
+            : `Currently inherits ${res.commissionRate}% from ${res.sourceName}.`;
+      })
+      .catch(() => {
+        effEl.textContent = 'Categories with no rate of their own inherit from their parent category, then finally the platform default.';
+      });
+  } else {
+    effEl.textContent = 'New categories inherit from their parent category (or the platform default) until you set a rate here.';
+  }
+
   openModal('categoryModal');
 }
 
@@ -864,6 +924,10 @@ async function submitCategoryForm(e) {
   formData.append('name', document.getElementById('categoryName').value.trim());
   formData.append('isActive', document.getElementById('categoryActive').checked);
   formData.append('parentCategory', document.getElementById('categoryParent').value);
+
+  const commissionVal = document.getElementById('categoryCommission').value.trim();
+  formData.append('commissionRate', commissionVal === '' ? 'null' : commissionVal);
+
   const file = document.getElementById('categoryImageInput').files[0];
   if (file) formData.append('image', file);
 
@@ -2374,17 +2438,26 @@ function orderRowPairHtml(o, statusOptions, scope) {
 // code, payment-status pill, or date — those are already visible in the
 // collapsed row directly above. This surfaces what the row can't show:
 // contact info, shipping address, seller pickup/warehouse location(s),
-// payment verification trail, delivery-fee breakdown, agent commission,
-// and the per-item table.
+// payment verification trail, delivery-fee breakdown, marketplace commission
+// & seller payout, agent commission, and the per-item table.
 function orderDetailHtml(o) {
   const dd = o.deliveryDetails || {};
   const subtotal = (o.totalAmount || 0) - (o.deliveryFee || 0);
+
+  // Marketplace commission / seller payout totals for this order — sum from
+  // the per-item snapshots (see models/Order.js orderItemSchema) rather than
+  // re-deriving anything client-side, so this always matches what was
+  // actually resolved and locked in at purchase time.
+  const totalCommission = o.items.reduce((sum, i) => sum + (i.commissionAmount || 0), 0);
+  const totalPayout = o.items.reduce((sum, i) => sum + (i.sellerPayout || 0), 0);
 
   const statsHtml = `
     <div class="od-stats">
       <div class="od-stat"><span class="od-stat-label">Subtotal</span><span class="od-stat-value">KSh ${subtotal.toLocaleString()}</span></div>
       <div class="od-stat"><span class="od-stat-label">Delivery Fee</span><span class="od-stat-value">KSh ${(o.deliveryFee || 0).toLocaleString()}</span></div>
-      ${o.agent ? `<div class="od-stat"><span class="od-stat-label">Commission</span><span class="od-stat-value">KSh ${(o.commissionAmount || 0).toLocaleString()}</span></div>` : ''}
+      <div class="od-stat tone-commission"><span class="od-stat-label">Marketplace Commission</span><span class="od-stat-value">KSh ${totalCommission.toLocaleString()}</span></div>
+      <div class="od-stat tone-payout"><span class="od-stat-label">Seller Payout</span><span class="od-stat-value">KSh ${totalPayout.toLocaleString()}</span></div>
+      ${o.agent ? `<div class="od-stat"><span class="od-stat-label">Agent Commission</span><span class="od-stat-value">KSh ${(o.commissionAmount || 0).toLocaleString()}</span></div>` : ''}
     </div>`;
 
   const contactCard = `
@@ -2456,6 +2529,11 @@ function orderDetailHtml(o) {
           KSh ${lineTotal.toLocaleString()}
           <div class="text-muted">Seller: KSh ${sellerLineTotal.toLocaleString()}</div>
         </td>
+        <td>
+          ${i.commissionRate ?? 0}%
+          <div class="text-muted">KSh ${(i.commissionAmount || 0).toLocaleString()}</div>
+        </td>
+        <td>KSh ${(i.sellerPayout || 0).toLocaleString()}</td>
         <td>${i.deliveryFee ? 'KSh ' + i.deliveryFee.toLocaleString() : '<span class="text-muted">—</span>'}</td>
       </tr>`;
     })
@@ -2472,7 +2550,7 @@ function orderDetailHtml(o) {
       <div class="od-items-wrap">
         <h5><i class="fa-solid fa-boxes-stacked"></i> Items</h5>
         <table class="dtable">
-          <thead><tr><th></th><th>Item</th><th>Seller</th><th>Qty</th><th>Price</th><th>Subtotal</th><th>Delivery</th></tr></thead>
+          <thead><tr><th></th><th>Item</th><th>Seller</th><th>Qty</th><th>Price</th><th>Subtotal</th><th>Commission</th><th>Payout</th><th>Delivery</th></tr></thead>
           <tbody>${itemsHtml}</tbody>
         </table>
       </div>
@@ -2720,6 +2798,209 @@ async function deleteAgentRow(id) {
   } catch (err) {
     showToast(err.message, 'error');
   }
+}
+
+// ===================================================================
+// EARNINGS (marketplace commission + agent payouts, per-order detail)
+// ===================================================================
+async function loadEarnings() {
+  await Promise.all([loadEarningsSummary(), loadEarningsOrders()]);
+}
+
+async function loadEarningsSummary() {
+  const grid = document.getElementById('earningsStatGrid');
+  grid.innerHTML = `<div class="stat-card"><div class="spinner"></div></div>`.repeat(4);
+  try {
+    const params = new URLSearchParams();
+    params.set('paymentStatus', earningsFilters.paymentStatus);
+    if (earningsFilters.from) params.set('from', earningsFilters.from);
+    if (earningsFilters.to) params.set('to', earningsFilters.to);
+
+    const data = await apiGet(`/admin/earnings/summary?${params.toString()}`);
+    const t = data.totals;
+
+    grid.innerHTML = `
+      <div class="stat-card">
+        <div class="stat-label">Marketplace Commission</div>
+        <div class="stat-value">KSh ${(t.totalMarketplaceCommission || 0).toLocaleString()}</div>
+        <div class="stat-sub">Gross earnings from product sales</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Agent Commission Paid</div>
+        <div class="stat-value">KSh ${(t.totalAgentCommission || 0).toLocaleString()}</div>
+        <div class="stat-sub">${t.ordersWithAgent || 0} orders used an agent code</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Net Marketplace Earnings</div>
+        <div class="stat-value">KSh ${(data.netMarketplaceEarnings || 0).toLocaleString()}</div>
+        <div class="stat-sub">Commission minus agent payouts</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Order Revenue</div>
+        <div class="stat-value">KSh ${(t.totalRevenue || 0).toLocaleString()}</div>
+        <div class="stat-sub">${t.totalOrders || 0} orders · KSh ${(t.totalSellerPayout || 0).toLocaleString()} to sellers</div>
+      </div>
+    `;
+
+    const roleBody = document.getElementById('earningsRoleBody');
+    roleBody.innerHTML = (data.roleBreakdown || []).length
+      ? data.roleBreakdown
+          .map(
+            (r) => `
+      <tr>
+        <td><span class="pill pill-${r._id}">${r._id}</span></td>
+        <td>${r.itemsSold}</td>
+        <td>KSh ${(r.commission || 0).toLocaleString()}</td>
+        <td>KSh ${(r.payout || 0).toLocaleString()}</td>
+      </tr>`
+          )
+          .join('')
+      : `<tr><td colspan="4"><div class="dash-empty"><p>No data for this range.</p></div></td></tr>`;
+
+    const topSellersBody = document.getElementById('earningsTopSellersBody');
+    topSellersBody.innerHTML = (data.topSellers || []).length
+      ? data.topSellers
+          .map(
+            (s) => `
+      <tr>
+        <td>${escapeHtml(s.name || '-')}</td>
+        <td><span class="pill pill-${s.role}">${s.role}</span></td>
+        <td>${s.itemsSold}</td>
+        <td>KSh ${(s.commission || 0).toLocaleString()}</td>
+      </tr>`
+          )
+          .join('')
+      : `<tr><td colspan="4"><div class="dash-empty"><p>No sellers yet.</p></div></td></tr>`;
+
+    const topAgentsBody = document.getElementById('earningsTopAgentsBody');
+    topAgentsBody.innerHTML = (data.topAgents || []).length
+      ? data.topAgents
+          .map(
+            (a) => `
+      <tr>
+        <td>${escapeHtml(a.name || '-')}</td>
+        <td><span class="agent-code">${escapeHtml(a.code || '')}</span></td>
+        <td>${a.orders}</td>
+        <td>KSh ${(a.commission || 0).toLocaleString()}</td>
+      </tr>`
+          )
+          .join('')
+      : `<tr><td colspan="4"><div class="dash-empty"><p>No agent-attributed orders yet.</p></div></td></tr>`;
+  } catch (err) {
+    grid.innerHTML = `<div class="dash-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>${err.message}</p></div>`;
+  }
+}
+
+async function loadEarningsOrders() {
+  const tbody = document.getElementById('earningsOrdersBody');
+  tbody.innerHTML = `<tr><td colspan="8"><div class="spinner"></div></td></tr>`;
+  try {
+    const params = new URLSearchParams();
+    params.set('paymentStatus', earningsFilters.paymentStatus);
+    if (earningsFilters.from) params.set('from', earningsFilters.from);
+    if (earningsFilters.to) params.set('to', earningsFilters.to);
+    if (earningsFilters.search) params.set('search', earningsFilters.search);
+    params.set('page', earningsFilters.page);
+    params.set('limit', 15);
+
+    const { orders, page, pages } = await apiGet(`/admin/earnings/orders?${params.toString()}`);
+    earningsOrdersCache = orders;
+
+    if (orders.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8"><div class="dash-empty"><i class="fa-solid fa-sack-dollar"></i><p>No orders match these filters.</p></div></td></tr>`;
+      document.getElementById('earningsPagination').innerHTML = '';
+      return;
+    }
+
+    tbody.innerHTML = orders.map(earningsRowPairHtml).join('');
+
+    tbody.querySelectorAll('[data-earn-toggle]').forEach((btn) =>
+      btn.addEventListener('click', () => toggleEarningsDetail(btn.dataset.earnToggle))
+    );
+
+    renderEarningsPagination(page, pages);
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="dash-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>${err.message}</p></div></td></tr>`;
+  }
+}
+
+function earningsRowPairHtml(o) {
+  return `
+    <tr>
+      <td><button type="button" class="row-toggle-btn" data-earn-toggle="${o._id}" aria-label="Expand"><i class="fa-solid fa-chevron-right"></i></button></td>
+      <td><span class="agent-code">${escapeHtml(o.orderNumber || ('#' + o._id.slice(-8).toUpperCase()))}</span></td>
+      <td>${new Date(o.createdAt).toLocaleDateString()}</td>
+      <td><span class="pill pill-${o.paymentStatus}">${o.paymentStatus.replace(/_/g, ' ')}</span></td>
+      <td>KSh ${(o.totalAmount || 0).toLocaleString()}</td>
+      <td>KSh ${(o.marketplaceCommission || 0).toLocaleString()}</td>
+      <td>${o.agent ? 'KSh ' + (o.agentCommission || 0).toLocaleString() : '<span class="text-muted">—</span>'}</td>
+      <td>KSh ${(o.netMarketplaceEarning || 0).toLocaleString()}</td>
+    </tr>
+    <tr class="order-detail-row" id="earn-detail-${o._id}" style="display:none;">
+      <td colspan="8">${earningsDetailHtml(o)}</td>
+    </tr>`;
+}
+
+function earningsDetailHtml(o) {
+  const itemsHtml = o.items
+    .map(
+      (i) => `
+    <tr>
+      <td class="wrap-cell">${escapeHtml(i.name || '-')}</td>
+      <td>${escapeHtml(i.seller?.businessName || i.seller?.shopName || i.seller?.name || '-')}</td>
+      <td>${i.quantity}</td>
+      <td>KSh ${(i.priceAtPurchase || 0).toLocaleString()}</td>
+      <td>${i.commissionRate ?? 0}%</td>
+      <td>KSh ${(i.commissionAmount || 0).toLocaleString()}</td>
+      <td>KSh ${(i.sellerPayout || 0).toLocaleString()}</td>
+    </tr>`
+    )
+    .join('');
+
+  return `
+    <div class="order-detail-panel-v2">
+      <div class="od-stats">
+        <div class="od-stat"><span class="od-stat-label">Buyer</span><span class="od-stat-value">${escapeHtml(o.buyer?.name || '-')}</span></div>
+        <div class="od-stat tone-commission"><span class="od-stat-label">Marketplace Commission</span><span class="od-stat-value">KSh ${(o.marketplaceCommission || 0).toLocaleString()}</span></div>
+        ${o.agent ? `<div class="od-stat"><span class="od-stat-label">Agent</span><span class="od-stat-value">${escapeHtml(o.agent.name)} (${escapeHtml(o.agent.code)})</span></div>` : ''}
+        <div class="od-stat tone-payout"><span class="od-stat-label">Seller Payout</span><span class="od-stat-value">KSh ${(o.sellerPayout || 0).toLocaleString()}</span></div>
+      </div>
+      <div class="od-items-wrap">
+        <h5><i class="fa-solid fa-boxes-stacked"></i> Item Commission Breakdown</h5>
+        <table class="dtable">
+          <thead><tr><th>Item</th><th>Seller</th><th>Qty</th><th>Price</th><th>Rate</th><th>Commission</th><th>Payout</th></tr></thead>
+          <tbody>${itemsHtml}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function toggleEarningsDetail(id) {
+  const row = document.getElementById(`earn-detail-${id}`);
+  if (!row) return;
+  const btn = document.querySelector(`[data-earn-toggle="${id}"] i`);
+  const isOpen = row.style.display !== 'none';
+  row.style.display = isOpen ? 'none' : 'table-row';
+  if (btn) btn.className = isOpen ? 'fa-solid fa-chevron-right' : 'fa-solid fa-chevron-down';
+}
+
+function renderEarningsPagination(page, pages) {
+  const el = document.getElementById('earningsPagination');
+  if (pages <= 1) {
+    el.innerHTML = '';
+    return;
+  }
+  let html = '';
+  for (let i = 1; i <= pages; i++) {
+    html += `<button class="${i === page ? 'active' : ''}" data-page="${i}">${i}</button>`;
+  }
+  el.innerHTML = html;
+  el.querySelectorAll('button').forEach((btn) =>
+    btn.addEventListener('click', () => {
+      earningsFilters.page = Number(btn.dataset.page);
+      loadEarningsOrders();
+    })
+  );
 }
 
 // ===================================================================

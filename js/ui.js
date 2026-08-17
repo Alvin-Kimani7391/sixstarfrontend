@@ -347,7 +347,7 @@ function ssRenderHeader(active = "") {
 
       ${link("/shop.html", "Shops", "fa-solid fa-shop")}
       ${link("/wholesale.html", "Wholesale", "fa-boxes-stacked")}
-     
+      ${link("/chat.html", "Chat", "fa-comments")}
       ${link("/about.html", "About", "fa-circle-info")}
       ${authLinkHtml}
       ${link("/register.html", "Sell With Us", "fa-store")}

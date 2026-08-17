@@ -98,6 +98,28 @@
   }
   .shop-modal-actions button { flex: 1 1 auto; min-width: 140px; }
   .badge-row { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  /* marketplace commission styling */
+  .commission-pill {
+    display: inline-block;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: rgba(18,114,107,0.12);
+    color: var(--teal-deep, #0b5851);
+    white-space: nowrap;
+  }
+  .commission-pill.inherited {
+    background: rgba(0,0,0,0.06);
+    color: var(--ink-soft, #5b564c);
+  }
+  #categoryCommissionEffective {
+    margin-top: 4px;
+  }
+  .od-stat.tone-commission::before { background: var(--teal, #12726b); }
+  .od-stat.tone-payout::before { background: var(--marigold-deep, #d98f1f); }
 </style>
 </head>
 <body class="admin-body">
@@ -144,6 +166,7 @@
       <button data-tab="ads"><i class="fa-solid fa-rectangle-ad"></i> Ads</button>
       <button data-tab="flashsales"><i class="fa-solid fa-bolt"></i> Flash Sale</button>
       <button data-tab="orders"><i class="fa-solid fa-receipt"></i> Orders &amp; Payments</button>
+<button data-tab="earnings"><i class="fa-solid fa-sack-dollar"></i> Earnings</button>
       <button data-tab="users"><i class="fa-solid fa-users"></i> Users</button>
       <button data-tab="agents"><i class="fa-solid fa-user-tie"></i> Agents</button>
       <button data-tab="rfq"><i class="fa-solid fa-comments"></i> Live Quotes</button>
@@ -168,7 +191,7 @@
         <div class="dash-card">
           <div class="dash-card__head"><h3>Welcome</h3></div>
           <div style="padding:18px;">
-            <p class="text-muted">Use the sidebar to review pending products and set final prices, manage the category tree and its attributes, review and approve seller shops and seller verification, manage legal documents, manage ad banners, review Flash Sale submissions, verify M-Pesa payments, manage sales agents, and suspend or reactivate any wholesaler, retailer, or buyer account.</p>
+            <p class="text-muted">Use the sidebar to review pending products and set final prices, manage the category tree and its attributes and marketplace commission, review and approve seller shops and seller verification, manage legal documents, manage ad banners, review Flash Sale submissions, verify M-Pesa payments, manage sales agents, and suspend or reactivate any wholesaler, retailer, or buyer account.</p>
           </div>
         </div>
       </div>
@@ -218,22 +241,19 @@
         </div>
       </div>
 
-      <!-- ===== CATEGORIES ===== -->
-      <div class="tab-panel" id="panel-categories">
-        <div class="dash-card">
-          <div class="dash-card__head">
-            <h3>Categories</h3>
-            <button class="btn btn-dark btn-sm" id="addCategoryBtn"><i class="fa-solid fa-plus"></i> Add Category</button>
-          </div>
-          <p class="text-muted" style="padding:0 18px;">Parent Category → Category → Sub Category. Products attach to whichever level has no further subcategories under it — use "Manage Attributes" on those rows to define what sellers fill in.</p>
-          <div class="table-scroll">
-            <table class="dtable">
-              <thead><tr><th>Image</th><th>Name</th><th>Active</th><th>Attributes</th><th>Actions</th></tr></thead>
-              <tbody id="categoriesBody"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+     <!-- ===== CATEGORIES ===== -->
+<div class="tab-panel" id="panel-categories">
+  <div class="dash-card">
+    <div class="dash-card__head">
+      <h3>Categories</h3>
+      <button class="btn btn-dark btn-sm" id="addCategoryBtn"><i class="fa-solid fa-plus"></i> Add Category</button>
+    </div>
+    <p class="text-muted" style="padding:0 18px;">Parent Category → Category → Sub Category. Click a row's arrow to expand its subcategories. Products attach to whichever level has no further subcategories under it — use "Attributes" on those rows to define what sellers fill in. Set a marketplace commission % on any level; categories below it inherit that rate unless you give them their own.</p>
+    <div class="cat-tree-wrap">
+      <div id="categoriesTree" class="cat-tree"></div>
+    </div>
+  </div>
+</div>
 
       <!-- ===== ATTRIBUTES ===== -->
       <div class="tab-panel" id="panel-attributes">
@@ -391,7 +411,7 @@
         <div id="panel-all-orders" class="dash-card" style="display:none;">
           <div class="dash-card__head">
             <h3>All Orders</h3>
-            <p class="text-muted" style="margin:0;">Click a row to expand full order details — contact, shipping, seller pickup location(s), payment verification, and the item breakdown.</p>
+            <p class="text-muted" style="margin:0;">Click a row to expand full order details — contact, shipping, seller pickup location(s), payment verification, marketplace commission &amp; seller payout, and the item breakdown.</p>
           </div>
           <div class="table-scroll">
             <table class="dtable">
@@ -401,6 +421,81 @@
           </div>
         </div>
       </div>
+
+
+<!-- ===== EARNINGS ===== -->
+<div class="tab-panel" id="panel-earnings">
+  <div class="dash-card" style="margin-bottom:20px;">
+    <div class="dash-card__head">
+      <h3>Marketplace Earnings</h3>
+      <div class="dash-toolbar">
+        <select id="earningsPaymentStatusSelect">
+          <option value="confirmed">Confirmed payments only</option>
+          <option value="all">All orders</option>
+          <option value="pending_verification">Pending verification</option>
+          <option value="rejected">Rejected payments</option>
+        </select>
+        <input type="date" id="earningsFromDate" title="From date">
+        <input type="date" id="earningsToDate" title="To date">
+        <button class="btn btn-dark btn-sm" id="earningsFilterBtn">Apply</button>
+      </div>
+    </div>
+    <p class="text-muted" style="padding:0 18px;">Marketplace commission is what Six Star keeps from confirmed sales; agent commission is what gets paid out to sales agents. Net earnings = commission − agent payouts. Defaults to confirmed payments only, since that's real money.</p>
+    <div class="earnings-stat-grid" id="earningsStatGrid"></div>
+  </div>
+
+  <div class="earnings-columns">
+    <div class="dash-card">
+      <div class="dash-card__head"><h3>By Seller Role</h3></div>
+      <div class="table-scroll">
+        <table class="dtable">
+          <thead><tr><th>Role</th><th>Items Sold</th><th>Commission</th><th>Seller Payout</th></tr></thead>
+          <tbody id="earningsRoleBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="dash-card">
+      <div class="dash-card__head"><h3>Top Sellers by Commission</h3></div>
+      <div class="table-scroll">
+        <table class="dtable">
+          <thead><tr><th>Seller</th><th>Role</th><th>Items</th><th>Commission</th></tr></thead>
+          <tbody id="earningsTopSellersBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="dash-card">
+      <div class="dash-card__head"><h3>Top Agents by Commission Paid</h3></div>
+      <div class="table-scroll">
+        <table class="dtable">
+          <thead><tr><th>Agent</th><th>Code</th><th>Orders</th><th>Paid</th></tr></thead>
+          <tbody id="earningsTopAgentsBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="dash-card">
+    <div class="dash-card__head">
+      <h3>Earnings by Order</h3>
+      <div class="dash-toolbar">
+        <input type="text" id="earningsOrderSearch" placeholder="Search order # or M-Pesa code...">
+      </div>
+    </div>
+    <p class="text-muted" style="padding:0 18px;">Click a row to see the per-item commission breakdown for that order.</p>
+    <div class="table-scroll">
+      <table class="dtable">
+        <thead>
+          <tr><th></th><th>Order</th><th>Date</th><th>Payment</th><th>Order Total</th><th>Commission</th><th>Agent Cut</th><th>Net</th></tr>
+        </thead>
+        <tbody id="earningsOrdersBody"></tbody>
+      </table>
+    </div>
+    <div class="pagination" id="earningsPagination"></div>
+  </div>
+</div>
+
 
       <!-- ===== USERS ===== -->
       <div class="tab-panel" id="panel-users">
@@ -717,6 +812,11 @@
           <option value="">— Top level (Parent Category) —</option>
         </select>
         <div class="form-hint">Leave as "Top level" for a main category (e.g. Fashion). Pick a parent to nest under it. Categories already at the deepest level (Sub Category) won't appear here since nothing can nest under them.</div>
+      </div>
+      <div class="form-field">
+        <label for="categoryCommission">Marketplace commission % <span style="font-weight:400; color:var(--ink-soft);">(leave blank to inherit)</span></label>
+        <input type="number" id="categoryCommission" min="0" max="100" step="0.1" placeholder="e.g. 12">
+        <div class="form-hint" id="categoryCommissionEffective">Categories with no rate of their own inherit from their parent category, then finally the platform default.</div>
       </div>
       <div class="form-field" style="flex-direction:row; align-items:center; gap:10px;">
         <label class="switch"><input type="checkbox" id="categoryActive" checked><span class="track"></span></label>
