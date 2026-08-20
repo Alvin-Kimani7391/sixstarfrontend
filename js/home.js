@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  ssRenderSubcategoryGrid("categoryGrid", 9);
+  ssRenderSubcategoryGrid("categoryGrid", 12);
   ssRenderMegaMenu("megaMenu");
   ssRenderAdSlot("heroAd", "homepage_hero", { interval: 5000, aspect: "21/9" });
   ssRenderAdSlot("bannerAd", "homepage_banner", { interval: 6000, aspect: "5/1" });
@@ -28,7 +28,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const catalog = document.getElementById("catalogPreview");
   const wholesalePreview = document.getElementById("wholesalePreview");
 
-  const CATALOG_PAGE_SIZE = 8;
+  const CATALOG_PAGE_SIZE = 12;
 
   hot.innerHTML = ssSkeletonCards(4);
   fresh.innerHTML = ssSkeletonCards(4);
