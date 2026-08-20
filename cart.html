@@ -119,14 +119,13 @@
   cursor: pointer; font-weight: 700; font-size: 11.5px; transition: .2s ease;
 }
 .attr-btn:hover:not(:disabled) { border-color: var(--marigold); transform: translateY(-1px); }
-.attr-btn.active { background: linear-gradient(135deg, var(--marigold), var(--marigold-deep)); color: var(--navy-deep); border-color: transparent; box-shadow: 0 6px 16px rgba(242,169,59,.25); }
+.attr-btn.active { background: linear-gradient(135deg, #FF5A1F, #FFC93C); color: #fff; border-color: transparent; box-shadow: 0 6px 16px rgba(255,140,0,.25); }
 .attr-btn:disabled { opacity: 0.35; cursor: not-allowed; text-decoration: line-through; }
 .variant-needed-note { font-size: 11.5px; color: var(--brick); font-weight: 700; margin-top: 6px; }
 
 .cart-actions { display: flex; flex-direction: column; gap: 10px; align-items: flex-end; flex-shrink: 0; }
 .qty-controls { display: flex; align-items: center; gap: 8px; background: var(--bg-page); border: 1.5px solid var(--line); border-radius: 20px; padding: 4px 7px; }
-.qty-controls button { width: 24px; height: 24px; border: none; border-radius: 50%; background: linear-gradient(135deg, var(--marigold), var(--marigold-deep)); color: var(--navy-deep); font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-.qty-controls button:disabled { opacity: 0.35; cursor: not-allowed; }
+.qty-controls button { width: 24px; height: 24px; border: none; border-radius: 50%; background: linear-gradient(135deg, #FF5A1F, #FFC93C); color: #fff; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .qty-controls span { font-weight: 700; font-size: 13px; min-width: 14px; text-align: center; }
 .removebtn { background: rgba(184,68,46,.1); color: var(--brick); border: 1px solid rgba(184,68,46,.25); padding: 6px 9px; border-radius: 8px; cursor: pointer; transition: .2s ease; }
 .removebtn:hover { background: var(--brick); color: #fff; }
@@ -138,7 +137,7 @@
 .summary small.row-hint { display: block; font-size: 10.5px; color: var(--ink-faint); font-weight: 500; margin-top: 4px; line-height: 1.5; }
 .summary hr { border: none; border-top: 1px dashed var(--line); margin: 10px 0; }
 .summary h3 { font-size: 18px; color: var(--ink); margin-top: 10px; display: flex; justify-content: space-between; }
-.summary h3 span { font-family: var(--font-mono); color: var(--marigold); }
+.summary h3 span { font-family: var(--font-mono); color: #FF5A1F; }
 
 button.main { width: 100%; padding: 15px; margin-top: 14px; border: none; border-radius: 14px; background: linear-gradient(135deg, var(--marigold), var(--marigold-deep)); color: var(--navy-deep); font-weight: 800; font-size: 14.5px; cursor: pointer; box-shadow: 0 10px 24px rgba(242,169,59,.28); transition: .2s ease; }
 button.main:hover:not(:disabled) { transform: translateY(-2px); }
