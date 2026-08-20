@@ -47,6 +47,22 @@
   .otp-back-link:hover{ color:var(--navy-deep,#16324f); }
 
   #otpStage{ display:none; }
+
+  /* ---- Password show/hide toggle ---- */
+  .password-input-wrap{ position:relative; }
+  .password-input-wrap input{ padding-right:44px; width:100%; box-sizing:border-box; }
+  .password-toggle-btn{
+    position:absolute;
+    top:0; right:0; bottom:0;
+    width:42px;
+    display:flex; align-items:center; justify-content:center;
+    background:none; border:none; cursor:pointer;
+    color:var(--ink-faint,#a89f92);
+    font-size:.95rem;
+    padding:0;
+  }
+  .password-toggle-btn:hover{ color:var(--navy-deep,#16324f); }
+  .password-toggle-btn:focus-visible{ outline:2px solid var(--marigold,#f2a93b); outline-offset:2px; border-radius:6px; }
 </style>
 </head>
 <body>
@@ -91,7 +107,12 @@
         </div>
         <div class="form-field">
           <label for="password">Password</label>
-          <input type="password" id="password" name="password" placeholder="••••••••" required />
+          <div class="password-input-wrap">
+            <input type="password" id="password" name="password" placeholder="••••••••" required autocomplete="current-password" />
+            <button type="button" class="password-toggle-btn" data-toggle-password="password" aria-label="Show password" tabindex="-1">
+              <i class="fa-solid fa-eye"></i>
+            </button>
+          </div>
           <p style="text-align:right;margin-top:6px;">
             <a href="forgot-password.html" style="font-size:13px;">Forgot password?</a>
           </p>

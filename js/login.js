@@ -80,28 +80,33 @@
   }
   wireOtpDigitInputs();
 
-  function startResendCooldown(seconds) {
-    resendCooldownEndsAt = Date.now() + seconds * 1000;
-    els.otpResendBtn.disabled = true;
-    if (resendCooldownTimer) clearInterval(resendCooldownTimer);
+  // ---------- Password show/hide toggle ----------
+  // Generic: wires up every [data-toggle-password="<inputId>"] button on the
+  // page. Purely a display-state flip (input type text <-> password) — no
+  // network calls, nothing sent anywhere. Safe to reuse verbatim on any
+  // other auth page (register.html, reset-password.html, etc.).
+  function wirePasswordToggles() {
+    document.querySelectorAll("[data-toggle-password]").forEach((btn) => {
+      const targetId = btn.getAttribute("data-toggle-password");
+      const input = document.getElementById(targetId);
+      const icon = btn.querySelector("i");
+      if (!input || !icon) return;
 
-    const tick = () => {
-      const remainingMs = resendCooldownEndsAt - Date.now();
-      if (remainingMs <= 0) {
-        clearInterval(resendCooldownTimer);
-        resendCooldownTimer = null;
-        els.otpCooldown.textContent = "";
-        els.otpResendBtn.disabled = false;
-        return;
-      }
-      const remaining = Math.ceil(remainingMs / 1000);
-      const mm = String(Math.floor(remaining / 60)).padStart(2, "0");
-      const ss = String(remaining % 60).padStart(2, "0");
-      els.otpCooldown.textContent = `(${mm}:${ss})`;
-    };
-    tick();
-    resendCooldownTimer = setInterval(tick, 250);
+      btn.addEventListener("click", () => {
+        const willShow = input.type === "password";
+        input.type = willShow ? "text" : "password";
+        icon.classList.toggle("fa-eye", !willShow);
+        icon.classList.toggle("fa-eye-slash", willShow);
+        btn.setAttribute("aria-label", willShow ? "Hide password" : "Show password");
+
+        // Keep focus + caret position on the input, not the toggle button
+        input.focus({ preventScroll: true });
+        const len = input.value.length;
+        input.setSelectionRange?.(len, len);
+      });
+    });
   }
+  wirePasswordToggles();
 
   // Single source of truth for "where does this role land after a fully
   // completed login" — used for the normal-success redirect AND to build

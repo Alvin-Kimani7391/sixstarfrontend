@@ -10,6 +10,31 @@
 <script src="https://kit.fontawesome.com/e1426ab85b.js" crossorigin="anonymous"></script>
 <link rel="stylesheet" href="css/style.css">
 <style>
+  /* ============================================================
+     PAGE HERO — Dark Ink Theme override
+     Local override matching about.html/contact.html/shop.html:
+     dark ink gradient with subtle texture instead of the
+     bright orange/purple/gold splash.
+     ============================================================ */
+  .page-hero{
+    position: relative;
+    background: linear-gradient(165deg, var(--ink) 0%, #23242B 60%, #1A1B20 100%);
+    overflow: hidden;
+  }
+  .page-hero::after{
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(120deg, rgba(255,255,255,.03) 0 2px, transparent 2px 26px);
+    pointer-events: none;
+  }
+  .page-hero .wrap{
+    position: relative;
+    z-index: 1;
+  }
+  .page-hero h1{ color:#fff; }
+  .page-hero p{ color:#B9BAC2; }
+
   .acct-wrap{ display:grid; gap:24px; grid-template-columns:1fr; padding:30px 0 70px; }
   @media(min-width:900px){ .acct-wrap{ grid-template-columns:240px 1fr; } }
 

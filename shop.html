@@ -38,6 +38,60 @@
 
 <link rel="stylesheet" href="css/theme.css">
 <link rel="stylesheet" href="css/shop.css">
+<style>
+/* ============================================================
+   SHOPS PAGE — Dark Ink Theme override
+   Local override of .shops-hero, matching about.html/contact.html:
+   dark ink gradient with subtle texture instead of a bright
+   splash. Filter chips get a tinted-border "active" state
+   instead of a solid fill, keeping accent color sparing.
+   ============================================================ */
+.shops-hero {
+  position: relative;
+  background: linear-gradient(165deg, var(--ink) 0%, #23242B 60%, #1A1B20 100%);
+  overflow: hidden;
+}
+.shops-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(120deg, rgba(255,255,255,.03) 0 2px, transparent 2px 26px);
+  pointer-events: none;
+}
+.shops-hero .wrap {
+  position: relative;
+  z-index: 1;
+}
+.shops-hero__inner h1 {
+  color: #fff;
+}
+.shops-hero__inner p {
+  color: #B9BAC2;
+}
+
+/* Filter chips: neutral bordered pill by default, tinted accent when active */
+.shops-toolbar .chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color .2s ease, background .2s ease, color .2s ease;
+}
+.shops-toolbar .chip:hover {
+  border-color: color-mix(in srgb, var(--brand) 30%, var(--line));
+}
+.shops-toolbar .chip.active {
+  background: color-mix(in srgb, var(--brand) 12%, transparent);
+  border-color: color-mix(in srgb, var(--brand) 28%, transparent);
+  color: var(--brand-dark);
+}
+</style>
 </head>
 <body data-page="shops.html">
 <div id="pageLoader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>

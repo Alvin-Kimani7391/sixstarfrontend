@@ -146,12 +146,12 @@
 .offer-list{ display:flex; flex-direction:column; gap:12px; margin-bottom:36px; }
 .offer-card{
   background:var(--surface); border:1.5px solid var(--line); border-radius:var(--radius-md);
-  padding:16px 18px; display:flex; gap:14px; transition:.2s ease;
+  padding:16px 18px; display:flex; flex-wrap:wrap; gap:14px; transition:.2s ease;
 }
 .offer-card:hover{ border-color:var(--brand); box-shadow:var(--shadow-soft); }
 .offer-card.accepted{ border-color:var(--price); background:#F3FBF5; }
 .offer-card.rejected{ opacity:.55; }
-.offer-card__main{ flex:1; min-width:0; }
+.offer-card__main{ flex:1 1 220px; min-width:0; }
 .offer-card__head{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
 .offer-card__name{ font-weight:700; font-size:13.5px; color:var(--ink); display:flex; align-items:center; gap:6px; }
 .offer-card__name .verified{ color:var(--price); font-size:12px; }
@@ -169,6 +169,23 @@
 .offer-badge-status.pending{ background:#FFF3EA; color:var(--brand-dark); }
 .offer-badge-status.accepted{ background:#E8F5E9; color:var(--price); }
 .offer-badge-status.rejected{ background:#F0F0F0; color:var(--ink-faint); }
+
+/* Narrow phones: the actions column has flex-shrink:0 and the stats
+   grid below has a hard 90px-per-track floor, so once the row is
+   forced to share space with a non-shrinking actions column there
+   isn't enough width left and the grid overflows its box — which
+   then overflows .offer-card, .offer-list, .rfq-layout, and the
+   whole page horizontally (this is what was dragging the sticky
+   header sideways). Fix: let the row wrap so actions drop onto
+   their own full-width line instead of squeezing the stats grid. */
+@media(max-width:520px){
+  .offer-card__actions{
+    flex-direction:row;
+    width:100%;
+    justify-content:stretch;
+  }
+  .offer-card__actions .btn{ flex:1; }
+}
 
 .offer-empty{ text-align:center; padding:40px 20px; color:var(--ink-faint); background:var(--surface); border:1.5px dashed var(--line); border-radius:var(--radius-md); }
 .offer-empty i{ font-size:26px; margin-bottom:10px; display:block; color:var(--ink-faint); }

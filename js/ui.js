@@ -580,7 +580,7 @@ function ssRenderFooter() {
     <a href="/about.html#own-a-shop">How shop ownership works</a>
   ` : `
     <h4>Sell With Us</h4>
-    <a href="/register.html">Become a Seller</a>
+    <a href="/about.html#becoming-a-seller">Become a Seller</a>
     <a href="/about.html#own-a-shop">Own a Shop</a>
     <a href="/login.html">Seller Login</a>
   `;
@@ -591,7 +591,7 @@ function ssRenderFooter() {
         <h4>Customer Service</h4>
         <a href="/contact.html">Contact Us / Visit Us</a>
         <a href="/about.html#faq">FAQs</a>
-        <a href="/profile.html">Track My Order</a>
+        <a href="/profile.html#panel-orders">Track My Order</a>
       </div>
       <div>
         <h4>About Us</h4>

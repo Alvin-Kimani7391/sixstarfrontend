@@ -8,6 +8,53 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="css/style.css">
+<style>
+  /* ---- Password show/hide toggle ---- */
+  .password-input-wrap{ position:relative; }
+  .password-input-wrap input{ padding-right:44px; width:100%; box-sizing:border-box; }
+  .password-toggle-btn{
+    position:absolute;
+    top:0; right:0; bottom:0;
+    width:42px;
+    display:flex; align-items:center; justify-content:center;
+    background:none; border:none; cursor:pointer;
+    color:var(--ink-faint,#a89f92);
+    font-size:.95rem;
+    padding:0;
+  }
+  .password-toggle-btn:hover{ color:var(--navy-deep,#16324f); }
+  .password-toggle-btn:focus-visible{ outline:2px solid var(--marigold,#f2a93b); outline-offset:2px; border-radius:6px; }
+
+  /* ---- Confirm-password live match hint (frontend-only check) ---- */
+  #confirmPasswordHint{
+    font-size:.78rem;
+    margin:6px 0 0;
+    display:none;
+    align-items:center;
+    gap:6px;
+  }
+  #confirmPasswordHint.show{ display:flex; }
+  #confirmPasswordHint.match-ok{ color:var(--teal-deep,#0f6e56); }
+  #confirmPasswordHint.match-bad{ color:#c0392b; }
+  #confirmPassword.input-bad{ border-color:#c0392b; }
+  #confirmPassword.input-ok{ border-color:var(--teal-deep,#0f6e56); }
+
+  /* ---- Terms & privacy agreement note ---- */
+  .auth-terms{
+    font-size:.78rem;
+    line-height:1.6;
+    color:var(--ink-faint,#a89f92);
+    text-align:center;
+    margin:16px 0 0;
+  }
+  .auth-terms a{
+    color:var(--navy-deep,#16324f);
+    font-weight:600;
+    text-decoration:underline;
+    text-underline-offset:2px;
+  }
+  .auth-terms a:hover{ color:var(--marigold,#f2a93b); }
+</style>
 </head>
 <body>
 
@@ -100,15 +147,46 @@
         <label for="email">Email address</label>
         <input type="email" id="email" required />
       </div>
+
       <div class="form-field">
         <label for="password">Password</label>
-        <input type="password" id="password" minlength="6" required />
+        <div class="password-input-wrap">
+          <input type="password" id="password" minlength="6" required autocomplete="new-password" />
+          <button type="button" class="password-toggle-btn" data-toggle-password="password" aria-label="Show password" tabindex="-1">
+            <i class="fa-solid fa-eye"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Confirm password — frontend-only check, this value is never sent to the backend -->
+      <div class="form-field">
+        <label for="confirmPassword">Confirm password</label>
+        <div class="password-input-wrap">
+          <input type="password" id="confirmPassword" minlength="6" required autocomplete="new-password" />
+          <button type="button" class="password-toggle-btn" data-toggle-password="confirmPassword" aria-label="Show password" tabindex="-1">
+            <i class="fa-solid fa-eye"></i>
+          </button>
+        </div>
+        <p id="confirmPasswordHint">
+          <i class="fa-solid fa-circle-check" id="confirmPasswordIcon"></i>
+          <span id="confirmPasswordText"></span>
+        </p>
       </div>
 
       <button type="submit" id="registerBtn" class="btn btn-primary btn-block">Create account</button>
     </form>
 
     <p class="auth-switch">Already have an account? <a href="login.html">Log in</a></p>
+
+    <!-- Deep links into about.html's Legal accordion — see the auto-open/scroll
+         logic in about.html which reads the #hash and opens+scrolls to the
+         matching card (falls back to a normal page load if the hash is unknown). -->
+    <p class="auth-terms">
+      By signing up, you agree to our
+      <a href="about.html#terms-of-service">Terms of Service</a>
+      and
+      <a href="about.html#data-protection">Privacy Policy</a>.
+    </p>
   </div>
 </main>
 
@@ -160,16 +238,91 @@
     });
   });
 
+  // ---------- Password show/hide toggle ----------
+  // Purely a display-state flip (input type text <-> password). Nothing here
+  // is sent anywhere — same pattern used on login.html.
+  function wirePasswordToggles() {
+    document.querySelectorAll("[data-toggle-password]").forEach((btn) => {
+      const targetId = btn.getAttribute("data-toggle-password");
+      const input = document.getElementById(targetId);
+      const icon = btn.querySelector("i");
+      if (!input || !icon) return;
+
+      btn.addEventListener("click", () => {
+        const willShow = input.type === "password";
+        input.type = willShow ? "text" : "password";
+        icon.classList.toggle("fa-eye", !willShow);
+        icon.classList.toggle("fa-eye-slash", willShow);
+        btn.setAttribute("aria-label", willShow ? "Hide password" : "Show password");
+
+        input.focus({ preventScroll: true });
+        const len = input.value.length;
+        input.setSelectionRange?.(len, len);
+      });
+    });
+  }
+  wirePasswordToggles();
+
+  // ---------- Confirm password — frontend-only match check ----------
+  // This never touches the API payload; `confirmPassword` is deliberately
+  // left out of the SS_API.register() call below. It only exists to catch
+  // typos before the request is ever made.
+  const passwordInput = document.getElementById("password");
+  const confirmPasswordInput = document.getElementById("confirmPassword");
+  const confirmPasswordHint = document.getElementById("confirmPasswordHint");
+  const confirmPasswordIcon = document.getElementById("confirmPasswordIcon");
+  const confirmPasswordText = document.getElementById("confirmPasswordText");
+
+  function passwordsMatch() {
+    return passwordInput.value.length > 0 &&
+           confirmPasswordInput.value.length > 0 &&
+           passwordInput.value === confirmPasswordInput.value;
+  }
+
+  function refreshConfirmPasswordUI() {
+    if (!confirmPasswordInput.value) {
+      confirmPasswordHint.classList.remove("show", "match-ok", "match-bad");
+      confirmPasswordInput.classList.remove("input-ok", "input-bad");
+      confirmPasswordInput.setCustomValidity("");
+      return;
+    }
+
+    const matches = passwordsMatch();
+    confirmPasswordHint.classList.add("show");
+    confirmPasswordHint.classList.toggle("match-ok", matches);
+    confirmPasswordHint.classList.toggle("match-bad", !matches);
+    confirmPasswordInput.classList.toggle("input-ok", matches);
+    confirmPasswordInput.classList.toggle("input-bad", !matches);
+    confirmPasswordIcon.className = matches ? "fa-solid fa-circle-check" : "fa-solid fa-circle-exclamation";
+    confirmPasswordText.textContent = matches ? "Passwords match" : "Passwords do not match";
+    confirmPasswordInput.setCustomValidity(matches ? "" : "Passwords do not match");
+  }
+
+  passwordInput.addEventListener("input", refreshConfirmPasswordUI);
+  confirmPasswordInput.addEventListener("input", refreshConfirmPasswordUI);
+
   document.getElementById("registerForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     const errBox = document.getElementById("regError");
     const btn = document.getElementById("registerBtn");
     errBox.classList.remove("show");
+
+    // Frontend-only guard — confirmPassword is never part of the payload.
+    refreshConfirmPasswordUI();
+    if (!passwordsMatch()) {
+      errBox.textContent = "Passwords do not match. Please re-check both fields.";
+      errBox.classList.add("show");
+      confirmPasswordInput.focus();
+      return;
+    }
+
     btn.disabled = true; btn.textContent = "Creating account…";
 
     const role = document.querySelector('input[name="role"]:checked').value;
 
-    // Build payload matching the active discriminator's schema fields
+    // Build payload matching the active discriminator's schema fields.
+    // Note: confirmPassword deliberately stays out of this object — it is
+    // a client-side-only check and is never sent to the backend.
     const payload = {
       name: document.getElementById("name").value.trim(),
       phone: document.getElementById("phone").value.trim(),

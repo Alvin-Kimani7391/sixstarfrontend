@@ -38,7 +38,11 @@
 <link rel="stylesheet" href="/css/style.css">
 <style>
 /* ============================================================
-   ABOUT PAGE — Full Width with Brand Colors
+   ABOUT PAGE — Dark Ink Theme
+   Recolored to match the RFQ intro modal language: dark ink
+   hero/CTA sections instead of bright orange/purple/gold
+   splashes, with accent colors (brand/sun/pop) used sparingly
+   for icons, badges, and CTAs only.
    ============================================================ */
 
 /* ---- Full width layout ---- */
@@ -54,14 +58,25 @@
   padding: 0 24px 60px;
 }
 
-/* ---- Hero - full width ---- */
+/* ---- Hero - full width, dark ink gradient with subtle texture ---- */
 .page-hero {
-  background: linear-gradient(135deg, var(--brand-dark), var(--brand) 60%, var(--sun));
+  position: relative;
+  background: linear-gradient(165deg, var(--ink) 0%, #23242B 60%, #1A1B20 100%);
   padding: 60px 0 50px;
   margin-bottom: 0;
   width: 100%;
+  overflow: hidden;
+}
+.page-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(120deg, rgba(255,255,255,.03) 0 2px, transparent 2px 26px);
+  pointer-events: none;
 }
 .page-hero .wrap {
+  position: relative;
+  z-index: 1;
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 24px;
@@ -72,7 +87,7 @@
   max-width: 14ch;
 }
 .page-hero p {
-  color: rgba(255,255,255,0.9);
+  color: #B9BAC2;
   max-width: 65ch;
   font-size: 1.1rem;
   line-height: 1.7;
@@ -135,19 +150,23 @@
   color: var(--brand);
   font-size: 1.4rem;
 }
+/* Eyebrow-pill section badge: tinted + bordered, not a solid block */
 .about-section-title .section-badge {
   font-size: 0.65rem;
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.08em;
   padding: 4px 12px;
   border-radius: 999px;
-  background: var(--brand);
-  color: #fff;
+  background: color-mix(in srgb, var(--brand) 12%, transparent);
+  color: var(--brand);
+  border: 1px solid color-mix(in srgb, var(--brand) 28%, transparent);
   margin-left: auto;
 }
 .about-section-title .section-badge.seller-badge {
-  background: var(--pop);
+  background: color-mix(in srgb, var(--pop) 12%, transparent);
+  color: var(--pop);
+  border-color: color-mix(in srgb, var(--pop) 28%, transparent);
 }
 
 /* ---- Accordion Cards ---- */
@@ -196,12 +215,14 @@
   flex-wrap: wrap;
   flex: 1;
 }
+/* Icon chip: bordered tint instead of flat fill, matching rfq-intro-feature__ico */
 .accordion-header .icon {
   flex-shrink: 0;
   width: 38px;
   height: 38px;
   border-radius: 10px;
   background: var(--paper-dim);
+  border: 1px solid var(--line);
   color: var(--brand-dark);
   display: flex;
   align-items: center;
@@ -213,32 +234,38 @@
   font-size: 1rem;
   color: var(--ink);
 }
+/* Badges: tinted + bordered eyebrow pills */
 .accordion-header .badge {
   font-size: 0.6rem;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.06em;
   padding: 3px 10px;
   border-radius: 999px;
-  background: var(--paper-dim);
+  background: color-mix(in srgb, var(--brand-dark) 10%, transparent);
   color: var(--brand-dark);
+  border: 1px solid color-mix(in srgb, var(--brand-dark) 25%, transparent);
   white-space: nowrap;
 }
 .accordion-header .badge.buyer {
-  background: #e3f0f5;
+  background: color-mix(in srgb, #1a6a7a 12%, transparent);
   color: #1a6a7a;
+  border-color: color-mix(in srgb, #1a6a7a 28%, transparent);
 }
 .accordion-header .badge.seller {
-  background: #ede6f5;
+  background: color-mix(in srgb, #6a4a8a 12%, transparent);
   color: #6a4a8a;
+  border-color: color-mix(in srgb, #6a4a8a 28%, transparent);
 }
 .accordion-header .badge.legal {
-  background: #f5ece6;
+  background: color-mix(in srgb, #8a6a4a 12%, transparent);
   color: #8a6a4a;
+  border-color: color-mix(in srgb, #8a6a4a 28%, transparent);
 }
 .accordion-header .badge.core {
-  background: #e6f5ed;
+  background: color-mix(in srgb, #1a7a5a 12%, transparent);
   color: #1a7a5a;
+  border-color: color-mix(in srgb, #1a7a5a 28%, transparent);
 }
 .accordion-header .toggle-icon {
   flex-shrink: 0;
@@ -321,29 +348,41 @@
   color: var(--ink);
 }
 
-/* ---- CTA Banner ---- */
+/* ---- CTA Banner - same dark ink treatment as the hero ---- */
 .cta-banner {
+  position: relative;
+  overflow: hidden;
   margin: 48px 0 10px;
   padding: 40px 32px;
   border-radius: var(--radius-lg);
-  background: linear-gradient(135deg, var(--brand-dark), var(--brand) 60%, var(--sun));
+  background: linear-gradient(165deg, var(--ink) 0%, #23242B 60%, #1A1B20 100%);
   color: #fff;
   text-align: center;
 }
+.cta-banner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(120deg, rgba(255,255,255,.03) 0 2px, transparent 2px 26px);
+  pointer-events: none;
+}
 .cta-banner h2 {
+  position: relative;
   font-family: var(--font-display);
   font-size: 1.6rem;
   color: #fff;
   margin: 0 0 8px;
 }
 .cta-banner p {
-  color: rgba(255,255,255,0.85);
+  position: relative;
+  color: #B9BAC2;
   margin: 0 0 20px;
   max-width: 55ch;
   margin-inline: auto;
   line-height: 1.7;
 }
 .cta-banner .btn-group {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   gap: 14px;
@@ -361,12 +400,12 @@
 }
 .cta-banner .btn-primary {
   background: #fff;
-  color: var(--brand-dark);
+  color: var(--ink);
   border: none;
 }
 .cta-banner .btn-primary:hover {
   transform: translateY(-3px);
-  box-shadow: var(--shadow-pop);
+  box-shadow: 0 10px 22px rgba(0,0,0,.35);
 }
 .cta-banner .btn-outline {
   background: transparent;
@@ -484,7 +523,7 @@
         </div>
 
         <!-- Card 2: Acceptance of Terms -->
-        <div class="accordion-card">
+        <div class="accordion-card" id="terms-of-service">
           <div class="accordion-header" onclick="toggleAccordion(this)">
             <div class="left">
               <div class="icon"><i class="fa-solid fa-file-contract"></i></div>
@@ -740,7 +779,7 @@
 
       <div class="accordion-grid">
         <!-- Card: Becoming a Seller -->
-        <div class="accordion-card">
+        <div class="accordion-card" id="becoming-a-seller">
           <div class="accordion-header" onclick="toggleAccordion(this)">
             <div class="left">
               <div class="icon"><i class="fa-solid fa-user-plus"></i></div>
@@ -826,7 +865,7 @@
         </div>
 
         <!-- Card: Own a Shop -->
-        <div class="accordion-card full-width">
+        <div class="accordion-card full-width" id="own-a-shop">
           <div class="accordion-header" onclick="toggleAccordion(this)">
             <div class="left">
               <div class="icon"><i class="fa-solid fa-shop"></i></div>
@@ -957,7 +996,7 @@
         </div>
 
         <!-- Card: Data Protection -->
-        <div class="accordion-card">
+        <div class="accordion-card" id="data-protection">
           <div class="accordion-header" onclick="toggleAccordion(this)">
             <div class="left">
               <div class="icon"><i class="fa-solid fa-database"></i></div>
@@ -1193,17 +1232,25 @@
     // Open first accordion by default (already has .open class on "What We Do")
     // All good
 
-    // Deep-link support: auto-open the Return Policy card when arriving via
-    // /about.html#return-policy OR /about.html/return-policy (server-routed, see below)
+    // ------------------------------------------------------------
+    // Deep-link support: any accordion card with an `id` can be linked to
+    // directly via /about.html#that-id (or, for the return policy only,
+    // the legacy path-style /about.html/return-policy for Google Merchant
+    // Center). On arrival we open the matching card and scroll it into
+    // view. Currently wired ids: #return-policy, #terms-of-service,
+    // #data-protection, #becoming-a-seller, #own-a-shop —
+    // register.html's "By signing up…" footnote links into the Terms/
+    // Data-Protection cards, and the footer's "Sell With Us" column
+    // (ui.js) links into the Becoming-a-Seller/Own-a-Shop cards.
+    // ------------------------------------------------------------
     const path = window.location.pathname;
-    const wantsReturnPolicy =
-      window.location.hash === '#return-policy' ||
-      path.endsWith('/return-policy') ||
-      path.endsWith('/return-policy/');
+    const legacyReturnPolicyPath = path.endsWith('/return-policy') || path.endsWith('/return-policy/');
+    const hashId = window.location.hash ? window.location.hash.slice(1) : null;
+    const targetId = legacyReturnPolicyPath ? 'return-policy' : hashId;
 
-    if (wantsReturnPolicy) {
-      const card = document.getElementById('return-policy');
-      if (card) {
+    if (targetId) {
+      const card = document.getElementById(targetId);
+      if (card && card.classList.contains('accordion-card')) {
         card.classList.add('open');
         // slight delay so layout has settled before scrolling
         setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
