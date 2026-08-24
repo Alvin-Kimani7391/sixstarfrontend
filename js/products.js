@@ -1,8 +1,9 @@
 (function () {
   const grid = document.getElementById("productGrid");
   const loadMoreWrap = document.getElementById("loadMoreWrap");
-  const loadMoreBtn = document.getElementById("loadMoreBtn");
-  const loadMoreLabel = document.getElementById("loadMoreLabel");
+  // was: const loadMoreBtn / loadMoreLabel — remove both, add:
+
+const loadMoreSentinel = document.getElementById("loadMoreSentinel");
   const loadMoreCount = document.getElementById("loadMoreCount");
   const resultCount = document.getElementById("resultCount");
   const catCascadeEl = document.getElementById("catCascade");
@@ -269,21 +270,14 @@
 
   /* ---------- Load More button state ---------- */
 
-  function setLoadMoreBusy(busy) {
-    isLoadingMore = busy;
-    loadMoreBtn.classList.toggle("is-loading", busy);
-    loadMoreBtn.disabled = busy;
-    loadMoreLabel.textContent = busy ? "Loading" : "Load More";
-  }
-
   function refreshLoadMoreUI() {
-    if (!totalCount || loadedCount >= totalCount) {
-      loadMoreWrap.style.display = "none";
-      return;
-    }
-    loadMoreWrap.style.display = "flex";
-    loadMoreCount.textContent = `Showing ${loadedCount} of ${totalCount} products`;
+  if (!totalCount || loadedCount >= totalCount) {
+    loadMoreWrap.classList.remove("active");
+    return;
   }
+  loadMoreWrap.classList.add("active");
+  loadMoreCount.textContent = `Showing ${loadedCount} of ${totalCount}`;
+}
 
   function fetchPage(pageNum) {
     return SS_API.getProducts({
@@ -423,7 +417,7 @@
     loadedCount = 0;
     totalCount = 0;
     topSellingPool = null;
-    loadMoreWrap.style.display = "none";
+    loadMoreWrap.classList.remove("active");
     grid.innerHTML = ssSkeletonCards(PAGE_SIZE);
     resultCount.textContent = "Loading products…";
 
@@ -468,7 +462,7 @@
         <p>${err.message}</p>
       </div>`;
       resultCount.textContent = "";
-      loadMoreWrap.style.display = "none";
+      loadMoreWrap.classList.remove("active");
     }
   }
 
@@ -481,10 +475,11 @@
   // sees on initial render; re-running it on every "Load More" click would
   // just thrash the JSON-LD block for no indexing benefit.
   async function loadMore() {
-    if (isLoadingMore || loadedCount >= totalCount) return;
-    setLoadMoreBusy(true);
+  if (isLoadingMore || loadedCount >= totalCount) return;
+  isLoadingMore = true;
+  loadMoreWrap.classList.add("active");
 
-    try {
+  try  {
       let products;
 
       if (topSellingPool) {
@@ -510,13 +505,19 @@
       }
       refreshLoadMoreUI();
     } catch (err) {
-      ssToast("Couldn't load more products", "fa-circle-exclamation");
-    } finally {
-      setLoadMoreBusy(false);
-    }
+    ssToast("Couldn't load more products", "fa-circle-exclamation");
+  } finally {
+    isLoadingMore = false;
+    refreshLoadMoreUI();
   }
+}
 
-  loadMoreBtn.addEventListener("click", loadMore);
+  // was: loadMoreBtn.addEventListener("click", loadMore);
+const loadMoreObserver = new IntersectionObserver((entries) => {
+  if (entries[0].isIntersecting) loadMore();
+}, { rootMargin: "300px" }); // fires slightly before it's on screen — no visible wait
+
+if (loadMoreSentinel) loadMoreObserver.observe(loadMoreSentinel);
 
   // "Apply filters" now only governs price range + sort — category
   // filtering happens immediately as the cascade is used (see

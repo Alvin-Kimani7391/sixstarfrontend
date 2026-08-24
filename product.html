@@ -186,13 +186,12 @@
         <!-- Loads the next 8 products in place, with a spinner inside the
              button while the request is in flight. Hides itself once every
              product has been loaded. -->
-        <div class="load-more-wrap" id="loadMoreWrap" style="display:none;">
-          <button class="btn-loadmore" id="loadMoreBtn" type="button">
-            <span class="btn-loadmore__label" id="loadMoreLabel">Load More</span>
-            <span class="btn-loadmore__spinner"></span>
-          </button>
-          <p class="load-more-count" id="loadMoreCount"></p>
-        </div>
+        <!-- was: .load-more-wrap with btn-loadmore -->
+<div class="infinite-loader" id="loadMoreWrap">
+  <div class="dual-spinner"><span></span><span></span></div>
+  <span class="infinite-loader__label" id="loadMoreCount">Loading more…</span>
+</div>
+<div id="loadMoreSentinel"></div>
       </div>
     </section>
   </div>

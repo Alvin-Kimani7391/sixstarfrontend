@@ -278,6 +278,143 @@ button.main:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-s
   .cart-left { width: 100%; }
   .step-label { font-size: 9.5px; }
 }
+
+/* ============================================================
+   ORDER SUCCESS OVERLAY — full-screen animated confirmation shown
+   the instant submitOrder() succeeds. Pure white background (matches
+   the reference "Payment Successful" screens), a properly-oriented
+   checkmark that draws itself, a slow deliberate reveal sequence,
+   and a confetti burst timed to land exactly when the tick completes.
+   ============================================================ */
+.order-success-overlay {
+  position: fixed; inset: 0; z-index: 9000;
+  display: flex; align-items: center; justify-content: center;
+  background: #ffffff;
+  opacity: 0; visibility: hidden; transition: opacity .5s ease, visibility 0s linear .5s;
+  overflow: hidden; padding: 20px;
+}
+.order-success-overlay.active { opacity: 1; visibility: visible; transition: opacity .5s ease; }
+
+.confetti-layer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.confetti-piece {
+  position: absolute; top: -24px; opacity: 0;
+  animation-name: confettiFall; animation-timing-function: cubic-bezier(.24,.5,.4,.96); animation-fill-mode: forwards;
+}
+@keyframes confettiFall {
+  0% { transform: translate(0,0) rotate(0deg); opacity: 1; }
+  12% { opacity: 1; }
+  100% { transform: translate(var(--drift), 112vh) rotate(var(--rotate)); opacity: 0; }
+}
+
+.success-card {
+  position: relative; width: 100%; max-width: 380px;
+  background: transparent; border: none; box-shadow: none;
+  text-align: center; padding: 10px;
+  transform: translateY(14px); opacity: 0;
+  transition: transform .7s cubic-bezier(.19,1,.22,1), opacity .6s ease;
+}
+.order-success-overlay.active .success-card { transform: translateY(0); opacity: 1; }
+
+.success-check-wrap { position: relative; width: 118px; height: 118px; margin: 0 auto 28px; }
+
+.success-pulse-ring {
+  position: absolute; inset: 0; border-radius: 50%;
+  border: 2px solid var(--price); opacity: 0;
+}
+.success-pulse-ring.ring2 { border-color: var(--marigold); }
+.order-success-overlay.active .success-pulse-ring { animation: successPulse 2.4s ease-out 1.7s infinite; }
+.order-success-overlay.active .success-pulse-ring.ring2 { animation-delay: 2.5s; }
+@keyframes successPulse {
+  0% { transform: scale(.72); opacity: .45; }
+  100% { transform: scale(1.7); opacity: 0; }
+}
+
+.success-check-glow {
+  position: absolute; inset: 6px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(18,161,80,.16), transparent 70%);
+  opacity: 0; transform: scale(.6);
+}
+.order-success-overlay.active .success-check-glow { animation: successGlowIn .8s ease .1s forwards; }
+@keyframes successGlowIn { to { opacity: 1; transform: scale(1); } }
+
+.success-check-svg { position: relative; width: 118px; height: 118px; display: block; overflow: visible; }
+
+/* Only the ring is rotated (to move its draw start-point to 12 o'clock) —
+   the checkmark path is left completely untouched so it always reads as a
+   normal upright tick, never mirrored or flipped. */
+.success-check-ring {
+  fill: none; stroke: var(--price); stroke-width: 5; stroke-linecap: round;
+  stroke-dasharray: 327; stroke-dashoffset: 327;
+  transform-origin: 60px 60px; transform: rotate(-90deg);
+}
+.order-success-overlay.active .success-check-ring { animation: drawRing 1.15s cubic-bezier(.65,0,.35,1) .4s forwards; }
+@keyframes drawRing { to { stroke-dashoffset: 0; } }
+
+.success-check-mark {
+  fill: none; stroke: var(--price); stroke-width: 7; stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 86; stroke-dashoffset: 86;
+  transform-origin: 60px 60px;
+}
+.order-success-overlay.active .success-check-mark { animation: drawCheck .65s cubic-bezier(.65,0,.35,1) 1.55s forwards; }
+@keyframes drawCheck { to { stroke-dashoffset: 0; } }
+
+/* Small satisfying "settle" bounce once the tick finishes drawing. */
+.order-success-overlay.active .success-check-wrap { animation: checkSettle .5s ease 2.2s; }
+@keyframes checkSettle {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.09); }
+  100% { transform: scale(1); }
+}
+
+.success-badge-bolt {
+  position: absolute; top: -2px; right: 2px; width: 32px; height: 32px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--marigold), var(--marigold-deep)); color: var(--navy-deep);
+  display: flex; align-items: center; justify-content: center; font-size: 14px;
+  box-shadow: 0 8px 18px rgba(242,169,59,.4); opacity: 0; transform: scale(0) rotate(-40deg);
+}
+.order-success-overlay.active .success-badge-bolt { animation: badgePop .5s cubic-bezier(.2,.9,.3,1.4) 2.3s forwards; }
+@keyframes badgePop { to { opacity: 1; transform: scale(1) rotate(0deg); } }
+
+.success-title {
+  font-family: 'Fraunces', serif; font-size: 27px; font-weight: 700; color: var(--ink);
+  margin: 0 0 10px; letter-spacing: -.2px; opacity: 0; transform: translateY(10px);
+}
+.order-success-overlay.active .success-title { animation: successTextIn .6s ease 2.55s forwards; }
+.success-sub {
+  font-size: 14px; color: var(--ink-soft); margin: 0 0 26px; font-weight: 600; line-height: 1.5;
+  opacity: 0; transform: translateY(10px);
+}
+.order-success-overlay.active .success-sub { animation: successTextIn .6s ease 2.7s forwards; }
+@keyframes successTextIn { to { opacity: 1; transform: none; } }
+
+.success-order-chip {
+  display: inline-flex; flex-direction: column; align-items: center; gap: 5px; padding: 14px 30px; border-radius: 18px;
+  background: linear-gradient(135deg, rgba(18,161,80,.08), rgba(242,169,59,.07));
+  border: 1.5px dashed var(--price); margin-bottom: 26px;
+  opacity: 0; transform: scale(.9);
+}
+.order-success-overlay.active .success-order-chip { animation: successChipIn .55s cubic-bezier(.2,.9,.3,1.3) 2.9s forwards; }
+@keyframes successChipIn { to { opacity: 1; transform: scale(1); } }
+.chip-label { font-size: 10.5px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: var(--ink-faint); }
+.chip-value { font-family: var(--font-mono); font-size: 22px; font-weight: 800; color: var(--price); letter-spacing: .5px; }
+
+.success-progress { height: 4px; border-radius: 4px; background: var(--line); overflow: hidden; margin-bottom: 16px; opacity: 0; }
+.order-success-overlay.active .success-progress { animation: successTextIn .5s ease 3.15s forwards; }
+.success-progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--marigold), var(--price)); border-radius: 4px; }
+.success-progress-fill.run { animation: successProgressRun 2.4s linear 3.2s forwards; }
+@keyframes successProgressRun { 0% { width: 0%; } 100% { width: 100%; } }
+
+.success-redirect-text { font-size: 12.5px; color: var(--ink-faint); font-weight: 600; margin: 0; opacity: 0; }
+.order-success-overlay.active .success-redirect-text { animation: successTextIn .5s ease 3.2s forwards; }
+.dotting span { animation: dotBlink 1.4s infinite; opacity: 0; }
+.dotting span:nth-child(1){animation-delay:0s;} .dotting span:nth-child(2){animation-delay:.2s;} .dotting span:nth-child(3){animation-delay:.4s;}
+@keyframes dotBlink { 0%,80%,100%{opacity:0;} 40%{opacity:1;} }
+
+@media (max-width: 480px) {
+  .success-check-wrap { width: 96px; height: 96px; }
+  .success-check-svg { width: 96px; height: 96px; }
+  .success-title { font-size: 23px; }
+}
 </style>
 </head>
 <body data-page="checkout.html">
@@ -411,6 +548,32 @@ button.main:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-s
       <p class="premium-text">We currently dispatch to selected regions only.<br><br>If your area is unavailable, we can still process your order manually through WhatsApp support.</p>
       <input type="text" id="customLocationInput" placeholder="Enter your location">
       <button class="main" onclick="sendCustomLocationOrder()"><i class="fa-brands fa-whatsapp"></i> Continue to WhatsApp</button>
+    </div>
+  </div>
+
+  <!-- Order Placed success overlay — shown by showOrderSuccessOverlay() in the
+       script below the instant submitOrder() resolves successfully. -->
+  <div id="orderSuccessOverlay" class="order-success-overlay" role="status" aria-live="polite">
+    <div class="confetti-layer" id="confettiLayer"></div>
+    <div class="success-card">
+      <div class="success-check-wrap">
+        <div class="success-pulse-ring"></div>
+        <div class="success-pulse-ring ring2"></div>
+        <div class="success-check-glow"></div>
+        <svg class="success-check-svg" viewBox="0 0 120 120">
+          <circle class="success-check-ring" cx="60" cy="60" r="52"></circle>
+          <path class="success-check-mark" d="M33 61 L51 79 L89 39"></path>
+        </svg>
+        <div class="success-badge-bolt"><i class="fa-solid fa-bolt"></i></div>
+      </div>
+      <h2 class="success-title">Order Placed!</h2>
+      <p class="success-sub">Ksh <span id="successTotal">0</span> · <span id="successItemCount">0</span> item(s) on the way to you</p>
+      <div class="success-order-chip">
+        <span class="chip-label">Order Number</span>
+        <span class="chip-value" id="successOrderNumber">—</span>
+      </div>
+      <div class="success-progress"><div class="success-progress-fill" id="successProgressFill"></div></div>
+      <p class="success-redirect-text">Taking you to your orders<span class="dotting"><span>.</span><span>.</span><span>.</span></span></p>
     </div>
   </div>
 </main>
@@ -1205,6 +1368,66 @@ async function resolveProfileAndVerification(meResponse) {
   };
 }
 
+// ============================================================
+// ORDER SUCCESS OVERLAY — animated "Order Placed!" confirmation.
+// Draws a checkmark, fires a confetti burst, fills a progress bar
+// timed to the redirect delay, and is fully re-triggerable (each
+// call resets and restarts every animation from scratch).
+// ============================================================
+function launchConfetti() {
+  const layer = document.getElementById("confettiLayer");
+  if (!layer) return;
+  layer.innerHTML = "";
+  const colors = ["#f2a93b", "#12a150", "#7c3aed", "#ff5a1f", "#2563eb"];
+  const pieceCount = 46;
+  for (let i = 0; i < pieceCount; i++) {
+    const el = document.createElement("span");
+    el.className = "confetti-piece";
+    const left = Math.random() * 100;
+    const delay = Math.random() * 0.6;
+    const duration = 3.4 + Math.random() * 2.2;
+    const w = 6 + Math.random() * 7;
+    const h = w * (0.35 + Math.random() * 0.3);
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    const rotate = Math.random() * 620 - 310;
+    const drift = (Math.random() * 2 - 1) * 100;
+    el.style.left = left + "%";
+    el.style.setProperty("--drift", drift + "px");
+    el.style.setProperty("--rotate", rotate + "deg");
+    el.style.width = w + "px";
+    el.style.height = h + "px";
+    el.style.background = color;
+    el.style.borderRadius = Math.random() > 0.5 ? "2px" : "50%";
+    el.style.animationDelay = delay + "s";
+    el.style.animationDuration = duration + "s";
+    layer.appendChild(el);
+  }
+  setTimeout(() => { if (layer) layer.innerHTML = ""; }, 6200);
+}
+
+function showOrderSuccessOverlay({ orderRef, total, itemCount }) {
+  const overlay = document.getElementById("orderSuccessOverlay");
+  if (!overlay) return;
+
+  document.getElementById("successOrderNumber").textContent = orderRef;
+  document.getElementById("successTotal").textContent = Number(total || 0).toLocaleString();
+  document.getElementById("successItemCount").textContent = itemCount || 0;
+
+  // Restart the progress-bar fill animation every time this is shown.
+  const fill = document.getElementById("successProgressFill");
+  fill.classList.remove("run");
+  void fill.offsetWidth; // force reflow so the animation can replay
+  fill.classList.add("run");
+
+  overlay.classList.add("active");
+  document.body.style.overflow = "hidden";
+
+  // Confetti fires right as the checkmark finishes drawing (ring 0.4s+1.15s,
+  // check 1.55s+0.65s => tick complete ~2.2s) rather than dumping all at once
+  // the instant the overlay opens — it should feel like a reward, not noise.
+  setTimeout(launchConfetti, 2150);
+}
+
 async function submitOrder(event) {
   const msg = document.getElementById("msg");
   const btn = event?.target || document.querySelector("#payment-step button:last-of-type");
@@ -1314,14 +1537,20 @@ async function submitOrder(event) {
     const orderRef = order.orderNumber || order._id;
     sessionStorage.setItem("ss_last_order", orderRef);
     sessionStorage.setItem("ss_last_order_phone", phone);
-    msg.innerHTML = `<div class="success">✅ Order placed successfully<br>
-      Your order number:<br>
-      <span class="order-number-highlight">${orderRef}</span><br>
-      <span style="font-size:12.5px;color:var(--ink-soft);font-weight:600;">Check your email for order details.</span><br><br>
-      Redirecting to your orders...</div>`;
+
+    // Total/item count for the overlay — computed from the same `live`
+    // lines + fees just submitted, so it matches what was actually charged.
+    const grandTotal = live.reduce((sum, e) => sum + e.unitPrice * e.qty, 0) + transportFee
+      + live.reduce((sum, e) => sum + (isHeavyWholesale(e) ? computeWholesaleDeliveryForLine(e).fee : 0), 0);
+    const itemCount = live.reduce((sum, e) => sum + e.qty, 0);
+
+    msg.innerHTML = "";
+    document.getElementById("payment-step").style.display = "none";
+    showOrderSuccessOverlay({ orderRef, total: grandTotal, itemCount });
+
     // Deep-link straight into the Orders tab of the profile page, with the
     // specific order expanded and scrolled into view (handled in profile.js).
-    setTimeout(() => (window.location.href = `profile.html?tab=orders&orderId=${order._id}`), 2800);
+    setTimeout(() => (window.location.href = `profile.html?tab=orders&orderId=${order._id}`), 6000);
   } catch (err) {
     console.error("submitOrder failed:", err);
     msg.innerHTML = `<span style="color:#E23744">❌ ${err.message || "Something went wrong placing your order. Please try again."}</span>`;

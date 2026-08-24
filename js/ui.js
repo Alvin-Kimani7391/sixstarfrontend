@@ -91,11 +91,6 @@ function ssLogout() {
 
 // Renders one product card, used everywhere (home rails, product.html
 // grid, category.html grid, recently-viewed, etc). Shows every field
-// the backend actually sends: price + discount, hot deal, rating,
-// stock state, and — when the seller is a wholesaler — the MOQ, bulk
-// pricing tiers and free-delivery tag, matching wholesale.html.
-// Renders one product card, used everywhere (home rails, product.html
-// grid, category.html grid, recently-viewed, etc). Shows every field
 // the backend actually sends: price + discount, hot deal, rating, and
 // a role tag (Retail / Wholesale) so buyers instantly know what
 // they're looking at. Wholesale gets its MOQ / bulk pricing / free
@@ -629,6 +624,37 @@ function ssRenderWhatsApp() {
   el.innerHTML = `<i class="fa-brands fa-whatsapp"></i>`;
 }
 
+/* ---------- scroll-to-top button ----------
+   Small round button pinned bottom-left (mirrors the WhatsApp float on
+   the bottom-right). Hidden until the page has scrolled a bit, fades/
+   slides in past that point, and smooth-scrolls back to the top on
+   click. Injected once per page load from the same DOMContentLoaded
+   hook that renders the header/footer, so it's available site-wide
+   with zero per-page markup required.
+------------------------------------------------- */
+function ssRenderScrollTop() {
+  if (document.getElementById("scrollTopBtn")) return; // guard against double-init
+
+  const btn = document.createElement("button");
+  btn.className = "scroll-top-btn";
+  btn.id = "scrollTopBtn";
+  btn.type = "button";
+  btn.setAttribute("aria-label", "Back to top");
+  btn.innerHTML = `<i class="fa-solid fa-chevron-up"></i>`;
+  document.body.appendChild(btn);
+
+  btn.addEventListener("click", () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  const toggle = () => {
+    btn.classList.toggle("show", window.scrollY > 400);
+  };
+
+  window.addEventListener("scroll", toggle, { passive: true });
+  toggle(); // in case the page loads already scrolled (back/forward nav)
+}
+
 function ssHideLoader() {
   const l = document.getElementById("pageLoader");
   if (l) setTimeout(() => l.classList.add("hide"), 150);
@@ -1146,10 +1172,6 @@ function ssNextFlashSaleStart() {
 // same visual language as out-of-stock (dimmed image, overlay, disabled +
 // button) but the overlay reads "Starts at 2:00 PM" instead of "Sold out",
 // so shoppers can browse and plan without being able to buy yet.
-// Renders one Flash Sale product card. isLive=false renders a locked card:
-// same visual language as out-of-stock (dimmed image, overlay, disabled +
-// button) but the overlay reads "Starts at 2:00 PM" instead of "Sold out",
-// so shoppers can browse and plan without being able to buy yet.
 function ssFlashSaleCard(fs) {
   window.__ssFlashSaleCache = window.__ssFlashSaleCache || {};
   const fsId = fs.id || fs._id;
@@ -1474,6 +1496,7 @@ document.addEventListener("DOMContentLoaded", () => {
   ssRenderHeader(document.body.dataset.page || "");
   ssRenderFooter();
   ssRenderWhatsApp();
+  ssRenderScrollTop();
   ssHideLoader();
   ssLoadDrawerBadges();
   setInterval(ssLoadDrawerBadges, 30000);

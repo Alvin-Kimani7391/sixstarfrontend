@@ -1,27 +1,11 @@
 /* ============================================================
    PROFILE PAGE — details, orders (polling for live-ish status),
    cancel order, recently viewed products.
-
-   New in this version:
-   - Deep-linking: profile.html?tab=orders&orderId=XYZ (used by the
-     post-payment redirect on pay.html) jumps straight to the
-     Orders tab, expands that order's detail panel, and scrolls to
-     it with a brief highlight.
-   - Expandable order cards: a "View details" toggle reveals an
-     itemized breakdown (items, variant, qty × unit price), a full
-     price breakdown (subtotal / transport / wholesale delivery /
-     notes / total), shipping details, and payment info (status,
-     M-Pesa code, verified/placed/updated timestamps). Expanded
-     state is preserved across the 20s silent poll refresh.
    ============================================================ */
 (function () {
   const user = SS_AUTH.requireRole(['buyer', 'retailer', 'wholesaler']); // any logged-in role
   if (!user) return;
 
-  // NOTE: Order documents have TWO separate status fields on the backend:
-  //   - paymentStatus: 'pending_verification' | 'confirmed' | 'rejected'
-  //   - orderStatus:   'processing' | 'shipped' | 'delivered' | 'cancelled'
-  // There is no combined "status" field — always read the correct one below.
   const ORDER_STEPS = [
     { key: 'processing', label: 'Placed / Processing', icon: 'fa-box' },
     { key: 'shipped', label: 'Shipped', icon: 'fa-truck' },
@@ -31,13 +15,8 @@
   let pollTimer = null;
   let pendingCancelId = null;
 
-  // Order ids whose detail panel is currently expanded — kept across silent
-  // poll refreshes so the list re-rendering every 20s doesn't collapse
-  // whatever the buyer had open.
   const expandedOrderIds = new Set();
 
-  // Deep-link params from the URL (set by pay.html's post-payment redirect:
-  // profile.html?tab=orders&orderId=...)
   const urlParams = new URLSearchParams(location.search);
   const deepLinkTab = urlParams.get('tab');
   const deepLinkOrderId = urlParams.get('orderId');
@@ -68,14 +47,12 @@
 
   function activateTab(tabName) {
     const target = document.getElementById('panel-' + tabName);
-    if (!target) return; // unknown tab name (e.g. bad query param) — ignore
+    if (!target) return;
 
     tabs.forEach((b) => b.classList.toggle('active', b.dataset.tab === tabName));
     document.querySelectorAll('.acct-panel').forEach((p) => p.classList.toggle('active', p.id === 'panel-' + tabName));
 
     if (tabName === 'orders') {
-      // If we're deep-linking to a specific order, mark it expanded BEFORE
-      // rendering so it opens already-expanded instead of flashing shut->open.
       if (deepLinkOrderId) expandedOrderIds.add(deepLinkOrderId);
       loadOrders().then(() => {
         if (deepLinkOrderId) scrollToOrder(deepLinkOrderId);
@@ -92,7 +69,6 @@
   });
 
   function scrollToOrder(id) {
-    // Wait a frame for the just-rendered list to be in the DOM.
     requestAnimationFrame(() => {
       const card = document.querySelector(`.order-card[data-order-id="${id}"]`);
       if (!card) return;
@@ -136,7 +112,6 @@
       if (u.role === 'buyer') document.getElementById('fAddress').value = u.address || '';
       SS_AUTH.set({ ...SS_AUTH.get(), name: u.name, avatar: u.avatar, role: u.role });
     } catch (err) {
-      // fall back to cached localStorage copy so the page isn't empty
       paintSidebar(user);
     }
   }
@@ -278,7 +253,7 @@
 
   function toggleOrderDetail(id) {
     const panel = document.getElementById('detail-' + id);
-    const btn = document.querySelector(`[data-toggle-detail="${id}"]`);
+    const btn = document.querySelector(`.btn-details-toggle[data-toggle-detail="${id}"]`);
     if (!panel) return;
 
     const willOpen = panel.hasAttribute('hidden');
@@ -299,8 +274,6 @@
 
   function orderCardHTML(o) {
     const items = o.items || [];
-    // Cancellable while it's still processing and hasn't been confirmed+moved on
-    // (mirrors the backend rule in cancelOrder — keep these two in sync).
     const canCancel = o.orderStatus === 'processing'
       && !(o.paymentStatus === 'confirmed' && o.orderStatus !== 'processing');
     const orderRef = o.orderNumber ? o.orderNumber : ('#' + esc(o._id?.slice(-8).toUpperCase()));
@@ -320,7 +293,10 @@
         ${o.paymentStatus === 'rejected'
           ? `<div class="payment-rejected-badge"><i class="fa-solid fa-triangle-exclamation"></i> Payment could not be verified — order cancelled</div>` : ''}
         <div class="order-items">
-          ${items.map((it) => `<img src="${esc(it.image || '')}" alt="${esc(it.name || '')}" onerror="this.style.visibility='hidden'" />`).join('') || '<span style="font-size:.8rem;color:var(--ink-soft);">No item details</span>'}
+          ${items.length
+            ? items.slice(0, 6).map((it) => `<img src="${esc(it.image || '')}" alt="${esc(it.name || '')}" onerror="this.style.visibility='hidden'" />`).join('')
+              + (items.length > 6 ? `<span class="order-items-more" data-toggle-detail="${o._id}" title="View all ${items.length} items">+${items.length - 6}</span>` : '')
+            : '<span style="font-size:.8rem;color:var(--ink-soft);">No item details</span>'}
         </div>
         ${orderProgressHTML(o.orderStatus)}
         <div class="order-foot">
@@ -408,16 +384,21 @@
     const p = entry.product;
     if (!p) return '';
     const img = (p.images && p.images[0]) || '';
-    // Backend field names: finalPrice (base) + displayPrice (virtual, discounted). No `discountPrice`/`price` fields exist.
-    const price = p.displayPrice ?? p.finalPrice ?? p.sellerPrice ?? 0;
-    const hasDiscount = (p.discountPercent || 0) > 0 && p.finalPrice && price < p.finalPrice;
+    // Backend field names per the product model are finalPrice (stored) and
+    // displayPrice (a computed/virtual discounted price). The extra fallbacks
+    // below are defensive: if /users/recently-viewed ever returns the product
+    // without that virtual applied (e.g. a .lean() populate on the backend),
+    // we still resolve a real price instead of silently landing on 0.
+    const basePrice = p.finalPrice ?? p.price ?? p.sellingPrice ?? p.basePrice ?? null;
+    const price = p.displayPrice ?? basePrice ?? p.sellerPrice ?? 0;
+    const hasDiscount = (p.discountPercent || 0) > 0 && basePrice && price < basePrice;
     return `
       <a href="product-detail.html?id=${p._id}" class="p-card" style="text-decoration:none;">
         ${p.isHotDeal ? `<div class="p-card__badges"><div class="p-card__hot"><i class="fa-solid fa-fire"></i> Hot deal</div></div>` : ''}
         <div class="p-card__img"><img src="${esc(img)}" alt="${esc(p.name)}" /></div>
         <div class="p-card__body">
           <div class="p-card__name">${esc(p.name)}</div>
-          ${hasDiscount ? `<div class="p-card__old">${money(p.finalPrice)}</div>` : ''}
+          ${hasDiscount ? `<div class="p-card__old">${money(basePrice)}</div>` : ''}
           <div class="p-card__foot"><span class="price-tag">${money(price)}</span></div>
         </div>
       </a>
@@ -450,13 +431,9 @@
   /* ---------- init ---------- */
   loadProfile();
 
-  // Deep-link support: profile.html?tab=orders&orderId=XYZ (used by pay.html's
-  // post-payment redirect) jumps straight to that tab and, for orders, expands
-  // + scrolls to the specific order.
   if (deepLinkTab && document.getElementById('panel-' + deepLinkTab)) {
     activateTab(deepLinkTab);
   } else if (deepLinkOrderId) {
-    // orderId given without an explicit tab — orders is the only sensible target.
     activateTab('orders');
   }
 })();

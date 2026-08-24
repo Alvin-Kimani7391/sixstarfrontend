@@ -37,6 +37,11 @@
 
   .acct-wrap{ display:grid; gap:24px; grid-template-columns:1fr; padding:30px 0 70px; }
   @media(min-width:900px){ .acct-wrap{ grid-template-columns:240px 1fr; } }
+  /* Grid items default to min-width:auto, which means content that can't
+     shrink (long unbroken text, a fixed-size row that isn't allowed to
+     wrap) can silently force this whole column — and the page — wider
+     than the viewport on phones. min-width:0 removes that trap. */
+  .acct-wrap > *{ min-width:0; }
 
   .acct-side{ background:var(--white); border:1px solid var(--line); border-radius:var(--radius-m); padding:18px; align-self:start; position:static; }
   @media(min-width:900px){ .acct-side{ position:sticky; top:96px; } }
@@ -64,9 +69,9 @@
   .avatar-row .acct-avatar{ width:64px; height:64px; font-size:1.5rem; }
 
   /* orders */
-  .order-card{ background:var(--white); border:1px solid var(--line); border-radius:var(--radius-m); padding:18px; margin-bottom:14px; scroll-margin-top:100px; transition:box-shadow .4s ease, border-color .4s ease; }
-  .order-card__head{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
-  .order-id{ font-family:var(--font-mono); font-weight:700; font-size:.85rem; color:var(--navy-deep); }
+  .order-card{ background:var(--white); border:1px solid var(--line); border-radius:var(--radius-m); padding:18px; margin-bottom:14px; scroll-margin-top:100px; transition:box-shadow .4s ease, border-color .4s ease; min-width:0; max-width:100%; box-sizing:border-box; }
+  .order-card__head{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:12px; min-width:0; }
+  .order-id{ font-family:var(--font-mono); font-weight:700; font-size:.85rem; color:var(--navy-deep); overflow-wrap:anywhere; }
   .order-date{ font-size:.76rem; color:var(--ink-soft); margin-top:2px; }
   .order-status-pill{ font-size:.72rem; font-weight:700; padding:5px 12px; border-radius:999px; text-transform:capitalize; white-space:nowrap; }
   .order-status-pill.pending{ background:#FCEBD0; color:var(--marigold-deep); }
@@ -78,8 +83,20 @@
   .order-status-pill.confirmed{ background:#DEEFE9; color:var(--teal-deep); }
   .order-status-pill.rejected{ background:#FBE4DD; color:var(--brick); }
 
-  .order-items{ display:flex; gap:10px; overflow-x:auto; padding:4px 0 12px; }
+  .order-items{ display:flex; gap:10px; overflow-x:auto; padding:4px 0 12px; min-width:0; max-width:100%; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+  .order-items::-webkit-scrollbar{ display:none; }
   .order-items img{ width:52px; height:52px; object-fit:cover; border-radius:8px; border:1px solid var(--line); flex-shrink:0; }
+  /* Shown instead of dumping every thumbnail into the row when an order
+     has many items — keeps the collapsed card compact on phones and
+     opens the itemized "View details" panel when tapped. */
+  .order-items-more{
+    flex-shrink:0; display:flex; align-items:center; justify-content:center;
+    width:52px; height:52px; border-radius:8px; border:1px dashed var(--line);
+    background:var(--paper-dim, #F3F4F8); color:var(--ink-soft);
+    font-family:var(--font-mono); font-size:.7rem; font-weight:700;
+    cursor:pointer;
+  }
+  .order-items-more:hover{ border-color:var(--teal); color:var(--teal-deep); }
 
   .order-progress{ display:flex; align-items:center; gap:0; margin:14px 0; }
   .op-step{ flex:1; display:flex; flex-direction:column; align-items:center; position:relative; }
@@ -144,7 +161,7 @@
 
   .order-detail{
     margin-top:14px; padding-top:14px; border-top:1px dashed var(--line);
-    display:flex; flex-direction:column; gap:16px;
+    display:flex; flex-direction:column; gap:16px; min-width:0;
   }
   .order-detail[hidden]{ display:none; }
 
@@ -154,18 +171,19 @@
   }
   .order-detail-section h4 i{ color:var(--marigold-deep); font-size:.75rem; }
 
-  .detail-items{ display:flex; flex-direction:column; gap:8px; }
+  .detail-items{ display:flex; flex-direction:column; gap:8px; min-width:0; }
   .detail-item-row{
     display:flex; align-items:center; gap:10px; padding:8px;
     background:var(--paper-dim, #F3F4F8); border-radius:var(--radius-s);
+    min-width:0; max-width:100%; box-sizing:border-box;
   }
   .detail-item-row img{
     width:42px; height:42px; object-fit:cover; border-radius:8px; flex-shrink:0;
     border:1px solid var(--line);
   }
   .detail-item-info{ flex:1; min-width:0; }
-  .detail-item-name{ font-size:.82rem; font-weight:700; color:var(--navy-deep); }
-  .detail-item-variant{ font-size:.72rem; color:var(--ink-soft); margin-top:1px; }
+  .detail-item-name{ font-size:.82rem; font-weight:700; color:var(--navy-deep); overflow-wrap:anywhere; word-break:break-word; }
+  .detail-item-variant{ font-size:.72rem; color:var(--ink-soft); margin-top:1px; overflow-wrap:anywhere; }
   .detail-item-qty{ font-size:.74rem; color:var(--ink-soft); margin-top:2px; }
   .detail-item-total{ font-family:var(--font-mono); font-weight:700; font-size:.82rem; color:var(--navy-deep); flex-shrink:0; }
 
@@ -185,6 +203,7 @@
   .detail-notes{
     font-size:.74rem; color:var(--ink-soft); background:var(--paper-dim,#F3F4F8);
     padding:8px 10px; border-radius:var(--radius-s); margin-top:4px; display:flex; gap:6px; align-items:flex-start;
+    min-width:0; overflow-wrap:anywhere;
   }
   .detail-notes i{ margin-top:2px; color:var(--marigold-deep); flex-shrink:0; }
 
@@ -243,7 +262,7 @@
     </aside>
 
     <!-- PANELS -->
-    <div>
+    <div class="acct-main">
       <!-- PROFILE DETAILS -->
       <section class="acct-panel active" id="panel-details">
         <div class="panel-card">

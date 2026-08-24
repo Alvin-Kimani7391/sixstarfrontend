@@ -2148,3 +2148,77 @@ img{ max-width:100%; display:block; }
   .rfq-intro-modal__actions{ flex-direction:column; padding:16px 18px 22px; }
   .rfq-intro-modal__dontshow{ margin:14px 18px 0; }
 }
+
+
+
+
+
+
+
+
+
+/* ===== Catalog "Browse All" button — dual-bar style to match infinite scroll ===== */
+.btn-loadmore{
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  min-width:220px;
+  padding:14px 30px;
+  border:none;
+  border-radius:999px;
+  background:linear-gradient(90deg,var(--brand),var(--brand-dark));
+  color:#fff;
+  font-family:var(--font-body);
+  font-weight:700;
+  font-size:14px;
+  letter-spacing:.2px;
+  cursor:pointer;
+  box-shadow:0 10px 24px -10px rgba(255,90,31,.5);
+  transition:transform .22s ease, box-shadow .22s ease, filter .2s ease;
+}
+.btn-loadmore:hover:not(:disabled){
+  transform:translateY(-2px);
+  box-shadow:0 14px 30px -10px rgba(255,90,31,.6);
+  filter:brightness(1.06);
+}
+.btn-loadmore:active:not(:disabled){ transform:translateY(0) scale(.97); }
+.btn-loadmore:disabled{ cursor:not-allowed; pointer-events:none; }
+
+.btn-loadmore__label{ display:inline-flex; align-items:center; }
+.btn-loadmore__label::after{
+  content:"\f078";
+  font-family:"Font Awesome 6 Free";
+  font-weight:900;
+  font-size:11px;
+  margin-left:9px;
+  transition:transform .25s ease, opacity .2s ease;
+}
+.btn-loadmore.is-loading .btn-loadmore__label::after{ opacity:0; }
+
+/* the two small counter-rotating bars, sized down to sit inline in the button */
+.btn-loadmore__spinner{
+  display:none;
+  position:relative;
+  width:20px;
+  height:20px;
+  flex-shrink:0;
+}
+.btn-loadmore.is-loading .btn-loadmore__spinner{ display:inline-block; }
+.btn-loadmore__spinner span{
+  position:absolute; top:50%; left:50%;
+  width:16px; height:2.5px; margin:-1.25px 0 0 -8px;
+  border-radius:3px;
+  background:#fff;
+  animation:ssDualSpin .8s linear infinite;
+}
+.btn-loadmore__spinner span:nth-child(2){
+  background:rgba(255,255,255,.55);
+  animation-direction:reverse;
+}
+
+@media(prefers-reduced-motion:reduce){
+  .btn-loadmore__spinner span{ animation:none; }
+  .btn-loadmore, .btn-loadmore__label::after{ transition:none; }
+}
