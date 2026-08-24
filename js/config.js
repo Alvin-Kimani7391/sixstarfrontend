@@ -16,7 +16,6 @@ window.SS_CONFIG = {
   PHONE_1: "+254 115 913 507",
   PHONE_2: "+254 794 327 798",
   EMAIL: "support@sixstarsuppliers.com",
-s
   SOCIALS: {
     facebook: "https://www.facebook.com/share/1GkdidaAiP/",
     instagram: "https://www.instagram.com/sixstarsuppliers",
