@@ -644,8 +644,10 @@ function ssRenderScrollTop() {
   document.body.appendChild(btn);
 
   btn.addEventListener("click", () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  });
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  btn.blur(); // clears any lingering focus/hover state so the icon
+              // returns to black instead of staying orange on mobile
+});
 
   const toggle = () => {
     btn.classList.toggle("show", window.scrollY > 400);
@@ -1465,6 +1467,38 @@ function ssShowRfqIntroModal() {
   overlay.classList.add("active");
 }
 
+
+/* ============================================================
+   LOADING OVERLAY — small, curved, nested arcs rotating in
+   opposite directions (like a reload icon), centered on screen,
+   with a very light dim so products stay visible underneath.
+   Reused by product.html's infinite scroll and index.html's
+   "Browse All Products" button.
+   ============================================================ */
+function ssEnsureLoadingOverlay() {
+  let el = document.getElementById("ssLoadingOverlay");
+  if (el) return el;
+
+  el = document.createElement("div");
+  el.className = "ss-loading-overlay";
+  el.id = "ssLoadingOverlay";
+  el.innerHTML = `
+    <div class="ss-spinner" role="status" aria-label="Loading">
+      <span class="ss-spinner__arc ss-spinner__arc--outer"></span>
+      <span class="ss-spinner__arc ss-spinner__arc--inner"></span>
+    </div>`;
+  document.body.appendChild(el);
+  return el;
+}
+
+function ssShowLoadingOverlay() {
+  ssEnsureLoadingOverlay().classList.add("show");
+}
+
+function ssHideLoadingOverlay() {
+  const el = document.getElementById("ssLoadingOverlay");
+  if (el) el.classList.remove("show");
+}
 /* ============================================================
    Drawer badges — currently just the Chat link's "active
    quotes/bids" count: total offers received across the buyer's

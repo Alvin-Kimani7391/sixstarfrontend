@@ -478,37 +478,34 @@ const loadMoreSentinel = document.getElementById("loadMoreSentinel");
   if (isLoadingMore || loadedCount >= totalCount) return;
   isLoadingMore = true;
   loadMoreWrap.classList.add("active");
+  ssShowLoadingOverlay();          // <-- add
 
-  try  {
-      let products;
+  try {
+    let products;
+    if (topSellingPool) {
+      products = topSellingPool.slice(loadedCount, loadedCount + PAGE_SIZE);
+    } else {
+      const nextPage = page + 1;
+      const res = await fetchPage(nextPage);
+      products = res.products || res.data || (Array.isArray(res) ? res : []);
+      if (shouldShuffleListing()) products = ssShuffle(products);
+      page = nextPage;
+    }
 
-      if (topSellingPool) {
-        products = topSellingPool.slice(loadedCount, loadedCount + PAGE_SIZE);
-      } else {
-        const nextPage = page + 1;
-        const res = await fetchPage(nextPage);
-        products = res.products || res.data || (Array.isArray(res) ? res : []);
-        // Same rule as load() — shuffle each freshly-fetched page only
-        // when no explicit sort/search is in play, so pagination totals
-        // and "Showing X of Y" counts stay exactly accurate.
-        if (shouldShuffleListing()) products = ssShuffle(products);
-        page = nextPage;
-      }
-
-      if (products.length) {
-        products.forEach(p => { window.__ssProductCache[p.id] = p; });
-        grid.insertAdjacentHTML("beforeend", products.map(ssProductCard).join(""));
-        loadedCount += products.length;
-      } else {
-        // Backend says there's more (totalCount) but returned nothing — stop asking.
-        totalCount = loadedCount;
-      }
-      refreshLoadMoreUI();
-    } catch (err) {
+    if (products.length) {
+      products.forEach(p => { window.__ssProductCache[p.id] = p; });
+      grid.insertAdjacentHTML("beforeend", products.map(ssProductCard).join(""));
+      loadedCount += products.length;
+    } else {
+      totalCount = loadedCount;
+    }
+    refreshLoadMoreUI();
+  } catch (err) {
     ssToast("Couldn't load more products", "fa-circle-exclamation");
   } finally {
     isLoadingMore = false;
     refreshLoadMoreUI();
+    ssHideLoadingOverlay();         // <-- add
   }
 }
 

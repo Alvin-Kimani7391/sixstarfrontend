@@ -2530,7 +2530,21 @@ body.drawer-lock {
   transition:opacity .25s ease, transform .25s ease, background .2s ease;
 }
 .scroll-top-btn.show{ opacity:1; transform:translateY(0) scale(1); pointer-events:auto; }
-.scroll-top-btn:hover{ background:var(--brand); transform:translateY(-3px) scale(1.05); }
+/* Only apply hover color on devices with a real pointer (mouse/trackpad) —
+   prevents the "stuck orange" issue on touch devices where :hover persists
+   after a tap until the user taps elsewhere. */
+@media (hover: hover) and (pointer: fine){
+  .scroll-top-btn:hover{ background:var(--brand); transform:translateY(-3px) scale(1.05); }
+}
+
+/* Touch devices get a brief color change only while actively pressed,
+   then it releases back to black the instant the finger lifts. */
+.scroll-top-btn:active{ background:var(--brand); transform:translateY(-1px) scale(.96); }
+
+/* Belt-and-suspenders: whenever the button is hidden (i.e. back at the
+   top of the page), force it back to black regardless of any lingering
+   focus/hover/active state. */
+.scroll-top-btn:not(.show){ background:var(--ink) !important; }
 @media(max-width:599px){
   .scroll-top-btn{ left:14px; bottom:18px; width:42px; height:42px; font-size:14px; }
 }
@@ -2564,3 +2578,70 @@ body.drawer-lock {
   letter-spacing:.3px;
 }
 #loadMoreSentinel{ height:1px; }
+
+
+
+
+
+
+
+
+/* ============================================================
+   SS SPINNER — two curved arcs (reload-icon style), nested,
+   spinning opposite directions. Small, fast, no bulk.
+   ============================================================ */
+.ss-spinner{
+  position:relative;
+  width:34px;
+  height:34px;
+  flex-shrink:0;
+}
+.ss-spinner__arc{
+  position:absolute;
+  border-radius:50%;
+  border-style:solid;
+  border-color:transparent;
+}
+.ss-spinner__arc--outer{
+  inset:0;
+  border-width:3px;
+  border-top-color:var(--brand);
+  border-right-color:var(--brand);
+  animation:ssArcSpin .85s linear infinite;
+}
+.ss-spinner__arc--inner{
+  inset:9px; /* smaller ring, nested inside the outer one */
+  border-width:2.5px;
+  border-bottom-color:var(--pop);
+  border-left-color:var(--pop);
+  animation:ssArcSpinRev .65s linear infinite;
+}
+@keyframes ssArcSpin{ to{ transform:rotate(360deg); } }
+@keyframes ssArcSpinRev{ to{ transform:rotate(-360deg); } }
+@media(prefers-reduced-motion:reduce){
+  .ss-spinner__arc{ animation:none; border-top-color:var(--brand); border-left-color:var(--brand); }
+}
+
+/* ---- Full-screen overlay: barely-there dim, spinner centered,
+   products stay visible underneath ---- */
+.ss-loading-overlay{
+  position:fixed;
+  inset:0;
+  z-index:999997;
+  background:rgba(15,16,20,.05);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transition:opacity .18s ease, visibility .18s ease;
+}
+.ss-loading-overlay.show{
+  opacity:1;
+  visibility:visible;
+  pointer-events:auto;
+}
+.ss-loading-overlay .ss-spinner{ width:42px; height:42px; }
+.ss-loading-overlay .ss-spinner__arc--outer{ border-width:3.5px; }
+.ss-loading-overlay .ss-spinner__arc--inner{ inset:10px; border-width:3px; }

@@ -137,10 +137,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   if (catalogLoadMoreBtn) {
-    catalogLoadMoreBtn.addEventListener("click", () => {
-      catalogLoadMoreBtn.classList.add("is-loading");
-      catalogLoadMoreBtn.disabled = true;
-      location.href = "product.html";
-    });
-  }
+  catalogLoadMoreBtn.addEventListener("click", () => {
+    catalogLoadMoreBtn.classList.add("is-loading");
+    catalogLoadMoreBtn.disabled = true;
+    ssShowLoadingOverlay();
+    // tiny delay purely so the spinner is perceptible before the
+    // page unloads — kept short so navigation still feels instant
+    setTimeout(() => { location.href = "product.html"; }, 260);
+  });
+}
 });
