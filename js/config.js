@@ -15,8 +15,8 @@ window.SS_CONFIG = {
   WHATSAPP_NUMBER: "254794327798",
   PHONE_1: "+254 115 913 507",
   PHONE_2: "+254 794 327 798",
-  EMAIL: "info@sixstarsuppliers.com",
-
+  EMAIL: "support@sixstarsuppliers.com",
+s
   SOCIALS: {
     facebook: "https://www.facebook.com/share/1GkdidaAiP/",
     instagram: "https://www.instagram.com/sixstarsuppliers",
