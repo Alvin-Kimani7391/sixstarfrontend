@@ -290,6 +290,16 @@ getShopBySlug(slug) {
     verifyPayment(id, decision) {
       return request(`/admin/orders/${id}/verify-payment`, { method: "PATCH", body: { decision }, requiresAuth: true });
     },
+        // ============================================================
+    // PAYMENTS — PayHero STK Push
+    // ============================================================
+    initiateStkPush(payload) {
+      // payload: { orderId, phone }
+      return request("/payments/initiate-stk", { method: "POST", body: payload, requiresAuth: true });
+    },
+    checkPaymentStatus(orderId) {
+      return request(`/payments/status/${orderId}`, { requiresAuth: true });
+    },
 
     // ============================================================
     // REVIEWS - PRODUCTS

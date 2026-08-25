@@ -415,6 +415,46 @@ button.main:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-s
   .success-check-svg { width: 96px; height: 96px; }
   .success-title { font-size: 23px; }
 }
+
+
+/* ---- Payment method choice ---- */
+.payment-method-toggle { display: flex; flex-direction: column; gap: 10px; margin: 4px 0 16px; }
+.pm-option {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
+  padding: 13px 14px; border-radius: 12px; border: 1.5px solid var(--line);
+  background: var(--bg-page); color: var(--ink); cursor: pointer; text-align: left;
+  font-weight: 700; font-size: 13.5px; transition: .2s ease; width: 100%;
+}
+.pm-option i { margin-right: 6px; }
+.pm-option small { display: block; margin-top: 2px; font-weight: 600; color: var(--ink-faint); font-size: 11px; }
+.pm-option.active { border-color: var(--marigold); background: rgba(242,169,59,.08); box-shadow: 0 0 0 3px rgba(242,169,59,.12); }
+.pm-option.active small { color: var(--marigold-deep); }
+
+/* ---- STK status feedback ---- */
+.stk-status { display: flex; align-items: flex-start; gap: 10px; padding: 13px 14px; border-radius: 12px; font-size: 13px; line-height: 1.55; margin-top: 12px; }
+.stk-status i { margin-top: 2px; font-size: 16px; flex-shrink: 0; }
+.stk-status strong { display: block; color: var(--ink); margin-bottom: 3px; font-size: 13.5px; }
+.stk-status p { margin: 0; color: var(--ink-soft); }
+.stk-pending { background: rgba(37,99,235,.06); border: 1px solid rgba(37,99,235,.18); }
+.stk-pending i { color: #2563eb; }
+.stk-error { background: rgba(184,68,46,.06); border: 1px solid rgba(184,68,46,.2); }
+.stk-error i { color: var(--brick); }
+.stk-warning { background: rgba(242,169,59,.08); border: 1px solid rgba(242,169,59,.22); }
+.stk-warning i { color: var(--marigold-deep); }
+.stk-retry-btn {
+  margin-top: 8px; padding: 8px 14px; border-radius: 9px; border: none;
+  background: linear-gradient(135deg, var(--marigold), var(--marigold-deep));
+  color: var(--navy-deep); font-weight: 800; font-size: 12.5px; cursor: pointer;
+}
+.stk-retry-btn:disabled { opacity: .5; cursor: not-allowed; }
+.stk-fallback-note { margin-top: 8px; font-size: 11px; color: var(--ink-faint); line-height: 1.6; }
+
+/* ---- Success overlay: status line (pending vs paid) ---- */
+.success-status {
+  font-size: 13px; font-weight: 800; margin: 0 0 8px; letter-spacing: .2px;
+  opacity: 0; transform: translateY(10px);
+}
+.order-success-overlay.active .success-status { animation: successTextIn .6s ease 2.6s forwards; }
 </style>
 </head>
 <body data-page="checkout.html">
@@ -519,20 +559,46 @@ button.main:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-s
           <h3>Total <span>Ksh <span id="total-price">0</span></span></h3>
         </div>
         <button class="main" id="proceedBtn" onclick="showPayment()" style="background: orange;"><i class="fa-solid fa-credit-card"></i>Proceed to Pay</button>
-        <div id="payment-step" class="payment-modal">
-          <button onclick="document.getElementById('payment-step').style.display='none'">Close</button>
+               <div id="payment-step" class="payment-modal">
+          <button onclick="closePaymentStep()">Close</button>
           <h4>Payment Details</h4>
-          <p>PAYBILL: <strong>522533</strong></p>
-          <p>Account Number: <strong>8125245</strong></p>
-          <div class="input-group">
-            <label>Paste your full M-Pesa confirmation SMS</label>
-            <textarea id="mpesa-message" rows="3" placeholder="e.g. QWE1XYZ23 Confirmed. Ksh1,500 sent to Waithera Samuel Kimani on 24/7/26..."></textarea>
+
+          <div class="payment-method-toggle" id="paymentMethodToggle">
+            <button type="button" class="pm-option active" data-method="stk" onclick="selectPaymentMethod('stk')">
+              <i class="fa-solid fa-mobile-screen-button"></i>Pay with M-Pesa (STK Push)
+              <small>Instant — you'll get a prompt on your phone to enter your PIN</small>
+            </button>
+            <button type="button" class="pm-option" data-method="manual" onclick="selectPaymentMethod('manual')">
+              <i class="fa-solid fa-comment-sms"></i>I've Already Paid (Paste SMS)
+              <small>Manual — we verify your M-Pesa message before dispatch</small>
+            </button>
           </div>
+
+          <!-- STK PUSH PANEL -->
+          <div id="stkPanel">
+            <div class="input-group">
+              <label>M-Pesa Number to Charge</label>
+              <input type="text" id="stkPhone" placeholder="0712345678">
+              <small class="hint">We'll send a payment prompt to this number.</small>
+            </div>
+            <div id="stkStatusArea" style="display:none;"></div>
+          </div>
+
+          <!-- MANUAL SMS PANEL -->
+          <div id="manualPanel" style="display:none;">
+            <p>PAYBILL: <strong>522533</strong></p>
+            <p>Account Number: <strong>8125245</strong></p>
+            <div class="input-group">
+              <label>Paste your full M-Pesa confirmation SMS</label>
+              <textarea id="mpesa-message" rows="3" placeholder="e.g. QWE1XYZ23 Confirmed. Ksh1,500 sent to Six Star on 24/7/26..."></textarea>
+            </div>
+          </div>
+
           <div class="terms-agree" id="termsAgreeRow">
             <input type="checkbox" id="termsCheckbox" onchange="onTermsCheckboxChange()">
             <label for="termsCheckbox">I have read and agree to the <a href="about.html#terms" target="_blank" rel="noopener">Terms &amp; Conditions</a>.</label>
           </div>
-          <button id="submitOrderBtn" disabled onclick="submitOrder(event)"><i class="fa-solid fa-check"></i> Submit Order</button>
+          <button id="submitOrderBtn" disabled onclick="submitOrder(event)"><i class="fa-solid fa-check"></i> <span id="submitOrderBtnLabel">Pay with M-Pesa</span></button>
         </div>
         <p id="msg"></p>
       </div>
@@ -566,7 +632,8 @@ button.main:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-s
         </svg>
         <div class="success-badge-bolt"><i class="fa-solid fa-bolt"></i></div>
       </div>
-      <h2 class="success-title">Order Placed!</h2>
+            <h2 class="success-title" id="successTitle">Order Placed!</h2>
+      <p class="success-status" id="successStatusLine">⏳ Waiting for payment confirmation</p>
       <p class="success-sub">Ksh <span id="successTotal">0</span> · <span id="successItemCount">0</span> item(s) on the way to you</p>
       <div class="success-order-chip">
         <span class="chip-label">Order Number</span>
@@ -623,6 +690,9 @@ function showPageError(message) {
    same module everywhere.
    ============================================================ */
 let enriched = []; // one entry per cart line, after enrichment against backend
+let selectedPaymentMethod = "stk";
+let stkPollInterval = null;
+let stkContext = null; // { orderId, orderNumber, phone, grandTotal, itemCount }
 
 const DELIVERY_DATA = {
   Nairobi: [{ town: "CBD", fee: 0, deliveryDays: 1 }, { town: "Westlands", fee: 50, deliveryDays: 1 }, { town: "Karen", fee: 50, deliveryDays: 1 }, { town: "Kasarani", fee: 80, deliveryDays: 1 }, { town: "Embakasi", fee: 80, deliveryDays: 1 }, { town: "Rongai", fee: 100, deliveryDays: 1 }],
@@ -1195,14 +1265,13 @@ function onTermsCheckboxChange() {
   if (box.checked) clearFieldError(document.getElementById("termsAgreeRow"));
 }
 
+sessionStorage.removeItem("ss_pending_stk");
+
 function showPayment() {
   const missingVariant = enriched.find((e) => !e.error && e.requiresVariant && !e.selectedVariant);
   if (missingVariant) { alert(`Please select ${missingVariant.variantDefs.map(d=>d.name).join(" & ")} for "${missingVariant.product.name}".`); return; }
 
   const live = enriched.filter((e) => !e.error);
-
-  // Region/Town is now required for EVERY order — it's the buyer's delivery
-  // location regardless of which fee logic applies to the items in the cart.
   if (live.length && !townSelect.value) {
     alert("Please select a delivery town/area first.");
     markFieldError(townSelect);
@@ -1221,17 +1290,60 @@ function showPayment() {
   }
   clearFieldError(addressEl);
 
-  // Reset the terms checkbox / submit-button state each time the payment
-  // step is (re)opened, so a previous session's agreement can't silently
-  // carry over to a different order.
+  // An STK order already exists for this session (created, and either still
+  // waiting on the prompt or sitting in a failed/timeout state with a Retry
+  // button). Reopen the SAME panel showing that instead of resetting — a
+  // fresh reset here would let the buyer accidentally place a second order
+  // (and get charged twice) for the same cart.
+  if (stkContext && stkContext.orderId) {
+    document.getElementById("payment-step").style.display = "block";
+    document.getElementById("payment-step").scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  }
+
+  clearStkPolling();
+  stkContext = null;
+
+  document.getElementById("mpesa-message").value = "";
+  clearFieldError(document.getElementById("mpesa-message"));
+
+  const stkPhoneEl = document.getElementById("stkPhone");
+  stkPhoneEl.value = document.getElementById("phone").value.trim();
+  stkPhoneEl.disabled = false;
+  clearFieldError(stkPhoneEl);
+
+  document.getElementById("stkStatusArea").style.display = "none";
+  document.getElementById("stkStatusArea").innerHTML = "";
+
+  selectPaymentMethod("stk");
+
   const termsBox = document.getElementById("termsCheckbox");
   termsBox.checked = false;
   document.getElementById("submitOrderBtn").disabled = true;
+  document.getElementById("submitOrderBtn").style.display = "inline-flex";
   clearFieldError(document.getElementById("termsAgreeRow"));
+  document.getElementById("msg").innerHTML = "";
 
   document.getElementById("payment-step").style.display = "block";
   document.getElementById("payment-step").scrollIntoView({ behavior: "smooth", block: "center" });
 }
+
+function closePaymentStep() {
+  // Deliberately does NOT stop STK polling — if an STK order is mid-flight,
+  // we keep watching for the webhook result and will still show the success
+  // overlay / redirect even if the buyer closed this panel.
+  document.getElementById("payment-step").style.display = "none";
+}
+
+function selectPaymentMethod(method) {
+  selectedPaymentMethod = method;
+  document.querySelectorAll(".pm-option").forEach((btn) => btn.classList.toggle("active", btn.dataset.method === method));
+  document.getElementById("stkPanel").style.display = method === "stk" ? "block" : "none";
+  document.getElementById("manualPanel").style.display = method === "manual" ? "block" : "none";
+  document.getElementById("submitOrderBtnLabel").textContent = method === "stk" ? "Pay with M-Pesa" : "Submit Order";
+}
+
+
 
 async function loadAgentsDropdown() {
   const select = document.getElementById("agentSelect");
@@ -1405,7 +1517,7 @@ function launchConfetti() {
   setTimeout(() => { if (layer) layer.innerHTML = ""; }, 6200);
 }
 
-function showOrderSuccessOverlay({ orderRef, total, itemCount }) {
+function showOrderSuccessOverlay({ orderRef, total, itemCount, paid }) {
   const overlay = document.getElementById("orderSuccessOverlay");
   if (!overlay) return;
 
@@ -1413,42 +1525,31 @@ function showOrderSuccessOverlay({ orderRef, total, itemCount }) {
   document.getElementById("successTotal").textContent = Number(total || 0).toLocaleString();
   document.getElementById("successItemCount").textContent = itemCount || 0;
 
-  // Restart the progress-bar fill animation every time this is shown.
+  document.getElementById("successTitle").textContent = paid ? "Payment Successful!" : "Order Placed!";
+  const statusLine = document.getElementById("successStatusLine");
+  if (paid) {
+    statusLine.textContent = "✅ Paid via M-Pesa — confirmed";
+    statusLine.style.color = "var(--price)";
+  } else {
+    statusLine.textContent = "⏳ Waiting for payment confirmation";
+    statusLine.style.color = "var(--marigold-deep)";
+  }
+
   const fill = document.getElementById("successProgressFill");
   fill.classList.remove("run");
-  void fill.offsetWidth; // force reflow so the animation can replay
+  void fill.offsetWidth;
   fill.classList.add("run");
 
   overlay.classList.add("active");
   document.body.style.overflow = "hidden";
 
-  // Confetti fires right as the checkmark finishes drawing (ring 0.4s+1.15s,
-  // check 1.55s+0.65s => tick complete ~2.2s) rather than dumping all at once
-  // the instant the overlay opens — it should feel like a reward, not noise.
   setTimeout(launchConfetti, 2150);
 }
 
-async function submitOrder(event) {
-  const msg = document.getElementById("msg");
-  const btn = event?.target || document.querySelector("#payment-step button:last-of-type");
-  if (btn) btn.disabled = true;
-
-  // Terms & Conditions must be accepted before an order can be submitted.
-  const termsBox = document.getElementById("termsCheckbox");
-  if (!termsBox || !termsBox.checked) {
-    msg.innerHTML = "<span style='color:#E23744'>Please accept the Terms &amp; Conditions to continue</span>";
-    markFieldError(document.getElementById("termsAgreeRow"));
-    document.getElementById("termsAgreeRow").scrollIntoView({ behavior: "smooth", block: "center" });
-    if (btn) btn.disabled = false;
-    return;
-  }
-  clearFieldError(document.getElementById("termsAgreeRow"));
-
-  msg.innerHTML = "Processing your order... ⏳";
-
+// -------- shared validation for both payment paths --------
+function collectCheckoutFields(msgEl) {
   const name = document.getElementById("name").value.trim();
   const phone = document.getElementById("phone").value.trim();
-  const mpesaMessage = document.getElementById("mpesa-message").value.trim();
   const locationText = townSelect.selectedIndex > 0 ? townSelect.options[townSelect.selectedIndex].text : "";
   const agentCode = document.getElementById("agentSelect").value;
   const deliveryAddress = document.getElementById("deliveryAddress").value.trim();
@@ -1456,77 +1557,100 @@ async function submitOrder(event) {
   const live = enriched.filter((e) => !e.error);
   const hasStandardItem = live.some((e) => isStandardDelivery(e));
   const needsNegotiatedAddress = live.some((e) => isNegotiatedDelivery(e));
-
-  // The Transport fee is only actually billed (and sent to the backend) when
-  // at least one standard-delivery item needs it — heavy wholesale items are
-  // billed through their own deliveryCharge server-side, not this figure.
   const transportFee = hasStandardItem ? (Number(townSelect.value) || 0) : 0;
 
-  if (!name || !phone || !mpesaMessage) {
-    msg.innerHTML = "<span style='color:#E23744'>Please fill all required fields, including your M-Pesa message</span>";
-    if (btn) btn.disabled = false;
-    return;
-  }
-  if (live.length && !townSelect.value) {
-    msg.innerHTML = "<span style='color:#E23744'>Please select your delivery town/area</span>";
-    if (btn) btn.disabled = false;
-    return;
-  }
-  if (needsNegotiatedAddress && deliveryAddress.length < 8) {
-    msg.innerHTML = "<span style='color:#E23744'>Please provide a delivery address/landmark so the seller can arrange delivery</span>";
-    if (btn) btn.disabled = false;
-    return;
+  if (!name || !phone) {
+    msgEl.innerHTML = "<span style='color:#E23744'>Please fill in your name and phone number</span>";
+    return null;
   }
   if (!/^0\d{9}$/.test(phone)) {
-    msg.innerHTML = "<span style='color:#E23744'>Enter valid phone (e.g. 0712345678)</span>";
-    if (btn) btn.disabled = false;
-    return;
-  }
-  if (mpesaMessage.length < 10) {
-    msg.innerHTML = "<span style='color:#E23744'>Please paste the full M-Pesa confirmation message</span>";
-    if (btn) btn.disabled = false;
-    return;
+    msgEl.innerHTML = "<span style='color:#E23744'>Enter a valid phone number (e.g. 0712345678)</span>";
+    return null;
   }
   if (live.length === 0) {
-    msg.innerHTML = "<span style='color:#E23744'>Your cart is empty</span>";
-    if (btn) btn.disabled = false;
-    return;
+    msgEl.innerHTML = "<span style='color:#E23744'>Your cart is empty</span>";
+    return null;
+  }
+  if (!townSelect.value) {
+    msgEl.innerHTML = "<span style='color:#E23744'>Please select your delivery town/area</span>";
+    return null;
+  }
+  if (needsNegotiatedAddress && deliveryAddress.length < 8) {
+    msgEl.innerHTML = "<span style='color:#E23744'>Please provide a delivery address/landmark so the seller can arrange delivery</span>";
+    return null;
   }
   const missingVariant = live.find((e) => e.requiresVariant && !e.selectedVariant);
   if (missingVariant) {
-    msg.innerHTML = `<span style='color:#E23744'>Please select ${missingVariant.variantDefs.map(d=>d.name).join(" & ")} for "${missingVariant.product.name}"</span>`;
-    if (btn) btn.disabled = false;
-    return;
+    msgEl.innerHTML = `<span style='color:#E23744'>Please select ${missingVariant.variantDefs.map(d=>d.name).join(" & ")} for "${missingVariant.product.name}"</span>`;
+    return null;
   }
 
-  // Combine the selected town with the free-text landmark/address so the
-  // seller/rider gets both — this is the buyer's delivery location and is
-  // sent for EVERY order, including heavy-wholesale-only carts.
   const combinedAddress = [locationText, deliveryAddress].filter(Boolean).join(" — ");
+  return { name, phone, locationText, agentCode, deliveryAddress, live, transportFee, combinedAddress };
+}
+
+function buildOrderItems(live) {
+  return live.map((e) => ({
+    productId: e.product._id,
+    variantId: e.selectedVariant ? e.selectedVariant._id : undefined,
+    quantity: e.qty,
+    flashSaleId: e.isFlashDeal ? e.flashSaleId : undefined,
+  }));
+}
+
+function computeGrandTotal(live, transportFee) {
+  return live.reduce((sum, e) => sum + e.unitPrice * e.qty, 0) + transportFee
+    + live.reduce((sum, e) => sum + (isHeavyWholesale(e) ? computeWholesaleDeliveryForLine(e).fee : 0), 0);
+}
+
+function requireTermsAccepted(msgEl) {
+  const termsBox = document.getElementById("termsCheckbox");
+  if (!termsBox || !termsBox.checked) {
+    msgEl.innerHTML = "<span style='color:#E23744'>Please accept the Terms &amp; Conditions to continue</span>";
+    markFieldError(document.getElementById("termsAgreeRow"));
+    document.getElementById("termsAgreeRow").scrollIntoView({ behavior: "smooth", block: "center" });
+    return false;
+  }
+  clearFieldError(document.getElementById("termsAgreeRow"));
+  return true;
+}
+
+// -------- dispatcher --------
+function submitOrder(event) {
+  if (event) event.preventDefault();
+  if (selectedPaymentMethod === "stk") return submitStkOrder();
+  return submitManualOrder();
+}
+
+// -------- MANUAL (paste M-Pesa SMS) --------
+async function submitManualOrder() {
+  const msg = document.getElementById("msg");
+  const btn = document.getElementById("submitOrderBtn");
+  btn.disabled = true;
+
+  if (!requireTermsAccepted(msg)) { btn.disabled = false; return; }
+
+  const mpesaMessage = document.getElementById("mpesa-message").value.trim();
+  if (!mpesaMessage || mpesaMessage.length < 10) {
+    msg.innerHTML = "<span style='color:#E23744'>Please paste the full M-Pesa confirmation message</span>";
+    markFieldError(document.getElementById("mpesa-message"));
+    btn.disabled = false;
+    return;
+  }
+  clearFieldError(document.getElementById("mpesa-message"));
+
+  const fields = collectCheckoutFields(msg);
+  if (!fields) { btn.disabled = false; return; }
+  const { name, phone, locationText, agentCode, deliveryAddress, live, transportFee, combinedAddress } = fields;
+
+  msg.innerHTML = "Processing your order... ⏳";
 
   const payload = {
-    items: live.map((e) => ({
-      productId: e.product._id,
-      variantId: e.selectedVariant ? e.selectedVariant._id : undefined,
-      quantity: e.qty,
-      // FIX: e.isFlashDeal / e.flashSaleId are now actually populated by
-      // enrichLine() above — previously these were always undefined here
-      // because enrichLine() never carried the Flash Sale flag through, so
-      // the backend never received flashSaleId and silently priced/validated
-      // every Flash Sale purchase as a normal product order.
-      flashSaleId: e.isFlashDeal ? e.flashSaleId : undefined,
-    })),
-    shippingAddress: {
-      fullName: name,
-      phone,
-      address: combinedAddress || locationText || deliveryAddress || "",
-      city: locationText,
-      notes: deliveryAddress,
-    },
+    items: buildOrderItems(live),
+    shippingAddress: { fullName: name, phone, address: combinedAddress || locationText || deliveryAddress || "", city: locationText, notes: deliveryAddress },
     mpesaMessage,
+    paymentMethod: "manual",
     agentCode: agentCode || undefined,
-    // Standard Transport fee only — the backend prices each heavy wholesale
-    // line's own delivery charge independently from its stored deliveryCharge.
     transportFee,
     termsAccepted: true,
   };
@@ -1538,25 +1662,278 @@ async function submitOrder(event) {
     sessionStorage.setItem("ss_last_order", orderRef);
     sessionStorage.setItem("ss_last_order_phone", phone);
 
-    // Total/item count for the overlay — computed from the same `live`
-    // lines + fees just submitted, so it matches what was actually charged.
-    const grandTotal = live.reduce((sum, e) => sum + e.unitPrice * e.qty, 0) + transportFee
-      + live.reduce((sum, e) => sum + (isHeavyWholesale(e) ? computeWholesaleDeliveryForLine(e).fee : 0), 0);
+    const grandTotal = computeGrandTotal(live, transportFee);
     const itemCount = live.reduce((sum, e) => sum + e.qty, 0);
 
     msg.innerHTML = "";
     document.getElementById("payment-step").style.display = "none";
-    showOrderSuccessOverlay({ orderRef, total: grandTotal, itemCount });
-
-    // Deep-link straight into the Orders tab of the profile page, with the
-    // specific order expanded and scrolled into view (handled in profile.js).
+    showOrderSuccessOverlay({ orderRef, total: grandTotal, itemCount, paid: false });
     setTimeout(() => (window.location.href = `profile.html?tab=orders&orderId=${order._id}`), 6000);
   } catch (err) {
-    console.error("submitOrder failed:", err);
+    console.error("submitManualOrder failed:", err);
     msg.innerHTML = `<span style="color:#E23744">❌ ${err.message || "Something went wrong placing your order. Please try again."}</span>`;
-    if (btn) btn.disabled = false;
+    btn.disabled = false;
   }
 }
+
+// -------- STK PUSH --------
+async function submitStkOrder() {
+  const msg = document.getElementById("msg");
+  const btn = document.getElementById("submitOrderBtn");
+  btn.disabled = true;
+
+  if (!requireTermsAccepted(msg)) { btn.disabled = false; return; }
+
+  const stkPhoneEl = document.getElementById("stkPhone");
+  const stkPhone = stkPhoneEl.value.trim();
+  if (!/^0\d{9}$/.test(stkPhone) && !/^254(7|1)\d{8}$/.test(stkPhone)) {
+    msg.innerHTML = "<span style='color:#E23744'>Enter a valid Safaricom number, e.g. 0712345678</span>";
+    markFieldError(stkPhoneEl);
+    btn.disabled = false;
+    return;
+  }
+  clearFieldError(stkPhoneEl);
+
+  const fields = collectCheckoutFields(msg);
+  if (!fields) { btn.disabled = false; return; }
+  const { name, phone, locationText, agentCode, deliveryAddress, live, transportFee, combinedAddress } = fields;
+
+  msg.innerHTML = "";
+
+  const payload = {
+    items: buildOrderItems(live),
+    shippingAddress: { fullName: name, phone, address: combinedAddress || locationText || deliveryAddress || "", city: locationText, notes: deliveryAddress },
+    paymentMethod: "stk",
+    agentCode: agentCode || undefined,
+    transportFee,
+    termsAccepted: true,
+  };
+
+  const grandTotal = computeGrandTotal(live, transportFee);
+  const itemCount = live.reduce((sum, e) => sum + e.qty, 0);
+
+  // From here on, the order-creation call fires exactly once. Hide the main
+  // submit button immediately so a second click can never create a duplicate
+  // order — all further actions go through the "Try Again" button inside
+  // the status panel, which reuses the SAME order id.
+  setStkUiState("creating");
+
+  let order;
+  try {
+    const res = await SS_API.placeOrder(payload);
+    order = res.order;
+  } catch (err) {
+    console.error("STK order creation failed:", err);
+    msg.innerHTML = `<span style="color:#E23744">❌ ${err.message || "Something went wrong placing your order. Please try again."}</span>`;
+    document.getElementById("stkStatusArea").style.display = "none";
+    document.getElementById("submitOrderBtn").style.display = "inline-flex";
+    btn.disabled = false;
+    return;
+  }
+
+  // Order now exists server-side (stock already reserved) regardless of
+  // whether payment succeeds — safe to clear the local cart now.
+  SS_CART.clear();
+  const orderRef = order.orderNumber || order._id;
+  sessionStorage.setItem("ss_last_order", orderRef);
+  sessionStorage.setItem("ss_last_order_phone", stkPhone);
+
+  stkContext = { orderId: order._id, orderNumber: order.orderNumber, phone: stkPhone, grandTotal, itemCount };
+
+  // right after: stkContext = { orderId: order._id, orderNumber: order.orderNumber, phone: stkPhone, grandTotal, itemCount };
+sessionStorage.setItem("ss_pending_stk", JSON.stringify(stkContext));
+
+  setStkUiState("pushing");
+  try {
+    await SS_API.initiateStkPush({ orderId: order._id, phone: stkPhone });
+  } catch (err) {
+    console.error("STK push initiate failed:", err);
+    setStkUiState("push-failed", { error: err.message });
+    return;
+  }
+
+  setStkUiState("waiting");
+  pollStkStatus();
+}
+
+// -------- polling --------
+function clearStkPolling() {
+  if (stkPollInterval) { clearInterval(stkPollInterval); stkPollInterval = null; }
+}
+
+function pollStkStatus() {
+  clearStkPolling();
+  if (!stkContext) return;
+  const { orderId } = stkContext;
+  let attempts = 0;
+  const maxAttempts = 40; // ~2 minutes at 3s intervals
+
+  stkPollInterval = setInterval(async () => {
+    attempts++;
+    let res;
+    try {
+      res = await SS_API.checkPaymentStatus(orderId);
+    } catch (err) {
+      console.error("Payment status poll error:", err);
+      // Transient network hiccup — don't abandon polling on one failure.
+      if (attempts >= maxAttempts) {
+        clearStkPolling();
+        setStkUiState("timeout");
+      }
+      return;
+    }
+
+    if (res.paymentStatus === "confirmed" && res.stkStatus === "success") {
+      clearStkPolling();
+      document.getElementById("payment-step").style.display = "none";
+      showOrderSuccessOverlay({
+        orderRef: res.orderNumber || stkContext.orderNumber,
+        total: stkContext.grandTotal,
+        itemCount: stkContext.itemCount,
+        paid: true,
+      });
+      setTimeout(() => (window.location.href = `profile.html?tab=orders&orderId=${orderId}`), 6000);
+      return;
+    }
+
+    if (res.stkStatus === "failed") {
+      clearStkPolling();
+      setStkUiState("failed", { reason: res.rejectionReason });
+      return;
+    }
+
+    if (attempts >= maxAttempts) {
+      clearStkPolling();
+      setStkUiState("timeout");
+    }
+  }, 3000);
+}
+
+async function retryStkPush() {
+  if (!stkContext) return;
+  const msg = document.getElementById("msg");
+  const stkPhoneEl = document.getElementById("stkPhone");
+  const stkPhone = stkPhoneEl.value.trim();
+
+  if (!/^0\d{9}$/.test(stkPhone) && !/^254(7|1)\d{8}$/.test(stkPhone)) {
+    msg.innerHTML = "<span style='color:#E23744'>Enter a valid Safaricom number, e.g. 0712345678</span>";
+    markFieldError(stkPhoneEl);
+    return;
+  }
+  clearFieldError(stkPhoneEl);
+  stkContext.phone = stkPhone;
+
+  // Guard: don't push again if the order was actually confirmed already
+  // (e.g. a delayed webhook landed after we gave up polling).
+  try {
+    const check = await SS_API.checkPaymentStatus(stkContext.orderId);
+    if (check.paymentStatus === "confirmed") {
+      document.getElementById("payment-step").style.display = "none";
+      showOrderSuccessOverlay({
+        orderRef: check.orderNumber || stkContext.orderNumber,
+        total: stkContext.grandTotal,
+        itemCount: stkContext.itemCount,
+        paid: true,
+      });
+      setTimeout(() => (window.location.href = `profile.html?tab=orders&orderId=${stkContext.orderId}`), 6000);
+      return;
+    }
+  } catch (e) { /* non-fatal — proceed with retry */ }
+
+  setStkUiState("pushing");
+  try {
+    await SS_API.initiateStkPush({ orderId: stkContext.orderId, phone: stkPhone });
+  } catch (err) {
+    console.error("STK retry push failed:", err);
+    setStkUiState("push-failed", { error: err.message });
+    return;
+  }
+  setStkUiState("waiting");
+  pollStkStatus();
+}
+
+// -------- STK status panel renderer --------
+function setStkUiState(state, data = {}) {
+  const area = document.getElementById("stkStatusArea");
+  const stkPhoneEl = document.getElementById("stkPhone");
+  const submitBtn = document.getElementById("submitOrderBtn");
+  area.style.display = "block";
+
+  const orderNumber = (stkContext && stkContext.orderNumber) || "";
+
+  switch (state) {
+    case "creating":
+      submitBtn.style.display = "none";
+      stkPhoneEl.disabled = true;
+      area.innerHTML = `<div class="stk-status stk-pending"><i class="fa-solid fa-spinner fa-spin"></i><div><strong>Placing your order…</strong></div></div>`;
+      break;
+
+    case "pushing":
+      stkPhoneEl.disabled = true;
+      area.innerHTML = `<div class="stk-status stk-pending"><i class="fa-solid fa-spinner fa-spin"></i><div><strong>Sending payment prompt…</strong><p>Contacting M-Pesa now.</p></div></div>`;
+      break;
+
+    case "waiting":
+      stkPhoneEl.disabled = true;
+      area.innerHTML = `
+        <div class="stk-status stk-pending">
+          <i class="fa-solid fa-mobile-screen-button"></i>
+          <div>
+            <strong>Check your phone</strong>
+            <p>Enter your M-Pesa PIN to complete payment. This page will update automatically — it can take up to a minute.</p>
+          </div>
+        </div>`;
+      break;
+
+    case "push-failed":
+      stkPhoneEl.disabled = false;
+      area.innerHTML = `
+        <div class="stk-status stk-error">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <div>
+            <strong>Couldn't send the payment prompt</strong>
+            <p>${escapeHtml(data.error || "Please try again.")}</p>
+            <button type="button" class="stk-retry-btn" onclick="retryStkPush()">Try Again</button>
+            ${orderNumber ? `<p class="stk-fallback-note">Your order <strong>${escapeHtml(orderNumber)}</strong> is already saved. You can also pay via Paybill <strong>522533</strong>, Account <strong>8125245</strong>, using your order number as reference — then WhatsApp us your M-Pesa message.</p>` : ""}
+          </div>
+        </div>`;
+      break;
+
+    case "failed":
+      stkPhoneEl.disabled = false;
+      area.innerHTML = `
+        <div class="stk-status stk-error">
+          <i class="fa-solid fa-circle-xmark"></i>
+          <div>
+            <strong>Payment was not completed</strong>
+            <p>${escapeHtml(data.reason || "The M-Pesa prompt was cancelled or timed out.")}</p>
+            <button type="button" class="stk-retry-btn" onclick="retryStkPush()">Try Again</button>
+            ${orderNumber ? `<p class="stk-fallback-note">Your order <strong>${escapeHtml(orderNumber)}</strong> is saved. You can also pay via Paybill <strong>522533</strong>, Account <strong>8125245</strong>, using your order number as reference — then WhatsApp us your M-Pesa message.</p>` : ""}
+          </div>
+        </div>`;
+      break;
+
+    case "timeout":
+      stkPhoneEl.disabled = false;
+      area.innerHTML = `
+        <div class="stk-status stk-warning">
+          <i class="fa-solid fa-clock"></i>
+          <div>
+            <strong>Still waiting for confirmation</strong>
+            <p>If you already entered your PIN, this can occasionally take a little longer — check <a href="profile.html?tab=orders" target="_blank" rel="noopener">My Orders</a> in a moment. Otherwise, send the prompt again below.</p>
+            <button type="button" class="stk-retry-btn" onclick="retryStkPush()">Send Prompt Again</button>
+          </div>
+        </div>`;
+      break;
+  }
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = String(str ?? "");
+  return div.innerHTML;
+}
+
 
 document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("checkoutWrap").style.display = "none";
@@ -1590,6 +1967,25 @@ document.addEventListener("DOMContentLoaded", async () => {
     prefillContactFromProfile(meUser, profileUser);
     await loadCheckout();
     loadAgentsDropdown();
+
+
+// inside the DOMContentLoaded handler, after loadCheckout()/loadAgentsDropdown():
+const savedStk = sessionStorage.getItem("ss_pending_stk");
+if (savedStk) {
+  try {
+    stkContext = JSON.parse(savedStk);
+    const check = await SS_API.checkPaymentStatus(stkContext.orderId);
+    if (check.paymentStatus === "confirmed") {
+      showOrderSuccessOverlay({ orderRef: check.orderNumber, total: stkContext.grandTotal, itemCount: stkContext.itemCount, paid: true });
+      setTimeout(() => (window.location.href = `profile.html?tab=orders&orderId=${stkContext.orderId}`), 6000);
+    } else {
+      document.getElementById("payment-step").style.display = "block";
+      if (check.stkStatus === "failed") setStkUiState("failed", { reason: check.rejectionReason });
+      else { setStkUiState("waiting"); pollStkStatus(); }
+    }
+  } catch (e) { sessionStorage.removeItem("ss_pending_stk"); }
+}
+
     SS_CART.updateBadge();
     document.getElementById("deliveryAddress").addEventListener("input", () => { clearFieldError(document.getElementById("deliveryAddress")); updateTotal(); });
     setInterval(() => { if (townSelect.value || enriched.length) updateTotal(); }, 60000);

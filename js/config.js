@@ -3,7 +3,7 @@
    ============================================================ */
 window.SS_CONFIG = {
   // TODO: replace with your real Render backend URL (no trailing slash)
-  API_BASE: "https://sixstarbackend.onrender.com/api",
+  API_BASE: "https://api.sixstarsuppliers.com/api",
 
   // From Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client ID.
   // Safe to expose publicly — it identifies your app, it isn't a secret.
