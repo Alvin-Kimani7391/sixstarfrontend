@@ -392,35 +392,54 @@
       </div>
 
       <!-- ===== ORDERS & PAYMENTS ===== -->
-      <div class="tab-panel" id="panel-orders">
-        <div class="tabbar order-subtab">
-          <button class="active" data-subtab="pending-payment">Pending Payment Verification</button>
-          <button data-subtab="all-orders">All Orders</button>
-        </div>
+   <div class="tab-panel" id="panel-orders">
+  <div class="tabbar order-subtab">
+    <button class="active" data-subtab="pending-payment">Pending Payment Verification</button>
+    <button data-subtab="stk-issues">STK Push Issues</button>
+    <button data-subtab="all-orders">All Orders</button>
+  </div>
 
-        <div id="panel-pending-payment" class="dash-card">
-          <div class="dash-card__head"><h3>Pending M-Pesa Verification</h3></div>
-          <div class="table-scroll">
-            <table class="dtable">
-              <thead><tr><th>Buyer</th><th>Total</th><th>Agent</th><th>M-Pesa Code</th><th>Message Pasted</th><th>Placed</th><th>Actions</th></tr></thead>
-              <tbody id="pendingPaymentsBody"></tbody>
-            </table>
-          </div>
-        </div>
+  <div id="panel-pending-payment" class="dash-card">
+    <div class="dash-card__head"><h3>Pending M-Pesa Verification</h3></div>
+    <p class="text-muted" style="padding:0 18px;">Manual M-Pesa orders only — the buyer pasted their confirmation SMS and it needs a human eyeball. STK Push orders are never listed here; they auto-resolve via M-Pesa's webhook (see "STK Push Issues").</p>
+    <div class="table-scroll">
+      <table class="dtable">
+        <thead><tr><th>Buyer</th><th>Total</th><th>Agent</th><th>M-Pesa Code</th><th>Message Pasted</th><th>Placed</th><th>Actions</th></tr></thead>
+        <tbody id="pendingPaymentsBody"></tbody>
+      </table>
+    </div>
+  </div>
 
-        <div id="panel-all-orders" class="dash-card" style="display:none;">
-          <div class="dash-card__head">
-            <h3>All Orders</h3>
-            <p class="text-muted" style="margin:0;">Click a row to expand full order details — contact, shipping, seller pickup location(s), payment verification, marketplace commission &amp; seller payout, and the item breakdown.</p>
-          </div>
-          <div class="table-scroll">
-            <table class="dtable">
-              <thead><tr><th></th><th>Order</th><th>Buyer</th><th>Total</th><th>Agent</th><th>Payment</th><th>Fulfillment</th><th>Items</th><th>Date</th></tr></thead>
-              <tbody id="allOrdersBody"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+  <!-- NEW -->
+  <div id="panel-stk-issues" class="dash-card" style="display:none;">
+    <div class="dash-card__head"><h3>STK Push Issues</h3></div>
+    <p class="text-muted" style="padding:0 18px;">
+      Orders paid via M-Pesa STK Push that failed (wrong PIN, insufficient balance, cancelled, timeout) or are still
+      waiting on M-Pesa's response. These can never be manually "confirmed" — only M-Pesa itself (via webhook, or the
+      recheck below) can say a payment succeeded. Cancelling here releases reserved stock immediately instead of
+      waiting for the automatic cleanup.
+    </p>
+    <div class="table-scroll">
+      <table class="dtable">
+        <thead><tr><th>Order</th><th>Buyer</th><th>Total</th><th>Status</th><th>Reason</th><th>Last Attempt</th><th>Placed</th><th>Actions</th></tr></thead>
+        <tbody id="stkIssuesBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="panel-all-orders" class="dash-card" style="display:none;">
+    <div class="dash-card__head">
+      <h3>All Orders</h3>
+      <p class="text-muted" style="margin:0;">Click a row to expand full order details — contact, shipping, seller pickup location(s), payment verification, marketplace commission &amp; seller payout, and the item breakdown.</p>
+    </div>
+    <div class="table-scroll">
+      <table class="dtable">
+        <thead><tr><th></th><th>Order</th><th>Buyer</th><th>Total</th><th>Agent</th><th>Payment</th><th>Fulfillment</th><th>Items</th><th>Date</th></tr></thead>
+        <tbody id="allOrdersBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
 
 
 <!-- ===== EARNINGS ===== -->

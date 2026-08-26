@@ -231,12 +231,13 @@ function switchTab(tab) {
 // ===================================================================
 async function loadOverview() {
   const grid = document.getElementById('statGrid');
-  grid.innerHTML = `<div class="stat-card"><div class="spinner"></div></div>`.repeat(5);
+  grid.innerHTML = `<div class="stat-card"><div class="spinner"></div></div>`.repeat(6);
 
   try {
-    const [pending, payments, products, users, pendingFlash] = await Promise.all([
+    const [pending, payments, stkIssues, products, users, pendingFlash] = await Promise.all([
       apiGet('/admin/products/pending'),
       apiGet('/admin/orders/pending-payment'),
+      apiGet('/admin/orders/stk-issues'),
       apiGet('/admin/products?limit=1'),
       apiGet('/admin/users'),
       apiGet('/admin/flash-sales/pending').catch(() => ({ count: 0, flashSales: [] })),
@@ -257,7 +258,12 @@ async function loadOverview() {
       <div class="stat-card">
         <div class="stat-label">Pending Payments</div>
         <div class="stat-value">${payments.count}</div>
-        <div class="stat-sub">M-Pesa needs verification</div>
+        <div class="stat-sub">Manual M-Pesa needs verification</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">STK Push Issues</div>
+        <div class="stat-value">${stkIssues.count}</div>
+        <div class="stat-sub">Failed or unresolved M-Pesa STK</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Flash Sale Review</div>
@@ -2300,10 +2306,57 @@ async function approveFlashSaleRow(id) {
 // ===================================================================
 // ORDERS (payment verification + full oversight, with expandable detail rows)
 // ===================================================================
+
+
+const STK_FAILURE_LABELS = {
+  wrong_pin: 'Wrong M-Pesa PIN',
+  insufficient_funds: 'Insufficient Balance',
+  cancelled: 'Cancelled by buyer',
+  timeout: 'No response (timeout)',
+  in_progress: 'Another M-Pesa request in progress',
+  system_error: 'M-Pesa system error',
+  failed: 'Payment failed',
+  '': 'Waiting for M-Pesa response',
+};
+
+// Resolves a clear, method-aware label + pill class for an order's payment
+// state. Plain o.paymentStatus alone can't distinguish "confirmed via M-Pesa
+// STK" from "confirmed by an admin eyeballing a pasted SMS" — both are just
+// 'confirmed' in the DB — so this factors in paymentMethod (and, for
+// unresolved STK, the failure reason) to make that distinction visible.
+function paymentStatusDisplay(o) {
+  const method = o.paymentMethod || 'manual';
+
+  if (o.paymentStatus === 'confirmed') {
+    return method === 'stk'
+      ? { label: 'Confirmed — STK', pillClass: 'pill-confirmed', title: o.mpesaCode ? `M-Pesa receipt: ${o.mpesaCode}` : 'Auto-confirmed via M-Pesa STK Push' }
+      : { label: 'Confirmed — Manual', pillClass: 'pill-confirmed', title: o.verifiedBy?.name ? `Verified by ${o.verifiedBy.name}` : 'Verified manually from pasted M-Pesa SMS' };
+  }
+
+  if (o.paymentStatus === 'rejected') {
+    if (method === 'stk') {
+      const failType = o.stk?.failureType || '';
+      const label = STK_FAILURE_LABELS[failType] || 'STK Failed';
+      return { label: `STK Failed — ${label}`, pillClass: 'pill-rejected', title: o.rejectionReason || '' };
+    }
+    return { label: 'Payment Rejected', pillClass: 'pill-rejected', title: o.rejectionReason || '' };
+  }
+
+  // paymentStatus === 'pending_verification'
+  if (method === 'stk') {
+    return { label: 'STK — Awaiting Response', pillClass: 'pill-pending_verification', title: 'Waiting on M-Pesa\'s webhook — see STK Push Issues if this sits too long' };
+  }
+  return { label: 'Pending Verification', pillClass: 'pill-pending_verification', title: 'Buyer pasted an M-Pesa SMS — needs manual review' };
+}
+
+
+
 function loadOrdersTab() {
   document.getElementById('panel-pending-payment').style.display = orderSubTab === 'pending-payment' ? 'block' : 'none';
+  document.getElementById('panel-stk-issues').style.display = orderSubTab === 'stk-issues' ? 'block' : 'none';
   document.getElementById('panel-all-orders').style.display = orderSubTab === 'all-orders' ? 'block' : 'none';
   if (orderSubTab === 'pending-payment') loadPendingPayments();
+  else if (orderSubTab === 'stk-issues') loadStkIssues();
   else loadAllOrders();
 }
 
@@ -2362,6 +2415,81 @@ async function verifyPayment(id, decision) {
   }
 }
 
+
+
+
+async function loadStkIssues() {
+  const tbody = document.getElementById('stkIssuesBody');
+  tbody.innerHTML = `<tr><td colspan="8"><div class="spinner"></div></td></tr>`;
+  try {
+    const { orders } = await apiGet('/admin/orders/stk-issues');
+    if (orders.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8"><div class="dash-empty"><i class="fa-solid fa-circle-check"></i><p>No unresolved STK Push payments right now.</p></div></td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = orders
+      .map((o) => {
+        const failType = o.stk?.failureType || '';
+        const label = STK_FAILURE_LABELS[failType] || (o.paymentStatus === 'pending_verification' ? 'Awaiting response' : 'Failed');
+        const lastAttempt = o.stk?.lastAttemptAt ? new Date(o.stk.lastAttemptAt) : new Date(o.createdAt);
+        const minsAgo = Math.max(0, Math.round((Date.now() - lastAttempt.getTime()) / 60000));
+        const pillClass = failType ? 'pill-rejected' : 'pill-pending_review';
+
+        return `
+      <tr>
+        <td><span class="agent-code">${escapeHtml(o.orderNumber || ('#' + o._id.slice(-8).toUpperCase()))}</span></td>
+        <td>${escapeHtml(o.buyer?.name || '-')}<div class="text-muted">${escapeHtml(o.buyer?.phone || '')}</div></td>
+        <td>KSh ${(o.totalAmount || 0).toLocaleString()}</td>
+        <td><span class="pill ${pillClass}">${label}</span></td>
+        <td class="wrap-cell text-muted">${escapeHtml(o.rejectionReason || '-')}</td>
+        <td>${minsAgo < 1 ? 'Just now' : minsAgo + ' min ago'}</td>
+        <td>${new Date(o.createdAt).toLocaleString()}</td>
+        <td>
+          <div class="row-actions">
+            <button class="act-edit" data-stk-recheck="${o._id}">Recheck with M-Pesa</button>
+            <button class="act-reject" data-stk-cancel="${o._id}">Cancel &amp; Restore Stock</button>
+          </div>
+        </td>
+      </tr>`;
+      })
+      .join('');
+
+    tbody.querySelectorAll('[data-stk-recheck]').forEach((btn) =>
+      btn.addEventListener('click', () => recheckStkOrder(btn.dataset.stkRecheck))
+    );
+    tbody.querySelectorAll('[data-stk-cancel]').forEach((btn) =>
+      btn.addEventListener('click', () => cancelStkOrderRow(btn.dataset.stkCancel))
+    );
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="dash-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>${err.message}</p></div></td></tr>`;
+  }
+}
+
+async function recheckStkOrder(id) {
+  try {
+    const res = await apiPatch(`/admin/orders/${id}/stk-recheck`);
+    showToast(res.message || 'Rechecked with M-Pesa');
+    loadStkIssues();
+    loadOverview();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function cancelStkOrderRow(id) {
+  if (!confirm('Cancel this order and restore its reserved stock? This cannot be undone.')) return;
+  try {
+    await apiPatch(`/admin/orders/${id}/stk-cancel`);
+    showToast('Order cancelled and stock restored');
+    loadStkIssues();
+    loadOverview();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+
 async function loadAllOrders() {
   const tbody = document.getElementById('allOrdersBody');
   tbody.innerHTML = `<tr><td colspan="9"><div class="spinner"></div></td></tr>`;
@@ -2413,6 +2541,7 @@ async function loadAllOrders() {
 // per-seller Orders modal without id collisions.
 function orderRowPairHtml(o, statusOptions, scope) {
   const id = o._id;
+  const pay = paymentStatusDisplay(o);
   return `
     <tr data-order-row="${id}">
       <td><button type="button" class="row-toggle-btn" data-order-toggle-${scope}="${id}" aria-label="Expand order"><i class="fa-solid fa-chevron-right"></i></button></td>
@@ -2420,7 +2549,7 @@ function orderRowPairHtml(o, statusOptions, scope) {
       <td>${escapeHtml(o.buyer?.name || '-')}</td>
       <td>KSh ${o.totalAmount?.toLocaleString()}</td>
       <td>${o.agentCode ? `<span class="pill-agent">${escapeHtml(o.agentCode)}</span>` : '<span class="text-muted">—</span>'}</td>
-      <td><span class="pill pill-${o.paymentStatus}">${o.paymentStatus.replace(/_/g, ' ')}</span></td>
+      <td><span class="pill ${pay.pillClass}" ${pay.title ? `title="${escapeHtml(pay.title)}"` : ''}>${escapeHtml(pay.label)}</span></td>
       <td>
         <select class="order-status-select" data-order="${id}" data-current-value="${o.orderStatus}">
           ${statusOptions.map((s) => `<option value="${s}" ${s === o.orderStatus ? 'selected' : ''}>${s}</option>`).join('')}
