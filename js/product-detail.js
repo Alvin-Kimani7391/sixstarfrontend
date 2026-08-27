@@ -21,12 +21,18 @@
    supported, falling back to a styled share popover with
    WhatsApp / Facebook / X / Telegram / Copy Link).
 
-   IMAGE QUALITY: gallery images now go through Cloudinary
-   transforms (ssCldTransform, from ui.js) instead of rendering
-   the raw uploaded URL — the main image requests a large,
-   dpr_auto, best-quality asset; thumbnails request a small
-   cropped one. Clicking a thumb swaps in that image's own full-
-   res URL (stored in data-full), not the thumb's own low-res src.
+   GALLERY: the main image area is now a horizontally scrollable
+   "track" holding every image, one per slide, with CSS scroll-
+   snap. That gives free native swipe on touch devices. Desktop
+   gets prev/next arrow buttons layered on top plus a counter
+   ("2 / 5"). Thumbnails still work as click-to-jump, and stay in
+   sync whether the user swipes, clicks an arrow, or clicks a
+   thumb — whichever one moves, the others follow.
+
+   IMAGE QUALITY: gallery images go through Cloudinary transforms
+   (ssCldTransform, from ui.js) instead of rendering the raw
+   uploaded URL — the main slides request a large, dpr_auto,
+   best-quality asset; thumbnails request a small cropped one.
    ============================================================ */
 (function () {
   const id = new URLSearchParams(location.search).get("id");
@@ -142,15 +148,16 @@
   }
 
   /* ---------------- image helpers (Cloudinary) ----------------
-     ssCldTransform lives in ui.js, which loads before this file. If
-     it's somehow unavailable, fall back to returning the URL as-is
-     so the gallery still works, just unoptimized. */
+     ssCldTransform / ssImgSized live in ui.js, which loads before
+     this file. If they're somehow unavailable, fall back to
+     returning the URL as-is so the gallery still works, just
+     unoptimized. */
   function cld(url, transform) {
     if (typeof ssCldTransform === "function") return ssCldTransform(url, transform);
     return url;
   }
 
-  // Main gallery image: large, best-quality, auto format (webp/avif
+  // Main gallery slides: large, best-quality, auto format (webp/avif
   // where supported), dpr_auto so retina screens get a 2x/3x asset
   // instead of an upscaled 1x one.
   function mainImgUrl(url) {
@@ -201,9 +208,21 @@
     content.innerHTML = `
       <div class="pd-wrap">
         <div>
-          <div class="pd-gallery__main"><img id="pdMainImg" src="${mainImgUrl(images[0])}" alt="${p.name}"></div>
+          <div class="pd-gallery__main">
+            <div class="pd-gallery__track" id="pdGalleryTrack">
+              ${images.map((img, i) => `
+                <div class="pd-gallery__slide" data-i="${i}">
+                  <img src="${mainImgUrl(img)}" alt="${p.name}" loading="${i === 0 ? "eager" : "lazy"}">
+                </div>`).join("")}
+            </div>
+            ${images.length > 1 ? `
+              <button type="button" class="pd-gallery__nav pd-gallery__nav--prev" id="pdGalleryPrev" aria-label="Previous image"><i class="fa-solid fa-chevron-left"></i></button>
+              <button type="button" class="pd-gallery__nav pd-gallery__nav--next" id="pdGalleryNext" aria-label="Next image"><i class="fa-solid fa-chevron-right"></i></button>
+              <div class="pd-gallery__counter" id="pdGalleryCounter">1 / ${images.length}</div>
+            ` : ""}
+          </div>
           ${images.length > 1 ? `<div class="pd-gallery__thumbs">
-            ${images.map((img, i) => `<img src="${thumbImgUrl(img)}" data-full="${mainImgUrl(img)}" class="${i === 0 ? "active" : ""}" data-i="${i}">`).join("")}
+            ${images.map((img, i) => `<img src="${thumbImgUrl(img)}" data-i="${i}" class="${i === 0 ? "active" : ""}">`).join("")}
           </div>` : ""}
         </div>
 
@@ -432,19 +451,80 @@
     }
   }
 
-  /* ---------------- gallery ---------------- */
-
+  /* ---------------- gallery ----------------
+     The main image is a horizontally-scrolling track (CSS scroll-snap)
+     holding every image as its own slide. That alone gives native
+     swipe on touch devices — no JS needed for the swipe gesture itself.
+     On top of that:
+       - prev/next arrow buttons for desktop/mouse users
+       - a "2 / 5" counter
+       - thumbnails that jump the track to a given slide on click
+     All three stay in sync: whichever one moves the gallery (swipe,
+     arrow click, or thumb click), the other two update to match. */
   function bindGallery() {
-    content.querySelectorAll(".pd-gallery__thumbs img").forEach(img => {
-      img.addEventListener("click", () => {
-        // Use the thumb's own full-res URL (mainImgUrl already applied when
-        // the markup was built), NOT the thumb's own low-res src — that was
-        // the second cause of the main image looking blurry after clicking.
-        document.getElementById("pdMainImg").src = img.dataset.full;
-        content.querySelectorAll(".pd-gallery__thumbs img").forEach(t => t.classList.remove("active"));
-        img.classList.add("active");
-      });
+    const track = document.getElementById("pdGalleryTrack");
+    if (!track) return;
+
+    const slides = Array.from(track.querySelectorAll(".pd-gallery__slide"));
+    const total = slides.length;
+    const thumbs = Array.from(content.querySelectorAll(".pd-gallery__thumbs img"));
+    const prevBtn = document.getElementById("pdGalleryPrev");
+    const nextBtn = document.getElementById("pdGalleryNext");
+    const counterEl = document.getElementById("pdGalleryCounter");
+
+    let current = 0;
+    let isSyncingFromScroll = false;
+
+    function updateControls() {
+      thumbs.forEach(t => t.classList.toggle("active", Number(t.dataset.i) === current));
+      if (counterEl) counterEl.textContent = `${current + 1} / ${total}`;
+      if (prevBtn) prevBtn.disabled = current === 0;
+      if (nextBtn) nextBtn.disabled = current === total - 1;
+    }
+
+    // Moves to `index` by scrolling the track — used by arrows and thumbs.
+    // The track's own scroll listener below keeps `current` in sync when
+    // the user swipes directly instead.
+    function goTo(index) {
+      current = Math.max(0, Math.min(total - 1, index));
+      isSyncingFromScroll = true;
+      track.scrollTo({ left: slides[current].offsetLeft, behavior: "smooth" });
+      updateControls();
+      // release the guard once the smooth-scroll settles, so a real user
+      // swipe right after isn't ignored
+      clearTimeout(track._syncGuard);
+      track._syncGuard = setTimeout(() => { isSyncingFromScroll = false; }, 400);
+    }
+
+    prevBtn?.addEventListener("click", () => goTo(current - 1));
+    nextBtn?.addEventListener("click", () => goTo(current + 1));
+
+    thumbs.forEach(img => {
+      img.addEventListener("click", () => goTo(Number(img.dataset.i)));
     });
+
+    // Swipe / manual scroll support: whenever the track settles after a
+    // scroll (debounced), figure out which slide is now most in view and
+    // sync the thumbnails/arrows/counter to it.
+    let scrollTimer = null;
+    track.addEventListener("scroll", () => {
+      if (isSyncingFromScroll) return; // this scroll was triggered by goTo(), not a swipe
+      clearTimeout(scrollTimer);
+      scrollTimer = setTimeout(() => {
+        const idx = Math.round(track.scrollLeft / track.clientWidth);
+        current = Math.max(0, Math.min(total - 1, idx));
+        updateControls();
+      }, 90);
+    }, { passive: true });
+
+    // Keyboard support when the gallery has focus (left/right arrows).
+    track.setAttribute("tabindex", "0");
+    track.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft") { e.preventDefault(); goTo(current - 1); }
+      if (e.key === "ArrowRight") { e.preventDefault(); goTo(current + 1); }
+    });
+
+    updateControls();
   }
 
   /* ---------------- description read-more ---------------- */
