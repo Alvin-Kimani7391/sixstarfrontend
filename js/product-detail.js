@@ -20,6 +20,13 @@
    button (native Web Share API with image-file attachment where
    supported, falling back to a styled share popover with
    WhatsApp / Facebook / X / Telegram / Copy Link).
+
+   IMAGE QUALITY: gallery images now go through Cloudinary
+   transforms (ssCldTransform, from ui.js) instead of rendering
+   the raw uploaded URL — the main image requests a large,
+   dpr_auto, best-quality asset; thumbnails request a small
+   cropped one. Clicking a thumb swaps in that image's own full-
+   res URL (stored in data-full), not the thumb's own low-res src.
    ============================================================ */
 (function () {
   const id = new URLSearchParams(location.search).get("id");
@@ -134,6 +141,28 @@
       </div>`;
   }
 
+  /* ---------------- image helpers (Cloudinary) ----------------
+     ssCldTransform lives in ui.js, which loads before this file. If
+     it's somehow unavailable, fall back to returning the URL as-is
+     so the gallery still works, just unoptimized. */
+  function cld(url, transform) {
+    if (typeof ssCldTransform === "function") return ssCldTransform(url, transform);
+    return url;
+  }
+
+  // Main gallery image: large, best-quality, auto format (webp/avif
+  // where supported), dpr_auto so retina screens get a 2x/3x asset
+  // instead of an upscaled 1x one.
+  function mainImgUrl(url) {
+    return cld(url, "f_auto,q_auto:best,w_1200,dpr_auto");
+  }
+
+  // Thumbnails: small, hard-cropped square, lower quality bucket — no
+  // reason to ship a full-size image for a ~64px thumb.
+  function thumbImgUrl(url) {
+    return cld(url, "f_auto,q_auto:good,w_160,h_160,c_fill,dpr_auto");
+  }
+
   /* ---------------- share helpers ---------------- */
 
   // Canonical, shareable link for THIS product (drops any other query params
@@ -143,7 +172,7 @@
     const price = ssFmtPrice(basePrice(p));
     const message = `Check out this product on Six Star Suppliers\n\n${p.name}\n${price}\n${link}`;
     const images = Array.isArray(p.images) && p.images.length ? p.images : [ssImg(p)];
-    return { link, price, message, image: images[0] };
+    return { link, price, message, image: mainImgUrl(images[0]) };
   }
 
   /* ---------------- main render ---------------- */
@@ -172,9 +201,9 @@
     content.innerHTML = `
       <div class="pd-wrap">
         <div>
-          <div class="pd-gallery__main"><img id="pdMainImg" src="${images[0]}" alt="${p.name}"></div>
+          <div class="pd-gallery__main"><img id="pdMainImg" src="${mainImgUrl(images[0])}" alt="${p.name}"></div>
           ${images.length > 1 ? `<div class="pd-gallery__thumbs">
-            ${images.map((img, i) => `<img src="${img}" class="${i === 0 ? "active" : ""}" data-i="${i}">`).join("")}
+            ${images.map((img, i) => `<img src="${thumbImgUrl(img)}" data-full="${mainImgUrl(img)}" class="${i === 0 ? "active" : ""}" data-i="${i}">`).join("")}
           </div>` : ""}
         </div>
 
@@ -408,7 +437,10 @@
   function bindGallery() {
     content.querySelectorAll(".pd-gallery__thumbs img").forEach(img => {
       img.addEventListener("click", () => {
-        document.getElementById("pdMainImg").src = img.src;
+        // Use the thumb's own full-res URL (mainImgUrl already applied when
+        // the markup was built), NOT the thumb's own low-res src — that was
+        // the second cause of the main image looking blurry after clicking.
+        document.getElementById("pdMainImg").src = img.dataset.full;
         content.querySelectorAll(".pd-gallery__thumbs img").forEach(t => t.classList.remove("active"));
         img.classList.add("active");
       });
@@ -791,6 +823,9 @@
     const wholesale = isWholesaler(p);
     const price = basePrice(p);
     const hasDiscount = (p.discountPercent || 0) > 0 && p.finalPrice && price < p.finalPrice;
+    const cardImg = typeof ssImgSized === "function"
+      ? ssImgSized(p, "f_auto,q_auto:good,w_400,h_400,c_fill,dpr_auto")
+      : ssImg(p);
 
     return `
       <div class="p-card ${wholesale ? "wholesale" : ""}" data-id="${p.id}">
@@ -800,7 +835,7 @@
           ${p.isHotDeal ? `<div class="p-card__hot"><i class="fa-solid fa-fire"></i> Hot</div>` : ""}
         </div>
         <div class="p-card__img">
-          <img src="${ssImg(p)}" alt="${p.name}" loading="lazy" onclick="location.href='product-detail.html?id=${p.id}'">
+          <img src="${cardImg}" alt="${p.name}" loading="lazy" onclick="location.href='product-detail.html?id=${p.id}'">
         </div>
         <div class="p-card__body">
           <div class="p-card__name">${p.name}</div>

@@ -17,6 +17,33 @@ function ssImg(product) {
   return "https://placehold.co/400x400/F3F4F8/15161A?text=Six+Star";
 }
 
+/* ---------- image optimization (Cloudinary) ----------
+   Every image on the site was being rendered at whatever raw
+   resolution/format it was uploaded at, with no resizing and no
+   DPR handling — the #1 cause of images looking soft compared to
+   platforms like Jumia, which always request a size-appropriate,
+   retina-aware asset per slot.
+
+   ssCldTransform() inserts a Cloudinary transformation string right
+   after `/upload/` in a delivery URL. It's a no-op for anything that
+   isn't a Cloudinary URL (e.g. the placehold.co fallback), so it's
+   always safe to wrap around ssImg()'s result without checking the
+   source first.
+
+   ssImgSized() is a convenience wrapper for the common "product
+   card" case. Callers needing a different size/crop (banners,
+   small thumbnails, the product-detail gallery) should build their
+   own transform string and call ssCldTransform() directly.
+------------------------------------------------- */
+function ssCldTransform(url, transform) {
+  if (typeof url !== "string" || !url.includes("/upload/")) return url;
+  return url.replace("/upload/", `/upload/${transform}/`);
+}
+
+function ssImgSized(product, transform = "f_auto,q_auto:good,w_500,c_limit,dpr_auto") {
+  return ssCldTransform(ssImg(product), transform);
+}
+
 // Fisher-Yates shuffle — used to randomize ad/category/product order on
 // every load without mutating the array that was passed in.
 function ssShuffle(arr) {
@@ -152,7 +179,7 @@ function ssProductCard(p) {
         ${p.isHotDeal ? `<div class="p-card__hot"><i class="fa-solid fa-fire"></i> Hot</div>` : ""}
       </div>
       <div class="p-card__img">
-        <img src="${ssImg(p)}" alt="${p.name}" loading="lazy" onclick="location.href='/product-detail.html?id=${p.id}'">
+        <img src="${ssImgSized(p)}" alt="${p.name}" loading="lazy" onclick="location.href='/product-detail.html?id=${p.id}'">
         ${outOfStock ? `<div class="p-card__oos-overlay">Out of stock</div>` : ""}
       </div>
       <div class="p-card__body">
@@ -476,7 +503,7 @@ function ssBindSearchSuggestions(inputEl, boxEl) {
         : "";
       return `
         <div class="sug-item" data-id="${p.id}">
-          <img class="sug-thumb" src="${ssImg(p)}" alt="" loading="lazy" onerror="this.style.opacity='0'">
+          <img class="sug-thumb" src="${ssImgSized(p, "f_auto,q_auto:good,w_120,h_120,c_fill,dpr_auto")}" alt="" loading="lazy" onerror="this.style.opacity='0'">
           <div class="sug-info">
             <p class="sug-name">${highlight(p.name, query)}</p>
             <div class="sug-meta">
@@ -790,9 +817,11 @@ function ssRenderCategoryGrid(targetId, limit = null) {
     if (limit) list = list.slice(0, limit);
     el.innerHTML = list.map(c => {
       const catRef = c._id || c.id || c.slug;
+      const rawImg = c.image || 'https://placehold.co/300/F3F4F8/15161A?text=' + encodeURIComponent(c.name);
+      const img = ssCldTransform(rawImg, "f_auto,q_auto:good,w_300,h_300,c_fill,dpr_auto");
       return `
       <a class="cat-item" href="/product.html?category=${encodeURIComponent(catRef)}">
-        <div class="cat-thumb"><img src="${c.image || 'https://placehold.co/300/F3F4F8/15161A?text=' + encodeURIComponent(c.name)}" alt="${c.name}"></div>
+        <div class="cat-thumb"><img src="${img}" alt="${c.name}"></div>
         <span>${c.name}</span>
       </a>`;
     }).join("");
@@ -1033,7 +1062,7 @@ async function ssRenderAdSlot(targetId, placement, opts = {}) {
            href="javascript:void(0)"
            data-ad-id="${ad._id}"
            data-link="${ad.linkUrl || ""}">
-          <img src="${ad.image}" alt="${ad.title || "Promotion"}" loading="lazy">
+          <img src="${ssCldTransform(ad.image, "f_auto,q_auto:good,w_1600,c_limit,dpr_auto")}" alt="${ad.title || "Promotion"}" loading="lazy">
         </a>
       `).join("")}
     </div>
@@ -1214,7 +1243,7 @@ function ssFlashSaleCard(fs) {
         <div class="p-card__hot fs-card__flash-badge"><i class="fa-solid fa-bolt"></i> Flash</div>
       </div>
       <div class="p-card__img">
-        <img src="${ssImg(product)}" alt="${product.name || "Product"}" loading="lazy" onclick="location.href='/product-detail.html?id=${productId}'">
+        <img src="${ssImgSized(product)}" alt="${product.name || "Product"}" loading="lazy" onclick="location.href='/product-detail.html?id=${productId}'">
         ${overlay}
       </div>
       <div class="p-card__body">
@@ -1384,9 +1413,11 @@ async function ssRenderSubcategoryGrid(targetId, count = 6) {
 
   el.innerHTML = picks.map(c => {
     const catRef = c._id || c.id || c.slug;
+    const rawImg = c.image || 'https://placehold.co/300/F3F4F8/15161A?text=' + encodeURIComponent(c.name);
+    const img = ssCldTransform(rawImg, "f_auto,q_auto:good,w_300,h_300,c_fill,dpr_auto");
     return `
     <a class="cat-item" href="/product.html?category=${encodeURIComponent(catRef)}">
-      <div class="cat-thumb"><img src="${c.image || 'https://placehold.co/300/F3F4F8/15161A?text=' + encodeURIComponent(c.name)}" alt="${c.name}"></div>
+      <div class="cat-thumb"><img src="${img}" alt="${c.name}"></div>
       <span>${c.name}</span>
     </a>`;
   }).join("");
