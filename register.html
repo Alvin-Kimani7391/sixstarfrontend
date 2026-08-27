@@ -54,6 +54,93 @@
     text-underline-offset:2px;
   }
   .auth-terms a:hover{ color:var(--marigold,#f2a93b); }
+
+  /* ============================================================
+     ACCOUNT TYPE TABS — Buyer / Seller top-level switch
+     Now lives right under the "Create your account" heading, ahead
+     of everything else (Google sign-up + the email form), so the
+     very first choice a visitor makes is buy vs. sell.
+     ============================================================ */
+  .account-tabs{
+    display:flex;
+    border-bottom:2px solid var(--line,#F0E4D2);
+    margin:2px 0 0;
+  }
+  .account-tab{
+    flex:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    padding:12px 10px;
+    background:none;
+    border:none;
+    border-bottom:3px solid transparent;
+    margin-bottom:-2px;
+    font-weight:700;
+    font-size:.94rem;
+    color:var(--ink-faint,#9a9ba5);
+    cursor:pointer;
+    transition:color .2s ease, border-color .2s ease;
+    font-family:inherit;
+  }
+  .account-tab i{ font-size:.95rem; }
+  .account-tab:hover{ color:var(--ink-soft,#6b6d78); }
+  .account-tab.active{
+    color:var(--brand-dark,#da5521);
+    border-bottom-color:var(--brand,#FF5A1F);
+  }
+  @media(max-width:480px){
+    .account-tab{ font-size:.82rem; padding:10px 6px; gap:6px; }
+  }
+
+  /* ---- Seller-only sub-picker: Retail / Wholesale ---- */
+  .seller-type-picker{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:12px;
+    margin:16px 0 4px;
+  }
+  .seller-type-picker[hidden]{ display:none; }
+  @media(max-width:480px){
+    .seller-type-picker{ gap:10px; }
+  }
+
+  /* ---- Buyer-only Google sign-up block ----
+     Only rendered while the "Buyer" tab is active, since a Google
+     sign-up always creates a buyer account. ---- */
+  #buyerGoogleSection{
+    margin-top:18px;
+  }
+  #buyerGoogleSection[hidden]{ display:none; }
+  .google-buyer-note{
+    text-align:center;
+    font-size:12.5px;
+    color:#999;
+    margin:0 0 18px;
+  }
+  .google-buyer-note i{ color:var(--brand,#FF5A1F); margin-right:4px; }
+  .auth-divider{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin:6px 0 18px;
+    color:#999;
+    font-size:13px;
+  }
+  .auth-divider span{ flex:1; height:1px; background:#e5e5e5; }
+
+  /* ---- Name / phone row: was a hard-coded inline 2-column grid with
+     NO mobile fallback — this is what was breaking the layout on
+     narrow phones. Now a real class with a stacking breakpoint. ---- */
+  .form-row-2{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+  }
+  @media(max-width:480px){
+    .form-row-2{ grid-template-columns:1fr; gap:14px; }
+  }
 </style>
 </head>
 <body>
@@ -79,48 +166,62 @@
 
     <div id="regError" class="alert alert-error"></div>
 
-    <!-- Google Identity Services renders its button into this div -->
-    <div id="googleBtn" style="display:flex;justify-content:center;margin-bottom:8px;"></div>
-    <p style="text-align:center;font-size:12.5px;color:#999;margin:0 0 18px;">
-      Signing up with Google creates a buyer account. Want to sell? Use the form below instead.
-    </p>
+    <!-- ===== Account type: Buyer / Seller ===== -->
+    <!-- Sits right under the heading, before anything else, so the very
+         first decision is buy vs. sell. Google sign-up (buyer-only) and
+         the seller sub-type picker both react to this choice below. -->
+    <div class="form-field">
+      <label>I want to:</label>
 
-    <div class="auth-divider" style="display:flex;align-items:center;gap:12px;margin:6px 0 18px;color:#999;font-size:13px;">
-      <span style="flex:1;height:1px;background:#e5e5e5;"></span>
-      or create an account with email
-      <span style="flex:1;height:1px;background:#e5e5e5;"></span>
+      <div class="account-tabs" role="tablist">
+        <button type="button" class="account-tab active" data-account="buyer" role="tab" aria-selected="true">
+          <i class="fa-solid fa-cart-shopping"></i> Buy
+        </button>
+        <button type="button" class="account-tab" data-account="seller" role="tab" aria-selected="false">
+          <i class="fa-solid fa-store"></i> Sell
+        </button>
+      </div>
+
+      <!-- Only shown when "Sell" tab is active -->
+      <div class="seller-type-picker" id="sellerTypePicker" hidden>
+        <label class="role-card active" data-role="retailer">
+          <input type="radio" name="sellerType" value="retailer" checked hidden>
+          <i class="fa-solid fa-store"></i>
+          <div>Retail</div>
+          <span class="role-check"><i class="fa-solid fa-check"></i></span>
+        </label>
+        <label class="role-card" data-role="wholesaler">
+          <input type="radio" name="sellerType" value="wholesaler" hidden>
+          <i class="fa-solid fa-warehouse"></i>
+          <div>Wholesale</div>
+          <span class="role-badge">Bulk</span>
+          <span class="role-check"><i class="fa-solid fa-check"></i></span>
+        </label>
+      </div>
+
+      <!-- Holds the value actually submitted; kept in sync by JS below -->
+      <input type="hidden" id="roleInput" value="buyer">
+
+      <p class="form-hint" id="roleHint">Buyers can browse and order from verified retailers and wholesalers.</p>
+    </div>
+
+    <!-- ===== Buyer-only: Google sign-up ===== -->
+    <!-- Google Identity Services always creates a buyer account, so this
+         entire block only ever shows while the "Buy" tab is active. -->
+    <div id="buyerGoogleSection">
+      <div id="googleBtn" style="display:flex;justify-content:center;margin-bottom:8px;"></div>
+      <p class="google-buyer-note"><i class="fa-solid fa-bolt"></i>One tap and you're browsing — Google sign-up creates a buyer account instantly.</p>
+
+      <div class="auth-divider">
+        <span></span>
+        or create an account with email
+        <span></span>
+      </div>
     </div>
 
     <form id="registerForm" class="form-grid" novalidate>
-      <div class="form-field">
-  <label>I want to</label>
-  <div class="role-picker">
-    <label class="role-card active" data-role="buyer">
-      <input type="radio" name="role" value="buyer" checked hidden>
-      <i class="fa-solid fa-cart-shopping"></i>
-      <div>Buy</div>
-      <span class="role-badge">Popular</span>
-      <span class="role-check"><i class="fa-solid fa-check"></i></span>
-    </label>
-    <label class="role-card" data-role="retailer">
-      <input type="radio" name="role" value="retailer" hidden>
-      <i class="fa-solid fa-store"></i>
-      <div>Retail</div>
-      <span class="role-badge">Sell</span>
-      <span class="role-check"><i class="fa-solid fa-check"></i></span>
-    </label>
-    <label class="role-card" data-role="wholesaler">
-      <input type="radio" name="role" value="wholesaler" hidden>
-      <i class="fa-solid fa-warehouse"></i>
-      <div>Wholesale</div>
-      <span class="role-badge">Bulk</span>
-      <span class="role-check"><i class="fa-solid fa-check"></i></span>
-    </label>
-  </div>
-  <p class="form-hint">Retailers and wholesalers can list products for sale, subject to admin review.</p>
-</div>
 
-      <div class="form-row-2" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <div class="form-field form-row-2">
         <div class="form-field">
           <label for="name">Full name</label>
           <input type="text" id="name" required />
@@ -202,12 +303,28 @@
 <script>
   window.addEventListener("load", () => document.getElementById("pageLoader").classList.add("hide"));
 
-  const roleCards = document.querySelectorAll(".role-card");
+  // ---------------------------------------------------------------
+  // Account type (Buy / Sell) + Seller sub-type (Retail / Wholesale)
+  // + Buyer-only Google sign-up visibility
+  // ---------------------------------------------------------------
+  const accountTabs       = document.querySelectorAll(".account-tab");
+  const sellerTypePicker  = document.getElementById("sellerTypePicker");
+  const sellerTypeCards   = sellerTypePicker.querySelectorAll(".role-card");
+  const roleInput         = document.getElementById("roleInput");
+  const roleHint          = document.getElementById("roleHint");
+  const buyerGoogleSection = document.getElementById("buyerGoogleSection");
+
   const businessNameField = document.getElementById("businessNameField");
   const businessNameInput = document.getElementById("businessName");
-  const businessLabel = document.getElementById("businessLabel");
-  const locationField = document.getElementById("locationField");
-  const locationInput = document.getElementById("location");
+  const businessLabel     = document.getElementById("businessLabel");
+  const locationField     = document.getElementById("locationField");
+  const locationInput     = document.getElementById("location");
+
+  const roleHints = {
+    buyer:      "Buyers can browse and order from verified retailers and wholesalers.",
+    retailer:   "Retailers can list products for sale, subject to admin review.",
+    wholesaler: "Wholesalers can list bulk stock for sale, subject to admin review."
+  };
 
   // Field labels/requirements per role, matching model/user.js discriminators:
   //   wholesaler -> businessName + location
@@ -229,12 +346,41 @@
     }
   }
 
-  roleCards.forEach(card => {
+  function setRole(role) {
+    roleInput.value = role;
+    roleHint.textContent = roleHints[role] || "";
+    applyRoleFields(role);
+  }
+
+  accountTabs.forEach(tab => {
+    tab.addEventListener("click", () => {
+      accountTabs.forEach(t => {
+        t.classList.remove("active");
+        t.setAttribute("aria-selected", "false");
+      });
+      tab.classList.add("active");
+      tab.setAttribute("aria-selected", "true");
+
+      const account = tab.dataset.account;
+      if (account === "buyer") {
+        sellerTypePicker.hidden = true;
+        buyerGoogleSection.hidden = false;
+        setRole("buyer");
+      } else {
+        sellerTypePicker.hidden = false;
+        buyerGoogleSection.hidden = true;
+        const checked = sellerTypePicker.querySelector('input[name="sellerType"]:checked');
+        setRole(checked ? checked.value : "retailer");
+      }
+    });
+  });
+
+  sellerTypeCards.forEach(card => {
     card.addEventListener("click", () => {
-      roleCards.forEach(c => c.classList.remove("active"));
+      sellerTypeCards.forEach(c => c.classList.remove("active"));
       card.classList.add("active");
       card.querySelector("input").checked = true;
-      applyRoleFields(card.dataset.role);
+      setRole(card.dataset.role);
     });
   });
 
@@ -318,7 +464,7 @@
 
     btn.disabled = true; btn.textContent = "Creating account…";
 
-    const role = document.querySelector('input[name="role"]:checked').value;
+    const role = roleInput.value;
 
     // Build payload matching the active discriminator's schema fields.
     // Note: confirmPassword deliberately stays out of this object — it is
