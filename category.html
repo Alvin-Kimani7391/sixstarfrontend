@@ -62,7 +62,7 @@
 }
 
 .cx-rail{
-  flex:0 0 84px;
+  flex:0 0 96px;
   display:flex;
   flex-direction:column;
   background:var(--surface);
@@ -79,11 +79,14 @@
 .cx-rail::-webkit-scrollbar-thumb{ background:var(--line); border-radius:6px; }
 
 .cx-rail__item{
-  display:block;
-  padding:14px 6px;
-  font-size:10.5px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:66px;
+  padding:16px 8px;
+  font-size:12.5px;
   font-weight:600;
-  line-height:1.25;
+  line-height:1.3;
   text-align:center;
   color:var(--ink-soft);
   border-left:3px solid transparent;
@@ -123,13 +126,17 @@
   display:flex; align-items:center; justify-content:space-between; gap:10px;
   padding:12px 14px;
   border-bottom:1px solid var(--line-soft);
+  min-width:0;
 }
 .cx-card__head h2{
+  flex:1 1 auto;
+  min-width:0;
   font-size:12px;
   font-weight:800;
   text-transform:uppercase;
   letter-spacing:.05em;
   color:var(--ink);
+  overflow-wrap:break-word;
 }
 .cx-card__see{
   flex-shrink:0;
@@ -182,8 +189,8 @@
    ============================================================ */
 @media(max-width:599px){
   .cx-shell{ gap:8px; }
-  .cx-rail{ flex-basis:76px; }
-  .cx-rail__item{ padding:12px 4px; font-size:10px; }
+  .cx-rail{ flex-basis:88px; }
+  .cx-rail__item{ min-height:60px; padding:14px 6px; font-size:11.5px; }
   .cx-card__head{ padding:10px 12px; }
   .cx-card__head h2{ font-size:11px; }
   .cx-card__see{ font-size:11px; }
@@ -192,20 +199,20 @@
   .cx-tile span{ font-size:10.5px; min-height:2.5em; }
 }
 @media(max-width:374px){
-  .cx-rail{ flex-basis:68px; }
-  .cx-rail__item{ font-size:9.5px; padding:11px 3px; }
+  .cx-rail{ flex-basis:78px; }
+  .cx-rail__item{ min-height:56px; font-size:10.5px; padding:12px 4px; }
   .cx-grid{ grid-template-columns:repeat(2,1fr); }
   .cx-card__body{ min-height:130px; }
 }
 @media(min-width:600px) and (max-width:859px){
-  .cx-rail{ flex-basis:110px; }
-  .cx-rail__item{ font-size:12px; padding:15px 8px; }
+  .cx-rail{ flex-basis:130px; }
+  .cx-rail__item{ min-height:70px; font-size:13.5px; padding:17px 10px; }
   .cx-grid{ grid-template-columns:repeat(4,1fr); }
   .cx-card__body{ min-height:200px; }
 }
 @media(min-width:860px){
-  .cx-rail{ flex-basis:230px; }
-  .cx-rail__item{ text-align:left; padding:13px 18px; font-size:13.5px; }
+  .cx-rail{ flex-basis:240px; }
+  .cx-rail__item{ min-height:56px; justify-content:flex-start; text-align:left; padding:15px 20px; font-size:14px; }
   .cx-grid{ grid-template-columns:repeat(5,1fr); gap:26px 18px; }
   .cx-card__head{ padding:16px 20px; }
   .cx-card__body{ padding:24px 20px 30px; min-height:230px; }
