@@ -285,13 +285,16 @@ function ssRenderHeader(active = "") {
         <div id="headerSuggestions" class="search-suggestions"></div>
       </div>
 
-      <div class="header-actions">
+          <div class="header-actions">
          <a class="action-link" href="/profile.html" aria-label="Profile">
           <i class="fa-solid fa-user"></i> Account
         </a>
-        <a class="action-link" href="/contact.html" aria-label="Help">
+        <a class="action-link action-link--help" href="/contact.html" aria-label="Help">
           <i class="fa-regular fa-circle-question"></i> Help
         </a>
+        <button type="button" class="action-link action-link--mobile-search" id="mobileSearchToggle" aria-label="Search" aria-expanded="false">
+          <i class="fa-solid fa-magnifying-glass"></i> Search
+        </button>
         <button class="action-link" id="cartBtn" aria-label="Cart">
           <i class="fa-solid fa-cart-shopping"></i> Cart
           <span class="cart-count js-cart-count">0</span>
@@ -309,6 +312,31 @@ function ssRenderHeader(active = "") {
   `;
 
   document.getElementById("cartBtn").addEventListener("click", () => location.href = "/cart.html");
+
+  const mobileSearchToggle = document.getElementById("mobileSearchToggle");
+  const searchBarEl = document.querySelector(".search-bar");
+  if (mobileSearchToggle && searchBarEl) {
+    mobileSearchToggle.addEventListener("click", () => {
+      const opening = !searchBarEl.classList.contains("mobile-search-open");
+      searchBarEl.classList.toggle("mobile-search-open", opening);
+      mobileSearchToggle.classList.toggle("active", opening);
+      mobileSearchToggle.setAttribute("aria-expanded", opening ? "true" : "false");
+      if (opening) {
+        const input = document.getElementById("headerSearchInput");
+        if (input) setTimeout(() => input.focus(), 60);
+      }
+    });
+
+    // Tap anywhere outside the search bar (or its toggle) to close it again.
+    document.addEventListener("click", (e) => {
+      if (!searchBarEl.classList.contains("mobile-search-open")) return;
+      if (searchBarEl.contains(e.target) || mobileSearchToggle.contains(e.target)) return;
+      searchBarEl.classList.remove("mobile-search-open");
+      mobileSearchToggle.classList.remove("active");
+      mobileSearchToggle.setAttribute("aria-expanded", "false");
+    });
+  }
+
   document.getElementById("headerSearchForm").addEventListener("submit", e => {
     e.preventDefault();
     const q = document.getElementById("headerSearchInput").value.trim();
@@ -364,7 +392,7 @@ function ssRenderHeader(active = "") {
         <div class="drawer-cat-list__inner"></div>
       </div>
 
-      
+
       ${link("/shop.html", "Shops", "fa-solid fa-shop")}
       ${link("/wholesale.html", "Wholesale", "fa-boxes-stacked")}
 

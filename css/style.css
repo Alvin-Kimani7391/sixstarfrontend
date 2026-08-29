@@ -2659,3 +2659,40 @@ body.drawer-lock {
 .drawer-cat-viewall:hover{
   text-decoration:underline;
 }
+
+
+
+/* ---- Mobile search toggle (phones/tablets only, <860px) ----
+   Swaps "Help" for a "Search" icon that toggles the header search
+   bar's visibility. At ≥860px the search bar already lives inline
+   in the header, so nothing here applies — Help stays put and the
+   toggle button stays hidden. */
+.action-link--mobile-search{ display:none; }
+
+@media(max-width:859px){
+  .action-link--help{ display:none; }
+  .action-link--mobile-search{ display:flex; }
+
+  .search-bar{
+    display:none;
+    order:6;
+    margin-top:8px;
+  }
+  .search-bar.mobile-search-open{
+    display:block;
+    animation:ssSearchSlideDown .22s ease;
+  }
+}
+
+@keyframes ssSearchSlideDown{
+  from{ opacity:0; transform:translateY(-6px); }
+  to{ opacity:1; transform:translateY(0); }
+}
+
+/* toggle button reads as "active" while the bar is open, matching
+   the hover/active treatment other icon buttons already get */
+.action-link--mobile-search.active{
+  background:var(--paper-dim);
+  color:var(--brand);
+}
+.action-link--mobile-search.active i{ color:var(--brand); }
