@@ -597,14 +597,14 @@ function ssRenderFooter() {
 
   const sellWithUsHtml = isSeller ? `
     <h4>Sell With Us</h4>
-    <a href="/site/seller-dashboard.html"><i class="fa-solid fa-gauge"></i> Seller Dashboard</a>
-    <a href="/site/seller-dashboard.html#shop"><i class="fa-solid fa-store"></i> Manage My Shop</a>
+    <a href="/six-star-suppliers/seller-dashboard.html"><i class="fa-solid fa-gauge"></i> Seller Dashboard</a>
+    <a href="/six-star-suppliers/seller-dashboard.html#shop"><i class="fa-solid fa-store"></i> Manage My Shop</a>
     <a href="/about.html#own-a-shop">How shop ownership works</a>
   ` : `
     <h4>Sell With Us</h4>
     <a href="/about.html#becoming-a-seller">Become a Seller</a>
     <a href="/about.html#own-a-shop">Own a Shop</a>
-    <a href="/six-star-suppliers/login.html">Seller Login</a>
+    <a href="/six-star-suppliers/login.html ">Seller Login</a>
   `;
 
   el.innerHTML = `
@@ -820,7 +820,7 @@ function ssRenderCategoryGrid(targetId, limit = null) {
       const rawImg = c.image || 'https://placehold.co/300/F3F4F8/15161A?text=' + encodeURIComponent(c.name);
       const img = ssCldTransform(rawImg, "f_auto,q_auto:good,w_300,h_300,c_fill,dpr_auto");
       return `
-      <a class="cat-item" href="/product.html?category=${encodeURIComponent(catRef)}">
+      <a class="cat-item" href="/category-explore.html?category=${encodeURIComponent(catRef)}"">
         <div class="cat-thumb"><img src="${img}" alt="${c.name}"></div>
         <span>${c.name}</span>
       </a>`;
@@ -847,7 +847,10 @@ async function ssRenderMegaMenu(targetId) {
     return;
   }
 
-  const catLink = (cat) => `/product.html?category=${encodeURIComponent(cat._id || cat.id)}`;
+  // In ssRenderMegaMenu():
+// OLD: const catLink = (cat) => `/product.html?category=${encodeURIComponent(cat._id || cat.id)}`;
+// NEW:
+const catLink = (cat) => `/category-explore.html?category=${encodeURIComponent(cat._id || cat.id)}`;
 
   el.innerHTML = `
     <div class="mega-menu__sidebar">
@@ -1416,7 +1419,7 @@ async function ssRenderSubcategoryGrid(targetId, count = 6) {
     const rawImg = c.image || 'https://placehold.co/300/F3F4F8/15161A?text=' + encodeURIComponent(c.name);
     const img = ssCldTransform(rawImg, "f_auto,q_auto:good,w_300,h_300,c_fill,dpr_auto");
     return `
-    <a class="cat-item" href="/product.html?category=${encodeURIComponent(catRef)}">
+    <a class="cat-item" href="/category-explore.html?category=${encodeURIComponent(catRef)}">
       <div class="cat-thumb"><img src="${img}" alt="${c.name}"></div>
       <span>${c.name}</span>
     </a>`;

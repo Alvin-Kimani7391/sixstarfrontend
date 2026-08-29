@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Shop by Category — Six Star Suppliers</title>
+<meta name="description" content="Browse Six Star Suppliers by category. Drill into sub-categories and filter by price, brand, discount and rating.">
+<link rel="canonical" href="https://www.sixstarsuppliers.com/category-explore.html">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://kit.fontawesome.com/e1426ab85b.js" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="css/style.css">
+
+<style>
+/* ============================================================
+   CATEGORY EXPLORE — page-scoped styles. Reuses variables/classes
+   already defined in css/style.css (--brand, --line, .filters,
+   .p-grid, .chip, .filter-banner-esque patterns, etc.) so this page
+   feels native to the rest of the storefront rather than bolted on.
+   ============================================================ */
+
+/* ---- Breadcrumb ---- */
+.ce-breadcrumb{
+  display:flex; align-items:center; flex-wrap:wrap; gap:6px;
+  font-size:12.5px; font-weight:600; color:var(--ink-soft);
+  padding:14px 0 4px;
+}
+.ce-breadcrumb a{ color:var(--ink-soft); transition:.15s ease; }
+.ce-breadcrumb a:hover{ color:var(--brand-dark); }
+.ce-breadcrumb i{ font-size:9px; color:var(--ink-faint); }
+.ce-breadcrumb strong{ color:var(--ink); }
+
+.ce-title-row{
+  display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+  flex-wrap:wrap; padding-bottom:14px;
+}
+.ce-title{
+  font-family:var(--font-display); font-size:clamp(1.3rem,3vw,1.8rem);
+  font-weight:600; color:var(--ink);
+}
+.ce-title-count{ font-size:12.5px; color:var(--ink-soft); font-weight:600; }
+
+/* ---- Horizontal sub-category strip ---- */
+.ce-subcat-section{ padding:4px 0 22px; }
+.ce-subcat-wrap{ position:relative; }
+.ce-subcat-scroll{
+  display:flex; gap:14px; overflow-x:auto; scroll-behavior:smooth;
+  scrollbar-width:none; padding:2px 2px 6px;
+}
+.ce-subcat-scroll::-webkit-scrollbar{ display:none; }
+.ce-subcat-tile{
+  flex:0 0 92px; display:flex; flex-direction:column; align-items:center; gap:8px;
+  text-align:center; cursor:pointer;
+}
+.ce-subcat-thumb{
+  width:92px; height:92px; border-radius:50%; overflow:hidden;
+  background:var(--paper-dim); border:2px solid transparent;
+  display:flex; align-items:center; justify-content:center;
+  transition:.2s var(--ease-out);
+}
+.ce-subcat-thumb img{ width:100%; height:100%; object-fit:cover; }
+.ce-subcat-thumb.ce-home{ background:var(--grad-brand-deep); color:#fff; font-size:26px; }
+.ce-subcat-tile:hover .ce-subcat-thumb{ transform:translateY(-3px); box-shadow:var(--shadow-soft); }
+.ce-subcat-tile.active .ce-subcat-thumb{ border-color:var(--brand); box-shadow:0 0 0 3px rgba(255,90,31,.15); }
+.ce-subcat-tile span{ font-size:11.5px; font-weight:600; color:var(--ink-soft); max-width:96px; line-height:1.25; }
+.ce-subcat-tile.active span{ color:var(--brand-dark); font-weight:800; }
+
+.ce-subcat-nav{
+  position:absolute; top:38px; transform:translateY(-50%); z-index:5;
+  width:32px; height:32px; border-radius:50%; border:1px solid var(--line);
+  background:var(--surface); color:var(--ink); box-shadow:var(--shadow-soft);
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+}
+.ce-subcat-nav:hover{ background:var(--brand); color:#fff; border-color:transparent; }
+.ce-subcat-nav--prev{ left:-14px; }
+.ce-subcat-nav--next{ right:-14px; }
+@media(max-width:640px){ .ce-subcat-nav{ display:none; } }
+
+/* ---- Filter banner chips (mirrors product.html's pattern) ---- */
+.ce-filter-banner{ display:none; flex-wrap:wrap; gap:10px; margin:0 0 16px; }
+.ce-chip{
+  display:flex; align-items:center; gap:10px; padding:9px 13px;
+  border-radius:12px; background:var(--surface); border:1.5px solid var(--line);
+  box-shadow:var(--shadow-soft); font-size:12.5px; font-weight:700; color:var(--ink);
+}
+.ce-chip__clear{
+  width:20px; height:20px; border:none; border-radius:50%;
+  background:rgba(0,0,0,.05); color:var(--ink-soft); cursor:pointer;
+  display:flex; align-items:center; justify-content:center; font-size:10px;
+}
+.ce-chip__clear:hover{ background:var(--brick); color:#fff; }
+
+/* ---- Category mini-nav inside the filter sidebar ---- */
+.ce-cat-nav{ display:flex; flex-direction:column; gap:2px; }
+.ce-cat-nav a{
+  font-size:13px; font-weight:600; color:var(--ink-soft); padding:6px 0;
+  border-left:2px solid transparent; padding-left:8px; transition:.15s ease;
+}
+.ce-cat-nav a:hover{ color:var(--brand-dark); }
+.ce-cat-nav__children{ display:flex; flex-direction:column; margin-top:2px; margin-left:10px; border-left:1.5px solid var(--line); }
+.ce-cat-nav__children a{ font-size:12.5px; padding:6px 0 6px 12px; }
+.ce-cat-nav__children a.active{
+  color:var(--brand-dark); font-weight:800; background:var(--paper-dim);
+  border-left-color:var(--brand);
+}
+
+/* ---- Dual price range slider ---- */
+.ce-range{ position:relative; height:28px; margin:6px 0 4px; }
+.ce-range__track{
+  position:absolute; top:50%; left:0; right:0; height:4px; transform:translateY(-50%);
+  background:var(--line); border-radius:4px;
+}
+.ce-range__fill{
+  position:absolute; top:50%; height:4px; transform:translateY(-50%);
+  background:var(--grad-brand-deep); border-radius:4px;
+}
+.ce-range__input{
+  position:absolute; top:50%; left:0; width:100%; transform:translateY(-50%);
+  -webkit-appearance:none; appearance:none; background:transparent; pointer-events:none; margin:0;
+}
+.ce-range__input::-webkit-slider-thumb{
+  -webkit-appearance:none; pointer-events:auto; width:17px; height:17px; border-radius:50%;
+  background:var(--surface); border:3px solid var(--brand); cursor:pointer; box-shadow:var(--shadow-soft);
+}
+.ce-range__input::-moz-range-thumb{
+  pointer-events:auto; width:17px; height:17px; border-radius:50%;
+  background:var(--surface); border:3px solid var(--brand); cursor:pointer; box-shadow:var(--shadow-soft);
+}
+.ce-range__input::-webkit-slider-runnable-track{ background:transparent; }
+.ce-range__input::-moz-range-track{ background:transparent; }
+
+/* ---- Rating filter chips ---- */
+.ce-rating-row{ display:flex; flex-direction:column; gap:6px; }
+.ce-rating-chip{
+  display:inline-flex; align-items:center; gap:6px; padding:7px 10px;
+  border-radius:var(--radius-s); border:1px solid var(--line); background:var(--paper);
+  font-size:12.5px; font-weight:600; color:var(--ink-soft); cursor:pointer; width:max-content;
+  transition:.15s ease;
+}
+.ce-rating-chip i{ color:var(--sun); font-size:11px; }
+.ce-rating-chip.active{ background:var(--grad-brand-deep); border-color:transparent; color:#fff; }
+.ce-rating-chip.active i{ color:#fff; }
+
+/* ---- Dynamic attribute filter groups ---- */
+.ce-attr-group{ display:flex; flex-direction:column; gap:8px; }
+.ce-attr-search{
+  padding:8px 11px; border:1px solid var(--line); border-radius:999px;
+  font-size:12.5px; background:var(--paper);
+}
+.ce-attr-options{ display:flex; flex-direction:column; gap:2px; max-height:190px; overflow-y:auto; padding-right:4px; }
+.ce-attr-options label{
+  display:flex; align-items:center; gap:9px; font-size:12.5px; font-weight:600;
+  color:var(--ink-soft); padding:5px 2px; cursor:pointer;
+}
+.ce-attr-options input[type="checkbox"]{ accent-color:var(--brand); width:15px; height:15px; cursor:pointer; }
+.ce-attr-options label:hover{ color:var(--ink); }
+
+/* ---- Filters aside: sticky, scrollable on small screens via toggle ---- */
+.ce-filters-toggle{ display:none; }
+@media(max-width:859px){
+  .ce-filters-toggle{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    width:100%; padding:12px; border-radius:999px; border:1.5px solid var(--line);
+    background:var(--surface); font-weight:700; font-size:13.5px; color:var(--ink); margin-bottom:14px;
+  }
+  .filters{ display:none; }
+  .filters.ce-open{ display:flex; }
+}
+
+.ce-empty{ text-align:center; padding:60px 20px; color:var(--ink-soft); grid-column:1/-1; }
+.ce-empty i{ font-size:2.2rem; color:var(--brand); margin-bottom:12px; display:block; }
+</style>
+</head>
+<body data-page="category-explore.html">
+<div id="pageLoader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+
+<header class="site-header" id="site-header"></header>
+
+<main>
+  <div class="wrap">
+    <nav class="ce-breadcrumb" id="ceBreadcrumb"></nav>
+    <div class="ce-title-row">
+      <h1 class="ce-title" id="ceTitle">Shop by Category</h1>
+      <span class="ce-title-count" id="ceTitleCount"></span>
+    </div>
+  </div>
+
+  <!-- ===== Horizontal sub-category strip — only rendered when the current
+       node actually has children. ===== -->
+  <section class="ce-subcat-section" id="ceSubcatSection" style="display:none;">
+    <div class="wrap">
+      <div class="ce-subcat-wrap">
+        <button type="button" class="ce-subcat-nav ce-subcat-nav--prev" id="ceSubcatPrev" aria-label="Scroll left"><i class="fa-solid fa-chevron-left"></i></button>
+        <div class="ce-subcat-scroll" id="ceSubcatScroll"></div>
+        <button type="button" class="ce-subcat-nav ce-subcat-nav--next" id="ceSubcatNext" aria-label="Scroll right"><i class="fa-solid fa-chevron-right"></i></button>
+      </div>
+    </div>
+  </section>
+
+  <div class="wrap listing" style="padding-top:0;">
+    <button type="button" class="ce-filters-toggle" id="ceFiltersToggle">
+      <i class="fa-solid fa-sliders"></i> Filters
+    </button>
+
+    <aside class="filters" id="ceFiltersAside">
+      <h3>Filters</h3>
+
+      <div class="filter-group">
+        <label>Category</label>
+        <div class="ce-cat-nav" id="ceCatNav"></div>
+      </div>
+
+      <div class="filter-group">
+        <label>Price range (KSh)</label>
+        <div class="ce-range">
+          <div class="ce-range__track"></div>
+          <div class="ce-range__fill" id="ceRangeFill"></div>
+          <input type="range" id="ceRangeMin" class="ce-range__input" min="0" max="100000" step="100" value="0">
+          <input type="range" id="ceRangeMax" class="ce-range__input" min="0" max="100000" step="100" value="100000">
+        </div>
+        <div class="price-range">
+          <input type="number" id="ceMinPrice" placeholder="Min" min="0">
+          <span>–</span>
+          <input type="number" id="ceMaxPrice" placeholder="Max" min="0">
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <label>Deals</label>
+        <div class="chip-row">
+          <button type="button" class="chip" id="ceDiscountChip" data-active="false">🏷️ Show only discounted items</button>
+          <button type="button" class="chip" id="ceHotChip" data-active="false">🔥 Hot deals only</button>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <label>Product rating</label>
+        <div class="ce-rating-row" id="ceRatingRow"></div>
+      </div>
+
+      <!-- Dynamic, category-specific attribute filters (Brand, Gender, Material, ...)
+           get injected here — see renderAttributeFilters() in category-explore.js -->
+      <div id="ceAttrFilters"></div>
+
+      <button class="btn btn-dark btn-block" id="ceApplyBtn">Apply filters</button>
+      <button class="btn btn-outline btn-block" id="ceClearBtn">Clear all</button>
+    </aside>
+
+    <section>
+      <div class="ce-filter-banner" id="ceFilterBanner"></div>
+
+      <div class="listing-toolbar">
+        <span class="count" id="ceResultCount">Loading products…</span>
+        <select class="sort-select" id="ceSort">
+          <option value="">Sort: Relevance</option>
+          <option value="newest">Newest first</option>
+          <option value="popular">Top Selling</option>
+          <option value="rating">Highest Rated</option>
+          <option value="price_asc">Price: Low to High</option>
+          <option value="price_desc">Price: High to Low</option>
+        </select>
+      </div>
+
+      <div class="p-grid" id="ceProductGrid"></div>
+
+      <div class="infinite-loader" id="ceLoadMoreWrap">
+        <span class="infinite-loader__label" id="ceLoadMoreCount">Loading more…</span>
+      </div>
+      <div id="ceLoadMoreSentinel"></div>
+    </section>
+  </div>
+</main>
+
+<footer class="site-footer" id="site-footer"></footer>
+<a href="#" class="wa-float" id="wa-float"></a>
+<div id="toast"></div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/cart.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/ui.js"></script>
+<link rel="stylesheet" href="css/search-autocomplete.css">
+<script src="js/search-autocomplete.js"></script>
+<script src="js/category-explore.js"></script>
+</body>
+</html>
