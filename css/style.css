@@ -2645,3 +2645,42 @@ body.drawer-lock {
 .ss-loading-overlay .ss-spinner{ width:42px; height:42px; }
 .ss-loading-overlay .ss-spinner__arc--outer{ border-width:3.5px; }
 .ss-loading-overlay .ss-spinner__arc--inner{ inset:10px; border-width:3px; }
+
+
+
+
+
+/* ---- "Shop by Category" row: toggle button + View All shortcut into
+   category.html — sits inline with the toggle, doesn't affect the
+   accordion's own open/close behaviour. ---- */
+.drawer-cat-head{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding-right:14px;
+}
+.drawer-cat-head .drawer-cat-toggle{
+  flex:1;
+  min-width:0;
+}
+.drawer-cat-viewall{
+  flex-shrink:0;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.03em;
+  color:var(--sun);
+  background:rgba(255,201,60,.12);
+  border:1px solid rgba(255,201,60,.3);
+  padding:6px 12px;
+  border-radius:999px;
+  white-space:nowrap;
+  transition:.2s ease;
+}
+.drawer-cat-viewall:hover{
+  background:var(--sun);
+  color:#1E1400;
+  border-color:transparent;
+}
+@media(max-width:599px){
+  .drawer-cat-viewall{ font-size:10px; padding:5px 10px; }
+}

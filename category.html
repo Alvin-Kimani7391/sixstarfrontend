@@ -3,30 +3,246 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Category | Six Star Suppliers</title>
+<title>Shop by Category — Six Star Suppliers</title>
+<meta name="description" content="Browse every category at Six Star Suppliers — drill into sub-categories and jump straight into a filtered listing.">
+<link rel="canonical" href="https://www.sixstarsuppliers.com/category.html">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://kit.fontawesome.com/e1426ab85b.js" crossorigin="anonymous"></script>
 <link rel="stylesheet" href="css/style.css">
+
+<style>
+/* ============================================================
+   CATEGORY BROWSER (category.html) — page-scoped styles only.
+   Reuses variables/utility classes already defined in css/style.css
+   (--brand, --line, --radius-md, .btn, .empty-state, .skel-shimmer,
+   etc.) — nothing here touches the shared stylesheet.
+   ============================================================ */
+
+/* ---- breadcrumb + title row (same pattern as category-explore.html) ---- */
+.cx-breadcrumb{
+  display:flex; align-items:center; flex-wrap:wrap; gap:6px;
+  font-size:12.5px; font-weight:600; color:var(--ink-soft);
+  padding:14px 0 4px;
+}
+.cx-breadcrumb a{ color:var(--ink-soft); transition:.15s ease; }
+.cx-breadcrumb a:hover{ color:var(--brand-dark); }
+.cx-breadcrumb i{ font-size:9px; color:var(--ink-faint); }
+.cx-breadcrumb strong{ color:var(--ink); }
+
+.cx-title-row{
+  display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+  flex-wrap:wrap; padding-bottom:14px;
+}
+.cx-title{
+  font-family:var(--font-display); font-size:clamp(1.3rem,3vw,1.8rem);
+  font-weight:600; color:var(--ink);
+}
+.cx-title-count{ font-size:12px; color:var(--ink-soft); font-weight:600; white-space:nowrap; }
+
+/* ---- shell: sticky scrollable rail + independently scrollable panel ----
+   --cx-sticky-top is deliberately a variable: it approximates the real
+   rendered height of the sticky site header (ticker + header-row on
+   phones, plus the top-bar row from ~860px up). If your header ever
+   renders a touch taller/shorter than this on a given device, nudge
+   these two values — nothing else needs to change. */
+:root{
+  --cx-sticky-top: 118px;
+}
+@media(min-width:860px){
+  :root{ --cx-sticky-top: 152px; }
+}
+
+.cx-shell{
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+  padding-bottom:60px;
+}
+
+.cx-rail{
+  flex:0 0 84px;
+  display:flex;
+  flex-direction:column;
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--radius-md);
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  position:sticky;
+  top:var(--cx-sticky-top);
+  max-height:calc(100vh - var(--cx-sticky-top) - 16px);
+  scrollbar-width:thin;
+}
+.cx-rail::-webkit-scrollbar{ width:5px; }
+.cx-rail::-webkit-scrollbar-thumb{ background:var(--line); border-radius:6px; }
+
+.cx-rail__item{
+  display:block;
+  padding:14px 6px;
+  font-size:10.5px;
+  font-weight:600;
+  line-height:1.25;
+  text-align:center;
+  color:var(--ink-soft);
+  border-left:3px solid transparent;
+  border-bottom:1px solid var(--line-soft);
+  cursor:pointer;
+  transition:background .15s ease, color .15s ease, border-color .15s ease;
+  word-break:break-word;
+}
+.cx-rail__item:last-child{ border-bottom:none; }
+.cx-rail__item:hover{ background:var(--paper-dim); color:var(--brand-dark); }
+.cx-rail__item.active{
+  background:var(--paper-dim);
+  color:var(--brand-dark);
+  font-weight:800;
+  border-left-color:var(--brand);
+}
+
+.cx-rail__skel{ height:58px; margin:8px; border-radius:10px; }
+
+.cx-panel{
+  flex:1 1 auto;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:20px;
+}
+
+/* ---- category card ---- */
+.cx-card{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--radius-md);
+  overflow:hidden;
+  box-shadow:var(--shadow-soft);
+}
+.cx-card__head{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding:12px 14px;
+  border-bottom:1px solid var(--line-soft);
+}
+.cx-card__head h2{
+  font-size:12px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+  color:var(--ink);
+}
+.cx-card__see{
+  flex-shrink:0;
+  font-size:11.5px;
+  font-weight:700;
+  color:var(--brand-dark);
+  display:inline-flex; align-items:center; gap:4px;
+  white-space:nowrap;
+}
+.cx-card__see:hover{ text-decoration:underline; }
+.cx-card__see i{ font-size:9px; }
+
+.cx-card__body{ padding:20px 16px 26px; min-height:180px; }
+.cx-card__empty{ padding:28px 14px 34px; text-align:center; }
+
+.cx-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:22px 12px;
+  align-content:start;
+}
+.cx-tile{
+  display:flex; flex-direction:column; align-items:center; gap:9px;
+  text-align:center;
+}
+.cx-tile__thumb{
+  width:100%;
+  aspect-ratio:1/1;
+  max-width:150px;
+  border-radius:14px;
+  overflow:hidden;
+  background:var(--paper-dim);
+  display:flex; align-items:center; justify-content:center;
+  transition:transform .2s var(--ease-out), box-shadow .2s ease;
+}
+.cx-tile__thumb img{ width:100%; height:100%; object-fit:cover; }
+.cx-tile:hover .cx-tile__thumb{ transform:translateY(-3px); box-shadow:var(--shadow-soft); }
+.cx-tile span{
+  font-size:11.5px; font-weight:600; color:var(--ink-soft); line-height:1.3;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  min-height:2.6em;
+}
+
+.cx-skel-line{ display:block; border-radius:4px; margin:0 auto; }
+
+/* ============================================================
+   PHONE REFINEMENTS — every size down to 320px keeps both the
+   rail and the panel scrollable/legible with no horizontal
+   overflow anywhere.
+   ============================================================ */
+@media(max-width:599px){
+  .cx-shell{ gap:8px; }
+  .cx-rail{ flex-basis:76px; }
+  .cx-rail__item{ padding:12px 4px; font-size:10px; }
+  .cx-card__head{ padding:10px 12px; }
+  .cx-card__head h2{ font-size:11px; }
+  .cx-card__see{ font-size:11px; }
+  .cx-card__body{ padding:16px 12px 20px; min-height:150px; }
+  .cx-grid{ gap:18px 8px; }
+  .cx-tile span{ font-size:10.5px; min-height:2.5em; }
+}
+@media(max-width:374px){
+  .cx-rail{ flex-basis:68px; }
+  .cx-rail__item{ font-size:9.5px; padding:11px 3px; }
+  .cx-grid{ grid-template-columns:repeat(2,1fr); }
+  .cx-card__body{ min-height:130px; }
+}
+@media(min-width:600px) and (max-width:859px){
+  .cx-rail{ flex-basis:110px; }
+  .cx-rail__item{ font-size:12px; padding:15px 8px; }
+  .cx-grid{ grid-template-columns:repeat(4,1fr); }
+  .cx-card__body{ min-height:200px; }
+}
+@media(min-width:860px){
+  .cx-rail{ flex-basis:230px; }
+  .cx-rail__item{ text-align:left; padding:13px 18px; font-size:13.5px; }
+  .cx-grid{ grid-template-columns:repeat(5,1fr); gap:26px 18px; }
+  .cx-card__head{ padding:16px 20px; }
+  .cx-card__body{ padding:24px 20px 30px; min-height:230px; }
+}
+@media(min-width:1140px){
+  .cx-grid{ grid-template-columns:repeat(6,1fr); }
+  .cx-card__body{ min-height:250px; }
+}
+</style>
 </head>
 <body data-page="category.html">
+<div id="pageLoader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
 
-<div id="pageLoader"><div class="spinner"></div></div>
-<div id="site-header"></div>
+<header class="site-header" id="site-header"></header>
 
-<main class="cat-page">
-  <div class="container">
-    <nav class="breadcrumb" id="breadcrumb"></nav>
-    <h1 id="categoryTitle">Loading…</h1>
+<main>
+  <div class="wrap">
+    <nav class="cx-breadcrumb" id="cxBreadcrumb">
+      <a href="/index.html">Home</a>
+      <i class="fa-solid fa-chevron-right"></i>
+      <strong>Shop by Category</strong>
+    </nav>
+    <div class="cx-title-row">
+      <h1 class="cx-title">Shop by Category</h1>
+      <span class="cx-title-count" id="cxCount"></span>
+    </div>
+  </div>
 
-    <div class="cat-grid" id="subcatGrid" style="display:none;"></div>
-
-    <div class="product-grid" id="productGrid" style="display:none;"></div>
+  <div class="wrap cx-shell" id="cxShell">
+    <aside class="cx-rail" id="cxRail" aria-label="Top-level categories"></aside>
+    <section class="cx-panel" id="cxPanel" aria-label="Categories and sub-categories"></section>
   </div>
 </main>
 
-<a id="wa-float" class="wa-float"></a>
-<div id="site-footer"></div>
+<footer class="site-footer" id="site-footer"></footer>
+<a href="#" class="wa-float" id="wa-float"></a>
+<div id="toast"></div>
 
 <script src="js/config.js"></script>
 <script src="js/api.js"></script>

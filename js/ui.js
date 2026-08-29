@@ -352,15 +352,19 @@ function ssRenderHeader(active = "") {
       ${link("/index.html", "Home", "fa-house")}
       ${link("/product.html", "All Products", "fa-bag-shopping")}
 
-      <!-- ---- Expandable "Shop by Category" accordion ---- -->
-      <button type="button" class="drawer-cat-toggle" id="drawerCatToggle">
-        <span><i class="fa-solid fa-layer-group"></i> Shop by Category</span>
-        <i class="fa-solid fa-chevron-down drawer-cat-toggle__chevron"></i>
-      </button>
+            <!-- ---- Expandable "Shop by Category" accordion + View All ---- -->
+      <div class="drawer-cat-head">
+        <button type="button" class="drawer-cat-toggle" id="drawerCatToggle">
+          <span><i class="fa-solid fa-layer-group"></i> Shop by Category</span>
+          <i class="fa-solid fa-chevron-down drawer-cat-toggle__chevron"></i>
+        </button>
+        <a href="/category.html" class="drawer-cat-viewall">View All</a>
+      </div>
       <div class="drawer-cat-list" id="drawerCatList">
         <div class="drawer-cat-list__inner"></div>
       </div>
 
+      
       ${link("/shop.html", "Shops", "fa-solid fa-shop")}
       ${link("/wholesale.html", "Wholesale", "fa-boxes-stacked")}
 
