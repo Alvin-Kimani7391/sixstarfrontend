@@ -2696,3 +2696,6 @@ body.drawer-lock {
   color:var(--brand);
 }
 .action-link--mobile-search.active i{ color:var(--brand); }
+
+
+.alert-danger{ background:#fdf0ee; border:1px solid #f2c8c1; color:#b3261e; padding:12px 16px; border-radius:10px; margin-bottom:16px; }

@@ -429,5 +429,12 @@ getShopBySlug(slug) {
     getRFQActivity(limit) {
       return request("/rfq/profile/activity", { query: { limit }, requiresAuth: true });
     },
+
+        // ============================================================
+    // CONTACT
+    // ============================================================
+    sendContactMessage(payload) {
+      return request("/contact", { method: "POST", body: payload, requiresAuth: false });
+    },
   };
 })();

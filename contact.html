@@ -123,21 +123,26 @@
       </div>
 
       <form id="contactForm" class="form-grid summary-card" style="position:static;">
-        <div class="alert alert-success" id="contactSuccess">Thanks — your message is ready to send. We opened WhatsApp for you.</div>
-        <div class="form-field">
-          <label for="cName">Your name</label>
-          <input type="text" id="cName" required>
-        </div>
-        <div class="form-field">
-          <label for="cSubject">Subject</label>
-          <input type="text" id="cSubject" placeholder="e.g. Order SS-10234">
-        </div>
-        <div class="form-field">
-          <label for="cMessage">Message</label>
-          <textarea id="cMessage" required placeholder="How can we help?"></textarea>
-        </div>
-        <button class="btn btn-primary btn-block" type="submit"><i class="fa-brands fa-whatsapp"></i> Send via WhatsApp</button>
-      </form>
+  <div class="alert alert-success" id="contactSuccess">Thanks — your message has been sent. We'll get back to you shortly.</div>
+  <div class="alert alert-danger" id="contactError" style="display:none;"></div>
+  <div class="form-field">
+    <label for="cName">Your name</label>
+    <input type="text" id="cName" required>
+  </div>
+  <div class="form-field">
+    <label for="cEmail2">Your email</label>
+    <input type="email" id="cEmail2" required>
+  </div>
+  <div class="form-field">
+    <label for="cSubject">Subject</label>
+    <input type="text" id="cSubject" placeholder="e.g. Order SS-10234">
+  </div>
+  <div class="form-field">
+    <label for="cMessage">Message</label>
+    <textarea id="cMessage" required placeholder="How can we help?"></textarea>
+  </div>
+  <button class="btn btn-primary btn-block" type="submit" id="contactSubmitBtn"><i class="fa-regular fa-paper-plane"></i> Send Message</button>
+</form>
     </div>
   </div>
 </main>
@@ -160,15 +165,37 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("cEmail").href = "mailto:" + c.EMAIL;
   document.getElementById("cWhatsapp").href = `https://wa.me/${c.WHATSAPP_NUMBER}`;
 
-  document.getElementById("contactForm").addEventListener("submit", e => {
+  const form = document.getElementById("contactForm");
+  const successBox = document.getElementById("contactSuccess");
+  const errorBox = document.getElementById("contactError");
+  const submitBtn = document.getElementById("contactSubmitBtn");
+
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
+    successBox.classList.remove("show");
+    errorBox.style.display = "none";
+
     const name = document.getElementById("cName").value.trim();
+    const email = document.getElementById("cEmail2").value.trim();
     const subject = document.getElementById("cSubject").value.trim();
     const message = document.getElementById("cMessage").value.trim();
-    const text = `Hello, my name is ${name}.${subject ? " Subject: " + subject + "." : ""} ${message}`;
-    window.open(`https://wa.me/${c.WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`, "_blank");
-    document.getElementById("contactSuccess").classList.add("show");
-    e.target.reset();
+
+    submitBtn.disabled = true;
+    submitBtn.classList.add("is-loading");
+
+    try {
+      await SS_API.sendContactMessage({ name, email, subject, message });
+      successBox.classList.add("show");
+      form.reset();
+      ssToast("Your message has been sent", "fa-circle-check");
+    } catch (err) {
+      errorBox.textContent = err.message || "Couldn't send your message. Please try again.";
+      errorBox.style.display = "block";
+      ssToast("Couldn't send your message", "fa-circle-exclamation");
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.classList.remove("is-loading");
+    }
   });
 });
 </script>
