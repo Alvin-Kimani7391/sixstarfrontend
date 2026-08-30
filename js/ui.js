@@ -1258,23 +1258,10 @@ function ssAutoScrollRail(railId, speed = 45) {
   const rail = document.getElementById(railId);
   if (!rail) return;
 
-  // Auto-scroll badge lives in the same rail card, wherever its sticky
-  // title happens to be — look it up once so pause/resume can reflect
-  // in the UI without the caller having to pass anything extra in.
-  const railBox = rail.closest(".rail, .rail--hotdeals, .rail--flash");
-  const badge = railBox ? railBox.querySelector(".auto-scroll-badge") : null;
-  const badgeText = badge ? badge.querySelector(".auto-scroll-badge__text") : null;
-
   let paused = false;
   let lastTs = null;
   let raf = null;
   let resumeTimer = null;
-
-  function setPausedUI(isPaused) {
-    if (!badge) return;
-    badge.classList.toggle("is-paused", isPaused);
-    if (badgeText) badgeText.textContent = isPaused ? "Paused" : "Auto-scrolling";
-  }
 
   function step(ts) {
     if (lastTs == null) lastTs = ts;
@@ -1295,15 +1282,10 @@ function ssAutoScrollRail(railId, speed = 45) {
   function pause() {
     paused = true;
     clearTimeout(resumeTimer);
-    setPausedUI(true);
   }
   function resumeSoon() {
     clearTimeout(resumeTimer);
-    resumeTimer = setTimeout(() => {
-      paused = false;
-      lastTs = null;
-      setPausedUI(false);
-    }, 2800);
+    resumeTimer = setTimeout(() => { paused = false; lastTs = null; }, 2800);
   }
 
   rail.addEventListener("pointerdown", pause);
