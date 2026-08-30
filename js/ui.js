@@ -308,6 +308,7 @@ function ssRenderHeader(active = "") {
       ${link("/about.html", "About", "fa-circle-info")}
       ${link("/track-order.html", "Track Order", "fa-truck-fast")}
       ${link("/contact.html", "Contact", "fa-phone")}
+    
     </nav>
   `;
 
@@ -407,6 +408,7 @@ function ssRenderHeader(active = "") {
       </a>
 
       ${link("/about.html", "About", "fa-circle-info")}
+       ${link("/contact.html", "Contact", "fa-phone")}
       ${authLinkHtml}
       ${link("/register.html", "Sell With Us", "fa-store")}
     </div>
@@ -1009,7 +1011,7 @@ async function ssRenderDrawerCategories(targetId) {
     return;
   }
 
-  const catLink = (cat) => `/product.html?category=${encodeURIComponent(cat._id || cat.id)}`;
+  const catLink = (cat) => `/category-explore.html?category=${encodeURIComponent(cat._id || cat.id)}`;
 
   inner.innerHTML = tree.map((cat, i) => {
     const kids = cat.children || [];

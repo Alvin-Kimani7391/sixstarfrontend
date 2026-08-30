@@ -1,3 +1,23 @@
+// Fetches a random slice of the catalog instead of always page 1, so
+// products aren't limited to whatever the backend's default sort puts on
+// the first page (typically newest-first). Does a cheap limit=1 call
+// first to learn the total count, then jumps to a random page sized
+// `poolSize`, so older products get a real chance to surface once we
+// shuffle client-side.
+async function ssFetchRandomPool(baseParams, poolSize) {
+  try {
+    const countRes = await SS_API.getProducts({ ...baseParams, page: 1, limit: 1 });
+    const total = countRes.total ?? countRes.count ?? 0;
+    if (!total) return [];
+    const totalPages = Math.max(1, Math.ceil(total / poolSize));
+    const randomPage = Math.floor(Math.random() * totalPages) + 1;
+    const res = await SS_API.getProducts({ ...baseParams, page: randomPage, limit: poolSize });
+    return res.products || res.data || res || [];
+  } catch (_) {
+    return [];
+  }
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   // ---------------------------------------------------------------
   // Email-verification guard.
@@ -53,14 +73,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // ---------------------------------------------------------------
-  // Hot Deals — no meaningful backend order (it's just "isHotDeal: true"),
-  // so shuffle the full result before slicing to the rail size. This does
-  // NOT touch the hotDeals filter itself — filtering already happened in
-  // the API call above; we're only reordering what came back.
+  // Hot Deals — pulled from a random page of the hotDeals pool (not
+  // always page 1) so older hot-deal products get a fair chance to
+  // surface, then shuffled client-side before slicing to rail size.
   // ---------------------------------------------------------------
   try {
-    const hotRes = await SS_API.getProducts({ hotDeals: true, page: 1 });
-    const hotProducts = ssShuffle(hotRes.products || hotRes.data || hotRes || []).slice(0, 10);
+    const hotPool = await ssFetchRandomPool({ hotDeals: true }, 30);
+    const hotProducts = ssShuffle(hotPool).slice(0, 10);
     cacheAndRender(hot, hotProducts, "No hot deals right now — check back soon.");
   } catch (_) { hot.innerHTML = `<p class="form-hint">Couldn't load hot deals. <a href="index.html">Retry</a></p>`; }
 
@@ -82,18 +101,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   ssEnableScrollArrows("newArrivals");
 
   // ---------------------------------------------------------------
-  // Wholesale preview — no meaningful order either way, so shuffle
-  // whichever set we ended up with (direct query or the manual filter
-  // fallback) before caching/rendering.
+  // Wholesale preview — pulled from a random page of the wholesaler pool
+  // (not always page 1) so older wholesale listings get a fair chance to
+  // surface, then shuffled before caching/rendering.
   // ---------------------------------------------------------------
   if (wholesalePreview) {
     try {
-      const wholesaleRes = await SS_API.getProducts({
-        sellerRole: 'wholesaler',
-        status: 'active',
-        limit: 10
-      });
-      let wholesaleProducts = wholesaleRes.products || wholesaleRes.data || wholesaleRes || [];
+      let wholesaleProducts = await ssFetchRandomPool({ sellerRole: 'wholesaler', status: 'active' }, 30);
 
       if (!wholesaleProducts.length) {
         const allRes = await SS_API.getProducts({ status: 'active', limit: 50 });
@@ -117,12 +131,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // ---------------------------------------------------------------
-  // Top Selling — already shuffled (unchanged): pull the top-stock pool,
-  // then randomize which 10 of the top 20 show up this load.
+  // Top Selling — pulled from a random page of the full catalog (not
+  // always page 1), sorted by stock to find the top movers within that
+  // pool, then shuffled before slicing to rail size.
   // ---------------------------------------------------------------
   try {
-    const topRes = await SS_API.getProducts({ page: 1, limit: 40 });
-    let list = topRes.products || topRes.data || topRes || [];
+    let list = await ssFetchRandomPool({}, 60);
     list = list.slice().sort((a, b) => ssStockOf(b) - ssStockOf(a));
     list = list.slice(0, 20);
     list = ssShuffle(list).slice(0, 10);
@@ -131,17 +145,18 @@ document.addEventListener("DOMContentLoaded", async () => {
   ssEnableScrollArrows("topSelling");
 
   // ---------------------------------------------------------------
-  // Catalog preview (homepage "Our Catalog" strip) — plain page-1 fetch
-  // with no filter/sort applied, so shuffle it for a fresher feel on
-  // every visit. The "Browse All Products" button still just routes to
+  // Catalog preview (homepage "Our Catalog" strip) — pulled from a random
+  // page of the full catalog (not always page 1) so older products get a
+  // fair chance to surface, then shuffled for a fresher feel on every
+  // visit. The "Browse All Products" button still just routes to
   // product.html, which does its own thing (see products.js).
   // ---------------------------------------------------------------
   const catalogLoadMoreWrap = document.getElementById("catalogLoadMoreWrap");
   const catalogLoadMoreBtn = document.getElementById("catalogLoadMoreBtn");
 
   try {
-    const allRes = await SS_API.getProducts({ page: 1, limit: CATALOG_PAGE_SIZE });
-    const products = ssShuffle(allRes.products || allRes.data || allRes || []).slice(0, CATALOG_PAGE_SIZE);
+    const pool = await ssFetchRandomPool({}, CATALOG_PAGE_SIZE * 3);
+    const products = ssShuffle(pool).slice(0, CATALOG_PAGE_SIZE);
     cacheAndRender(catalog, products, "No products available yet.");
     if (catalogLoadMoreWrap) {
       catalogLoadMoreWrap.style.display = products.length ? "flex" : "none";
