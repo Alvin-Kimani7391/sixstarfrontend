@@ -106,6 +106,32 @@
   </div>
 </section>
 
+  <!-- ===== Hot Deals — moved above "Top selling Categories". No colored bar
+       anymore: a plain centered "Hot Deals" title that stays sticky (just
+       under the header) only for as long as this section is on screen, then
+       unsticks once you scroll past it. The rail auto-advances on its own
+       but is still fully scrollable by hand at any time. ===== -->
+  <section class="block" id="hotDealsSection">
+    <div class="wrap">
+      <div class="rail rail--hotdeals">
+        <!-- replace with -->
+<div class="hotdeals-sticky-title" id="hotDealsStickyTitle">
+  <span><i class="fa-solid fa-fire"></i> Hot Deals</span>
+  <span class="auto-scroll-badge" id="hotDealsAutoBadge">
+    <span class="auto-scroll-dot"></span>
+    <span class="auto-scroll-badge__text">Auto-scrolling</span>
+  </span>
+  <a href="product.html?hotDeals=true" class="see-all">See all</a>
+</div>
+        <div class="p-scroll-wrap">
+          <button class="p-scroll-arrow p-scroll-arrow--prev" type="button" aria-label="Scroll left"><i class="fa-solid fa-chevron-left"></i></button>
+          <div class="p-scroll" id="hotDeals"></div>
+          <button class="p-scroll-arrow p-scroll-arrow--next" type="button" aria-label="Scroll right"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ===== Shop by category — flat Jumia-style square tile grid ===== -->
   <section class="block" style="background: blanchedalmond;">
     <div class="wrap">
@@ -120,7 +146,9 @@
   <!-- ===== FLASH SALE — real backend-driven daily event (2PM-midnight) =====
        Hidden by default; home.js shows it once the /flash-sales/active
        fetch resolves (whether or not anything is live right now — the
-       "starts in" countdown still needs a home). -->
+       "starts in" countdown still needs a home). Now carries the red
+       gradient bar that used to belong to Hot Deals, since Hot Deals moved
+       to a plain sticky title above. -->
   <section class="block" style="display:none;" id="flashSaleSection">
     <div class="wrap">
       <div class="rail rail--flash">
@@ -131,22 +159,11 @@
             <a href="product.html?flashSale=true" class="see-all">See all</a>
           </div>
         </div>
-        <div class="p-scroll" id="flashSaleProducts"></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ===== Hot deals — red flash-sale-style bar. No live counter anymore:
-       "Hot Deals" is now just a merchandising rail (isHotDeal flag on a
-       product), the real ticking countdown belongs to Flash Sale above. -->
-  <section class="block" style="background: rgb(245, 201, 188); border: 1px solid #e5e5e5; border-radius: 4px; ">
-    <div class="wrap">
-      <div class="rail">
-        <div class="sec-head sec-head--hot">
-          <h2><i class="fa-solid fa-fire"></i> Hot Deals</h2>
-          <a href="product.html?hotDeals=true" class="see-all">See all</a>
+        <div class="p-scroll-wrap">
+          <button class="p-scroll-arrow p-scroll-arrow--prev" type="button" aria-label="Scroll left"><i class="fa-solid fa-chevron-left"></i></button>
+          <div class="p-scroll" id="flashSaleProducts"></div>
+          <button class="p-scroll-arrow p-scroll-arrow--next" type="button" aria-label="Scroll right"><i class="fa-solid fa-chevron-right"></i></button>
         </div>
-        <div class="p-scroll" id="hotDeals"></div>
       </div>
     </div>
   </section>
@@ -159,7 +176,11 @@
           <h2><i class="fa-solid fa-gift"></i> New Arrivals</h2>
           <a href="product.html?sort=newest" class="see-all">See all</a>
         </div>
-        <div class="p-scroll" id="newArrivals"></div>
+        <div class="p-scroll-wrap">
+          <button class="p-scroll-arrow p-scroll-arrow--prev" type="button" aria-label="Scroll left"><i class="fa-solid fa-chevron-left"></i></button>
+          <div class="p-scroll" id="newArrivals"></div>
+          <button class="p-scroll-arrow p-scroll-arrow--next" type="button" aria-label="Scroll right"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
       </div>
     </div>
   </section>
@@ -172,7 +193,11 @@
           <h2><i class="fa-solid fa-wholesale"></i> Wholesale Deals</h2>
           <a href="wholesale.html" class="see-all">See All <i class="fa-solid fa-arrow-right"></i></a>
         </div>
-        <div class="p-scroll" id="wholesalePreview"></div>
+        <div class="p-scroll-wrap">
+          <button class="p-scroll-arrow p-scroll-arrow--prev" type="button" aria-label="Scroll left"><i class="fa-solid fa-chevron-left"></i></button>
+          <div class="p-scroll" id="wholesalePreview"></div>
+          <button class="p-scroll-arrow p-scroll-arrow--next" type="button" aria-label="Scroll right"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
       </div>
     </div>
   </section>
@@ -185,7 +210,11 @@
           <h2><i class="fa-solid fa-crown"></i> Top Selling</h2>
           <a href="product.html?sort=popular" class="see-all">See all</a>
         </div>
-        <div class="p-scroll" id="topSelling"></div>
+        <div class="p-scroll-wrap">
+          <button class="p-scroll-arrow p-scroll-arrow--prev" type="button" aria-label="Scroll left"><i class="fa-solid fa-chevron-left"></i></button>
+          <div class="p-scroll" id="topSelling"></div>
+          <button class="p-scroll-arrow p-scroll-arrow--next" type="button" aria-label="Scroll right"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
       </div>
     </div>
   </section>

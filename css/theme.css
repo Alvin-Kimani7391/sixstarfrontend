@@ -1711,40 +1711,40 @@ img{ max-width:100%; display:block; }
 
 /* ============================================================
    FLASH SALE — live daily event rail (2:00 PM - midnight).
-   Deliberately its own orange->gold gradient so it reads as the
-   "real" urgency rail, distinct from the red Hot Deals bar and the
-   purple Top Selling bar.
+   Now carries the same red gradient identity that used to belong
+   to Hot Deals — Hot Deals moved to a plain sticky title above,
+   so this rail inherits the red "urgent live event" bar instead.
    ============================================================ */
 
-.rail--flash{ box-shadow:0 10px 30px rgba(255,138,0,.18); }
+.rail--flash{ box-shadow:0 10px 30px rgba(226,55,68,.20); }
 
 .sec-head--flash{
-  background:linear-gradient(90deg,#FF5A1F,#FF8A00 55%,#FFC93C);
-  color:#1E1400;
+  background:linear-gradient(90deg,#FF3B4E,var(--danger) 55%,#B01E28);
+  color:#fff;
   border-bottom:none;
 }
-.sec-head--flash h2{ color:#1E1400; }
-.sec-head--flash h2 i{ color:#fff; text-shadow:0 0 8px rgba(255,255,255,.55); }
+.sec-head--flash h2{ color:#fff; }
+.sec-head--flash h2 i{ color:var(--sun); text-shadow:0 0 8px rgba(255,255,255,.35); }
 .sec-head--flash .see-all{
-  color:#1E1400;
-  background:rgba(255,255,255,.35);
-  border:1px solid rgba(30,20,0,.15);
+  color:#fff;
+  background:rgba(255,255,255,.18);
+  border:1px solid rgba(255,255,255,.3);
   padding:6px 13px;
   border-radius:20px;
 }
-.sec-head--flash .see-all:hover{ background:#1E1400; color:#FFC93C; }
+.sec-head--flash .see-all:hover{ background:#fff; color:var(--danger); }
 
 /* countdown badge, "starts in" state (no live sale right now) */
 .deal-timer--pending{
-  background:rgba(30,20,0,.12);
-  color:#1E1400;
+  background:rgba(0,0,0,.22);
+  color:#fff;
 }
 
 /* ---- Flash Sale card add-ons (stock progress bar, urgency labels) ---- */
 .fs-card{ border-radius:var(--radius-md); }
-.fs-card__discount{ background:linear-gradient(135deg,var(--brand),var(--brand-dark)); }
-.fs-card__flash-badge{ background:#1E1400; color:var(--sun); }
-.fs-card__price{ color:var(--brand-dark); }
+.fs-card__discount{ background:linear-gradient(135deg,var(--danger),#B01E28); }
+.fs-card__flash-badge{ background:#2A0A0D; color:var(--sun); }
+.fs-card__price{ color:var(--danger); }
 
 .fs-card__stockbar{
   height:6px;
@@ -1755,7 +1755,7 @@ img{ max-width:100%; display:block; }
 }
 .fs-card__stockbar-fill{
   height:100%;
-  background:linear-gradient(90deg,var(--brand),var(--sun));
+  background:linear-gradient(90deg,var(--danger),var(--sun));
   border-radius:6px;
   transition:width .3s ease;
 }
@@ -1964,6 +1964,28 @@ img{ max-width:100%; display:block; }
   
   .cat-item span {
     font-size: 10px;
+  }
+}
+
+/* ============================================================
+   "Top selling Categories" grid (#categoryGrid) — pinned to a
+   4-across layout on EVERY phone size (home.js now caps this
+   grid at 8 items, so 4-across always resolves to a clean two
+   rows, never an awkward leftover). #categoryGrid's ID
+   specificity beats the plain .cat-scroll rules above/below on
+   purpose, including the 3-column extra-small-phone override,
+   so this one grid never drops below 4 columns.
+   ============================================================ */
+@media(max-width:599px){
+  #categoryGrid.cat-scroll{
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 12px 8px;
+  }
+}
+@media(max-width:374px){
+  #categoryGrid.cat-scroll{
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 9px 6px;
   }
 }
 
@@ -2427,3 +2449,163 @@ img{ max-width:100%; display:block; }
   color:var(--brand);
 }
 .action-link--mobile-search.active i{ color:var(--brand); }
+
+
+
+
+/* ============================================================
+   HOT DEALS — plain sticky title (replaces the old red bar) +
+   horizontal-scroll arrow controls shared by every product rail.
+   ============================================================ */
+
+/* ---- Sticky "Hot Deals" title. Sits right under the header while
+   this section is on screen, then unsticks naturally the moment the
+   section scrolls past (position:sticky is bound to .rail--hotdeals'
+   own box, so there's nothing to it beyond that — no scroll-listener
+   math needed). ---- */
+.rail--hotdeals{ overflow:visible; }
+.hotdeals-sticky-title{
+  position:sticky;
+  top:var(--siteHeaderH, 96px);
+  z-index:45;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:15px 54px;
+  background:var(--surface);
+  border-bottom:1px solid var(--line);
+  border-radius:var(--radius-lg) var(--radius-lg) 0 0;
+  box-shadow:0 2px 10px rgba(21,22,26,.05);
+}
+.hotdeals-sticky-title span{
+  font-family:var(--font-display);
+  font-size:16.5px;
+  font-weight:700;
+  letter-spacing:.2px;
+  color:var(--ink);
+  display:flex;
+  align-items:center;
+  gap:9px;
+  text-align:center;
+}
+.hotdeals-sticky-title span i{
+  color:var(--danger);
+  font-size:15px;
+}
+.hotdeals-sticky-title .see-all{
+  position:absolute;
+  right:18px;
+  top:50%;
+  transform:translateY(-50%);
+  color:var(--brand);
+}
+.rail--hotdeals .p-scroll-wrap{ border-radius:0 0 var(--radius-lg) var(--radius-lg); overflow:hidden; }
+
+@media(max-width:599px){
+  .hotdeals-sticky-title{ padding:13px 46px; border-radius:0; }
+  .hotdeals-sticky-title span{ font-size:14.5px; gap:7px; }
+  .hotdeals-sticky-title .see-all{ right:14px; font-size:11.5px; }
+}
+
+/* ---- Reveal-on-touch scroll arrows for every horizontally
+   scrollable product rail (Hot Deals, Flash Sale, New Arrivals,
+   Wholesale, Top Selling). Hidden by default; ssEnableScrollArrows()
+   in ui.js reveals them the moment someone touches/taps/hovers a
+   product in that rail, then fades them back out after a short
+   idle period — mirrors the reference screenshot's carousel
+   controls. ---- */
+.p-scroll-wrap{ position:relative; }
+.p-scroll-arrow{
+  position:absolute;
+  top:38%;
+  transform:translateY(-50%);
+  width:34px;
+  height:34px;
+  border-radius:50%;
+  border:none;
+  cursor:pointer;
+  background:rgba(21,22,26,.55);
+  color:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:13px;
+  z-index:6;
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transition:opacity .2s ease, visibility .2s ease, background .2s ease, transform .2s ease;
+  backdrop-filter:blur(2px);
+}
+.p-scroll-wrap.show-arrows .p-scroll-arrow{
+  opacity:1;
+  visibility:visible;
+  pointer-events:auto;
+}
+.p-scroll-arrow:hover{ background:var(--brand); }
+.p-scroll-arrow--prev{ left:8px; }
+.p-scroll-arrow--next{ right:8px; }
+.p-scroll-arrow.is-disabled{ opacity:.25 !important; pointer-events:none; }
+
+@media (hover:hover) and (pointer:fine){
+  .p-scroll-wrap:hover .p-scroll-arrow{ opacity:1; visibility:visible; pointer-events:auto; }
+}
+
+@media(max-width:599px){
+  .p-scroll-arrow{ width:30px; height:30px; font-size:11.5px; }
+  .p-scroll-arrow--prev{ left:6px; }
+  .p-scroll-arrow--next{ right:6px; }
+}
+
+
+
+
+/* ---- Auto-scroll indicator badge — pulsing dot + label, dims and
+   relabels itself "Paused" while the person is manually touching/
+   hovering the rail (see ssAutoScrollRail() in ui.js). ---- */
+.auto-scroll-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  margin-left:12px;
+  padding:4px 10px 4px 8px;
+  border-radius:999px;
+  background:rgba(226,55,68,.08);
+  border:1px solid rgba(226,55,68,.18);
+  font-size:10.5px;
+  font-weight:700;
+  color:var(--danger);
+  letter-spacing:.2px;
+  white-space:nowrap;
+  transition:opacity .25s ease, background .25s ease, color .25s ease, border-color .25s ease;
+}
+.auto-scroll-dot{
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:var(--danger);
+  flex-shrink:0;
+  animation:ssAutoScrollPulse 1.4s ease-in-out infinite;
+}
+@keyframes ssAutoScrollPulse{
+  0%,100%{ transform:scale(1); opacity:1; }
+  50%{ transform:scale(1.7); opacity:.4; }
+}
+@media(prefers-reduced-motion:reduce){
+  .auto-scroll-dot{ animation:none; }
+}
+
+/* paused state — while the person is actively scrolling/touching by hand */
+.auto-scroll-badge.is-paused{
+  background:rgba(21,22,26,.05);
+  border-color:var(--line);
+  color:var(--ink-faint);
+}
+.auto-scroll-badge.is-paused .auto-scroll-dot{
+  animation:none;
+  background:var(--ink-faint);
+}
+
+@media(max-width:599px){
+  .auto-scroll-badge{ font-size:9px; padding:3px 8px 3px 7px; margin-left:7px; gap:5px; }
+}

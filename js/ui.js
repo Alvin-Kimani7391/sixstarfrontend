@@ -721,6 +721,22 @@ function ssHideLoader() {
   if (l) setTimeout(() => l.classList.add("hide"), 150);
 }
 
+/* ============================================================
+   HEADER-HEIGHT CSS VAR — keeps any sticky element that needs to
+   sit "just under the header" (e.g. the Hot Deals sticky title on
+   index.html) correctly offset, without hardcoding a pixel value
+   that would drift whenever the header's own height changes
+   (top-bar/ticker showing or hiding per breakpoint, font swap,
+   etc). Written to --siteHeaderH on <html>, kept in sync on load,
+   resize, and shortly after fonts/images settle.
+   ============================================================ */
+function ssSyncHeaderHeightVar() {
+  const header = document.getElementById("site-header");
+  if (!header) return;
+  const h = header.getBoundingClientRect().height;
+  if (h > 0) document.documentElement.style.setProperty("--siteHeaderH", h + "px");
+}
+
 /* ---------- categories (used on homepage grid + listing filter) ---------- */
 async function ssLoadCategories() {
   try {
@@ -1167,6 +1183,149 @@ async function ssRenderAdSlot(targetId, placement, opts = {}) {
   startAutoRotate();
 }
 
+/* ============================================================
+   HORIZONTAL RAIL SCROLL ARROWS — small round prev/next buttons
+   overlaid on any .p-scroll rail, hidden by default. They appear
+   the moment someone touches/taps/hovers a product in that rail
+   (screenshot-style reveal-on-interaction), then fade back out
+   after a short idle period. Works alongside ssAutoScrollRail()
+   below — nudging an arrow (or touching the rail) also pauses
+   auto-scroll via that function's own listeners on the same
+   element, so the two never fight each other.
+
+   Markup expected (see index.html):
+     <div class="p-scroll-wrap">
+       <button class="p-scroll-arrow p-scroll-arrow--prev">...</button>
+       <div class="p-scroll" id="railId">...cards...</div>
+       <button class="p-scroll-arrow p-scroll-arrow--next">...</button>
+     </div>
+   ============================================================ */
+function ssEnableScrollArrows(railId) {
+  const rail = document.getElementById(railId);
+  if (!rail) return;
+  const wrap = rail.closest(".p-scroll-wrap");
+  if (!wrap) return;
+  const prevBtn = wrap.querySelector(".p-scroll-arrow--prev");
+  const nextBtn = wrap.querySelector(".p-scroll-arrow--next");
+  if (!prevBtn || !nextBtn) return;
+
+  let hideTimer = null;
+
+  function updateArrowState() {
+    const max = rail.scrollWidth - rail.clientWidth - 2;
+    prevBtn.classList.toggle("is-disabled", rail.scrollLeft <= 4);
+    nextBtn.classList.toggle("is-disabled", max <= 4 || rail.scrollLeft >= max);
+  }
+
+  function reveal() {
+    wrap.classList.add("show-arrows");
+    updateArrowState();
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(() => wrap.classList.remove("show-arrows"), 2800);
+  }
+
+  rail.addEventListener("pointerdown", reveal);
+  rail.addEventListener("touchstart", reveal, { passive: true });
+  rail.addEventListener("scroll", () => { updateArrowState(); }, { passive: true });
+  wrap.addEventListener("mouseenter", reveal);
+
+  function scrollByAmount(dir) {
+    const card = rail.querySelector(".p-card");
+    const step = card ? (card.getBoundingClientRect().width + 12) * 2 : rail.clientWidth * 0.8;
+    rail.scrollBy({ left: dir * step, behavior: "smooth" });
+    reveal();
+  }
+
+  prevBtn.addEventListener("click", () => scrollByAmount(-1));
+  nextBtn.addEventListener("click", () => scrollByAmount(1));
+
+  updateArrowState();
+}
+
+/* ============================================================
+   AUTO-SCROLLING RAIL — makes a .p-scroll rail glide sideways on
+   its own (used for the Hot Deals rail on index.html), while
+   still allowing the person to grab and scroll it by hand at any
+   time. Touching, dragging, or hovering the rail pauses the
+   auto-advance; it quietly resumes a couple of seconds after the
+   person lets go, so it never fights a manual swipe.
+
+   speed is in pixels per second — time-based (via
+   requestAnimationFrame's timestamp), so it plays at the same
+   visual speed regardless of the device's refresh rate.
+   ============================================================ */
+function ssAutoScrollRail(railId, speed = 45) {
+  const rail = document.getElementById(railId);
+  if (!rail) return;
+
+  // Auto-scroll badge lives in the same rail card, wherever its sticky
+  // title happens to be — look it up once so pause/resume can reflect
+  // in the UI without the caller having to pass anything extra in.
+  const railBox = rail.closest(".rail, .rail--hotdeals, .rail--flash");
+  const badge = railBox ? railBox.querySelector(".auto-scroll-badge") : null;
+  const badgeText = badge ? badge.querySelector(".auto-scroll-badge__text") : null;
+
+  let paused = false;
+  let lastTs = null;
+  let raf = null;
+  let resumeTimer = null;
+
+  function setPausedUI(isPaused) {
+    if (!badge) return;
+    badge.classList.toggle("is-paused", isPaused);
+    if (badgeText) badgeText.textContent = isPaused ? "Paused" : "Auto-scrolling";
+  }
+
+  function step(ts) {
+    if (lastTs == null) lastTs = ts;
+    const dt = (ts - lastTs) / 1000;
+    lastTs = ts;
+
+    if (!paused) {
+      const max = rail.scrollWidth - rail.clientWidth;
+      if (max > 4) {
+        let next = rail.scrollLeft + speed * dt;
+        if (next >= max) next = 0; // loop back to the start
+        rail.scrollLeft = next;
+      }
+    }
+    raf = requestAnimationFrame(step);
+  }
+
+  function pause() {
+    paused = true;
+    clearTimeout(resumeTimer);
+    setPausedUI(true);
+  }
+  function resumeSoon() {
+    clearTimeout(resumeTimer);
+    resumeTimer = setTimeout(() => {
+      paused = false;
+      lastTs = null;
+      setPausedUI(false);
+    }, 2800);
+  }
+
+  rail.addEventListener("pointerdown", pause);
+  rail.addEventListener("touchstart", pause, { passive: true });
+  rail.addEventListener("pointerup", resumeSoon);
+  rail.addEventListener("touchend", resumeSoon, { passive: true });
+  rail.addEventListener("mouseenter", pause);
+  rail.addEventListener("mouseleave", resumeSoon);
+  rail.addEventListener("wheel", () => { pause(); resumeSoon(); }, { passive: true });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      if (raf) cancelAnimationFrame(raf);
+    } else {
+      lastTs = null;
+      raf = requestAnimationFrame(step);
+    }
+  });
+
+  raf = requestAnimationFrame(step);
+}
+
 /* ---------- flash-sale style countdown timer ----------
    Counts down to the next midnight and loops daily. Purely a
    visual urgency cue for the Hot Deals rail — no backend timestamp
@@ -1363,6 +1522,11 @@ async function ssRenderFlashSale(sectionId, listId, timerId) {
 
   flashSales.forEach(fs => { const p = fs.product; if (p && (p.id || p._id)) window.__ssProductCache[p.id || p._id] = p; });
   list.innerHTML = flashSales.map(ssFlashSaleCard).join("");
+
+  // Wire up this rail's reveal-on-touch scroll arrows every time it
+  // re-renders (ssRenderFlashSale can re-run itself when a countdown
+  // hits zero — see the tick() functions below).
+  ssEnableScrollArrows(listId);
 
   const liveOnes = flashSales.filter(fs => fs.isLive);
 
@@ -1600,4 +1764,12 @@ document.addEventListener("DOMContentLoaded", () => {
   ssHideLoader();
   ssLoadDrawerBadges();
   setInterval(ssLoadDrawerBadges, 30000);
+
+  // Keep --siteHeaderH accurate: right after the header renders, again
+  // once web fonts/images have had a moment to settle (their swap can
+  // shift header height slightly), and on every resize/orientation change.
+  ssSyncHeaderHeightVar();
+  setTimeout(ssSyncHeaderHeightVar, 350);
+  window.addEventListener("resize", ssSyncHeaderHeightVar);
+  window.addEventListener("orientationchange", () => setTimeout(ssSyncHeaderHeightVar, 250));
 });

@@ -10,9 +10,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  ssRenderSubcategoryGrid("categoryGrid", 12);
+  // "Top selling Categories" tile grid — capped at 8 so every phone size
+  // renders it as a clean 4-across, 2-row block (see #categoryGrid rules
+  // in theme.css).
+  ssRenderSubcategoryGrid("categoryGrid", 8);
   ssRenderMegaMenu("megaMenu");
-  ssRenderAdSlot("heroAd", "homepage_hero", { interval: 5000, aspect: "21/9" });
+
+  // Hero ad carousel just under the header — was interval:5000 (felt slow),
+  // now a brisker but still comfortable ~3.6s per slide.
+  ssRenderAdSlot("heroAd", "homepage_hero", { interval: 3600, aspect: "21/9" });
   ssRenderAdSlot("bannerAd", "homepage_banner", { interval: 6000, aspect: "5/1" });
 
   // Real, backend-driven Flash Sale rail — live countdown to midnight when
@@ -58,6 +64,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     cacheAndRender(hot, hotProducts, "No hot deals right now — check back soon.");
   } catch (_) { hot.innerHTML = `<p class="form-hint">Couldn't load hot deals. <a href="index.html">Retry</a></p>`; }
 
+  // Hot Deals now auto-advances on its own (a touch faster than a normal
+  // reading pace) but a tap/touch/hover pauses it and hands control back
+  // to the person, exactly like the arrow controls below.
+  ssAutoScrollRail("hotDeals", 130);
+  ssEnableScrollArrows("hotDeals");
+
   // ---------------------------------------------------------------
   // New Arrivals — intentionally left in "newest first" order.
   // Shuffling this rail would defeat its purpose (it exists specifically
@@ -67,6 +79,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const newRes = await SS_API.getProducts({ sort: "newest", page: 1 });
     cacheAndRender(fresh, (newRes.products || newRes.data || newRes || []).slice(0, 10), "No new arrivals yet.");
   } catch (_) { fresh.innerHTML = `<p class="form-hint">Couldn't load new arrivals.</p>`; }
+  ssEnableScrollArrows("newArrivals");
 
   // ---------------------------------------------------------------
   // Wholesale preview — no meaningful order either way, so shuffle
@@ -100,6 +113,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     } catch (_) {
       wholesalePreview.innerHTML = `<p class="form-hint">Couldn't load wholesale products.</p>`;
     }
+    ssEnableScrollArrows("wholesalePreview");
   }
 
   // ---------------------------------------------------------------
@@ -114,6 +128,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     list = ssShuffle(list).slice(0, 10);
     cacheAndRender(topSelling, list, "No top-selling products right now.");
   } catch (_) { topSelling.innerHTML = `<p class="form-hint">Couldn't load top-selling products.</p>`; }
+  ssEnableScrollArrows("topSelling");
 
   // ---------------------------------------------------------------
   // Catalog preview (homepage "Our Catalog" strip) — plain page-1 fetch
@@ -146,4 +161,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     setTimeout(() => { location.href = "product.html"; }, 260);
   });
 }
+
+  // Flash Sale's rail renders asynchronously inside ssRenderFlashSale()
+  // itself (it may re-render more than once as its countdown flips live/
+  // ends), so its arrow controls are wired from inside that function's
+  // own re-render path — see the ssRenderFlashSale patch in ui.js.
 });
