@@ -1254,29 +1254,36 @@ function ssEnableScrollArrows(railId) {
    requestAnimationFrame's timestamp), so it plays at the same
    visual speed regardless of the device's refresh rate.
    ============================================================ */
-function ssAutoScrollRail(railId, speed = 45) {
+/* ============================================================
+   AUTO-ROTATING RAIL — advances a .p-scroll rail one "page" at a
+   time on a timer (same mechanism as ssRenderAdSlot's setInterval
+   + goTo(), just applied to a scroll position instead of an
+   active-slide swap). Wraps back to the start once it reaches the
+   end. Touching, dragging, or hovering the rail pauses rotation;
+   it resumes a couple of seconds after the person lets go.
+   ============================================================ */
+function ssAutoScrollRail(railId, interval = 3600) {
   const rail = document.getElementById(railId);
   if (!rail) return;
 
   let paused = false;
-  let lastTs = null;
-  let raf = null;
+  let timer = null;
   let resumeTimer = null;
 
-  function step(ts) {
-    if (lastTs == null) lastTs = ts;
-    const dt = (ts - lastTs) / 1000;
-    lastTs = ts;
+  function advance() {
+    if (paused) return;
+    const max = rail.scrollWidth - rail.clientWidth;
+    if (max <= 4) return;
+    const next = rail.scrollLeft + rail.clientWidth;
+    rail.scrollTo({ left: next >= max - 4 ? 0 : next, behavior: "smooth" });
+  }
 
-    if (!paused) {
-      const max = rail.scrollWidth - rail.clientWidth;
-      if (max > 4) {
-        let next = rail.scrollLeft + speed * dt;
-        if (next >= max) next = 0; // loop back to the start
-        rail.scrollLeft = next;
-      }
-    }
-    raf = requestAnimationFrame(step);
+  function start() {
+    stop();
+    timer = setInterval(advance, interval);
+  }
+  function stop() {
+    if (timer) clearInterval(timer);
   }
 
   function pause() {
@@ -1285,7 +1292,7 @@ function ssAutoScrollRail(railId, speed = 45) {
   }
   function resumeSoon() {
     clearTimeout(resumeTimer);
-    resumeTimer = setTimeout(() => { paused = false; lastTs = null; }, 2800);
+    resumeTimer = setTimeout(() => { paused = false; }, 2800);
   }
 
   rail.addEventListener("pointerdown", pause);
@@ -1297,15 +1304,10 @@ function ssAutoScrollRail(railId, speed = 45) {
   rail.addEventListener("wheel", () => { pause(); resumeSoon(); }, { passive: true });
 
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden) {
-      if (raf) cancelAnimationFrame(raf);
-    } else {
-      lastTs = null;
-      raf = requestAnimationFrame(step);
-    }
+    if (document.hidden) stop(); else start();
   });
 
-  raf = requestAnimationFrame(step);
+  start();
 }
 
 /* ---------- flash-sale style countdown timer ----------

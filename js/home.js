@@ -67,7 +67,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Hot Deals now auto-advances on its own (a touch faster than a normal
   // reading pace) but a tap/touch/hover pauses it and hands control back
   // to the person, exactly like the arrow controls below.
-  ssAutoScrollRail("hotDeals", 130);
+  ssAutoScrollRail("hotDeals", 2000);
   ssEnableScrollArrows("hotDeals");
 
   // ---------------------------------------------------------------
