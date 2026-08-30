@@ -439,6 +439,17 @@ const SS_API = (() => {
     },
 
 
+       getMyStockOverview() {
+      return request("/products/stock-overview", { requiresAuth: true });
+    },
+
+    updateStockReminder(productId, data) {
+      return request(`/products/${productId}/stock-reminder`, {
+        method: "PATCH",
+        body: data,
+        requiresAuth: true,
+      });
+    },
     
 
     updateOrderStatus(id, orderStatus) {

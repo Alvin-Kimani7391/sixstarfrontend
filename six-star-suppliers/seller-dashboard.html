@@ -862,6 +862,157 @@
   .earn-hero__value { font-size: 18px; }
   .earn-stat-card { padding: 9px 10px; }
   .analytics-trend-bar-wrap{ width:18px; min-width:18px; }
+
+
+
+}
+
+
+
+
+
+/* ============================================================
+   ---- Manage Stock (inside Analytics) ----
+   ============================================================ */
+.stock-mgr-intro{
+  display:flex; gap:10px; align-items:flex-start;
+  background: rgba(59,130,246,.08); border:1px solid rgba(59,130,246,.22);
+  color:#1d4ed8; padding:12px 14px; border-radius:12px; font-size:12.5px; line-height:1.55; margin-bottom:18px;
+}
+.stock-mgr-intro i{ margin-top:2px; flex-shrink:0; }
+
+.stock-mgr-list{ display:flex; flex-direction:column; gap:12px; }
+
+.stock-mgr-row{
+  display:flex; flex-wrap:wrap; align-items:center; gap:14px;
+  padding:14px; border:1px solid var(--line,#e4d6bd); border-radius:14px; background:var(--white,#fff);
+}
+.stock-mgr-row.tone-low{ border-color:rgba(224,80,80,.35); background:rgba(224,80,80,.04); }
+
+.stock-mgr-row img{
+  width:52px; height:52px; border-radius:10px; object-fit:cover; border:1px solid var(--line,#e4d6bd); flex-shrink:0;
+}
+
+.stock-mgr-info{ min-width:150px; flex:1 1 180px; }
+.stock-mgr-name{ font-weight:700; font-size:13.5px; margin-bottom:3px; }
+.stock-mgr-stock{ font-family:var(--font-mono,monospace); font-size:13px; color:var(--ink-soft,#7a7268); }
+.stock-mgr-stock strong{ color:var(--navy-deep,#16324f); font-size:15px; }
+.stock-mgr-row.tone-low .stock-mgr-stock strong{ color:#b13a3a; }
+
+.stock-mgr-badge{
+  display:inline-flex; align-items:center; gap:5px; font-size:10.5px; font-weight:700;
+  padding:3px 9px; border-radius:999px; text-transform:uppercase; letter-spacing:.03em; margin-top:4px;
+}
+.stock-mgr-badge.low{ background: rgba(224,80,80,.14); color:#b13a3a; }
+.stock-mgr-badge.ok{ background: rgba(56,161,105,.14); color:#1f7a44; }
+.stock-mgr-badge.off{ background: rgba(120,120,120,.14); color:#5c5c5c; }
+
+.stock-mgr-controls{
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-left:auto;
+}
+.stock-mgr-toggle{ display:flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:var(--ink-soft,#7a7268); }
+.stock-mgr-threshold{ display:flex; align-items:center; gap:6px; }
+.stock-mgr-threshold label{ font-size:11.5px; color:var(--ink-soft,#7a7268); font-weight:600; white-space:nowrap; }
+.stock-mgr-threshold input{
+  width:64px; padding:7px 8px; border:1px solid var(--line,#e4d6bd); border-radius:8px; font-family:var(--font-mono,monospace);
+}
+.stock-mgr-save{
+  padding:8px 14px; border-radius:999px; border:none; background:var(--marigold,#f2a93b); color:var(--navy-deep,#16324f);
+  font-weight:700; font-size:12px; cursor:pointer;
+}
+.stock-mgr-save:disabled{ opacity:.55; cursor:not-allowed; }
+.stock-mgr-save.saved{ background:#1f7a44; color:#fff; }
+
+@media (max-width:640px){
+  .stock-mgr-row{ flex-direction:column; align-items:stretch; }
+  .stock-mgr-controls{ margin-left:0; width:100%; justify-content:space-between; }
+}
+
+
+/* ============================================================
+   DROP-IN FIX — Earnings product-list overflow on phones
+   + Analytics stat numbers invisible on light background
+   ============================================================ */
+
+/* ---- 1. Earnings: Top/Least selling rows overflowing on phone ----
+   Root cause: .earn-products-col is a CSS Grid item, and grid items
+   default to min-width:auto, so they refuse to shrink below the
+   intrinsic width of their nowrap product-name text. That stretches
+   the whole page and causes horizontal scroll on phones. */
+.earn-products-grid {
+  min-width: 0;
+}
+.earn-products-col {
+  min-width: 0;
+  max-width: 100%;
+}
+.earn-products-col .analytics-product-list,
+.earn-products-col .analytics-product-row,
+.earn-products-col .analytics-product-info,
+.earn-products-col .analytics-product-name {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Extra safety net so this class of bug can't silently reappear */
+.orders-page-overlay,
+.orders-page__body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* ---- 2. Analytics: stat numbers invisible ----
+   Root cause: .analytics-stat-cards reuses .orders-stat, which was
+   styled for the dark navy header (white text on navy). On the light
+   cream page background that's white-on-cream = invisible. */
+.analytics-stat-cards .orders-stat {
+  background: var(--white, #fff);
+  border: 1px solid var(--line, #e4d6bd);
+}
+.analytics-stat-cards .orders-stat__num {
+  color: var(--marigold, #f2a93b);   /* same yellow as the trend bars */
+}
+.analytics-stat-cards .orders-stat__label {
+  color: var(--ink-soft, #7a7268);
+}
+
+/* Match the per-product view counts to the same yellow, as requested */
+.analytics-product-views {
+  color: var(--marigold, #f2a93b);
+}
+
+/* ---- 3. Phone-specific tightening (≤480px) ---- */
+@media (max-width: 480px) {
+  .earn-products-grid {
+    grid-template-columns: 1fr;   /* stack top/least columns on phones */
+    gap: 18px;
+  }
+  .earn-products-col .analytics-product-name {
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .analytics-stat-cards {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .analytics-stat-cards .orders-stat {
+    padding: 10px 12px;
+  }
+  .analytics-stat-cards .orders-stat__num {
+    font-size: 1.1rem;
+  }
+}
+
+/* ---- 4. Extra-small phones (≤360px) ---- */
+@media (max-width: 360px) {
+  .earn-products-col .analytics-product-name {
+    font-size: 11.5px;
+  }
+  .analytics-stat-cards .orders-stat__num {
+    font-size: 1rem;
+  }
 }
 </style>
 </head>
@@ -1322,6 +1473,7 @@
 </div>
 
 <!-- ============ ANALYTICS "PAGE" ============ -->
+<!-- ============ ANALYTICS "PAGE" ============ -->
 <div class="orders-page-overlay" id="analyticsOverlay">
   <div class="orders-page">
     <div class="orders-page__head">
@@ -1330,46 +1482,83 @@
       </button>
       <div class="orders-page__title">
         <h2>Analytics</h2>
-        <p>How many people are viewing your products</p>
+        <p>Product views, plus stock levels and reminders</p>
       </div>
     </div>
 
     <div class="orders-page__body">
-      <div id="analyticsLoading" class="orders-skel-wrap">
-        <div class="skel orders-skel"></div>
-        <div class="skel orders-skel"></div>
-        <div class="skel orders-skel"></div>
+      <div class="shop-tabs" id="analyticsTabs">
+        <button class="shop-tab active" data-analytics-tab="views">
+          <i class="fa-solid fa-eye"></i> Views
+        </button>
+        <button class="shop-tab" data-analytics-tab="stock">
+          <i class="fa-solid fa-boxes-stacked"></i> Manage Stock
+        </button>
       </div>
 
-      <div id="analyticsContent" style="display:none;">
-        <div class="analytics-stat-cards">
-          <div class="orders-stat">
-            <span class="orders-stat__num" id="statTotalViews">0</span>
-            <span class="orders-stat__label">Total views</span>
+      <!-- ---- Views tab (existing analytics) ---- -->
+      <div id="analyticsViewsTab" class="shop-tab-content active">
+        <div id="analyticsLoading" class="orders-skel-wrap">
+          <div class="skel orders-skel"></div>
+          <div class="skel orders-skel"></div>
+          <div class="skel orders-skel"></div>
+        </div>
+
+        <div id="analyticsContent" style="display:none;">
+          <div class="analytics-stat-cards">
+            <div class="orders-stat">
+              <span class="orders-stat__num" id="statTotalViews">0</span>
+              <span class="orders-stat__label">Total views</span>
+            </div>
+            <div class="orders-stat">
+              <span class="orders-stat__num" id="statViews14">0</span>
+              <span class="orders-stat__label">Last 14 days</span>
+            </div>
+            <div class="orders-stat">
+              <span class="orders-stat__num" id="statTopProductViews">0</span>
+              <span class="orders-stat__label" id="statTopProductLabel">Top product</span>
+            </div>
           </div>
-          <div class="orders-stat">
-            <span class="orders-stat__num" id="statViews14">0</span>
-            <span class="orders-stat__label">Last 14 days</span>
+
+          <div class="analytics-trend-wrap">
+            <div class="analytics-trend-title">Views — last 14 days</div>
+            <div class="analytics-trend" id="analyticsTrend"></div>
           </div>
-          <div class="orders-stat">
-            <span class="orders-stat__num" id="statTopProductViews">0</span>
-            <span class="orders-stat__label" id="statTopProductLabel">Top product</span>
+
+          <div class="analytics-trend-title">By product</div>
+          <div class="analytics-product-list" id="analyticsProductList"></div>
+        </div>
+
+        <div id="analyticsEmpty" class="analytics-empty" style="display:none;">
+          <i class="fa-solid fa-chart-line"></i>
+          <h3>No views yet</h3>
+          <p>Once buyers start opening your product pages, views will show up here.</p>
+        </div>
+      </div>
+
+      <!-- ---- Manage Stock tab (NEW) ---- -->
+      <div id="analyticsStockTab" class="shop-tab-content">
+        <div class="stock-mgr-intro">
+          <i class="fa-solid fa-circle-info"></i>
+          <div>
+            Set a stock threshold per product. The moment a product's stock drops to or below that
+            number, you'll get an email reminder to restock — and admin gets a copy so they can
+            monitor whether you update it.
           </div>
         </div>
 
-        <div class="analytics-trend-wrap">
-          <div class="analytics-trend-title">Views — last 14 days</div>
-          <div class="analytics-trend" id="analyticsTrend"></div>
+        <div id="stockOverviewLoading" class="orders-skel-wrap">
+          <div class="skel orders-skel"></div>
+          <div class="skel orders-skel"></div>
         </div>
 
-        <div class="analytics-trend-title">By product</div>
-        <div class="analytics-product-list" id="analyticsProductList"></div>
-      </div>
+        <div id="stockOverviewEmpty" class="analytics-empty" style="display:none;">
+          <i class="fa-solid fa-boxes-stacked"></i>
+          <h3>No products yet</h3>
+          <p>Products you add will show up here so you can manage their stock reminders.</p>
+        </div>
 
-      <div id="analyticsEmpty" class="analytics-empty" style="display:none;">
-        <i class="fa-solid fa-chart-line"></i>
-        <h3>No views yet</h3>
-        <p>Once buyers start opening your product pages, views will show up here.</p>
+        <div id="stockOverviewList" class="stock-mgr-list"></div>
       </div>
     </div>
   </div>

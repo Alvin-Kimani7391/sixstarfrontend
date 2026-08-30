@@ -282,6 +282,8 @@ try {
   let currentCommissionInfo = null;
   let commissionRequestSeq = 0; // guards against a slow, stale request overwriting a newer one
 
+    let stockOverviewData = [];
+
   const els = {
     greeting: document.getElementById("greeting"),
     businessLine: document.getElementById("businessLine"),
@@ -432,6 +434,15 @@ try {
     statTopProductLabel: document.getElementById("statTopProductLabel"),
     analyticsTrend: document.getElementById("analyticsTrend"),
     analyticsProductList: document.getElementById("analyticsProductList"),
+
+        analyticsTabs: document.getElementById("analyticsTabs"),
+    analyticsViewsTab: document.getElementById("analyticsViewsTab"),
+    analyticsStockTab: document.getElementById("analyticsStockTab"),
+    stockOverviewLoading: document.getElementById("stockOverviewLoading"),
+    stockOverviewEmpty: document.getElementById("stockOverviewEmpty"),
+    stockOverviewList: document.getElementById("stockOverviewList"),
+
+
 
     // Earnings "page" (NEW)
     earningsToggleBtn: document.getElementById("earningsToggleBtn"),
@@ -650,12 +661,15 @@ try {
   loadSellerOrders();
   loadActiveBidCount();
 
-  setInterval(() => {
+    setInterval(() => {
     loadSellerOrders();
     loadMyProducts({ silent: true });
     loadActiveBidCount();
     if (els.flashSaleOverlay?.classList.contains("active")) loadMyFlashSales();
     if (els.earningsOverlay?.classList.contains("active")) loadEarnings();
+    if (els.analyticsOverlay?.classList.contains("active") && els.analyticsStockTab?.classList.contains("active")) {
+      loadStockOverview(); // NEW
+    }
   }, POLL_INTERVAL_MS);
 
   // ---------- products ----------
@@ -1854,6 +1868,117 @@ try {
         .join("");
     }
   }
+
+
+
+
+    // =========================================================
+  // ---------- MANAGE STOCK (inside Analytics) ----------
+  // =========================================================
+  if (els.analyticsTabs) {
+    els.analyticsTabs.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-analytics-tab]");
+      if (!btn) return;
+      const tab = btn.dataset.analyticsTab;
+      els.analyticsTabs.querySelectorAll(".shop-tab").forEach((b) => b.classList.toggle("active", b === btn));
+      els.analyticsViewsTab?.classList.toggle("active", tab === "views");
+      els.analyticsStockTab?.classList.toggle("active", tab === "stock");
+      if (tab === "stock") loadStockOverview();
+    });
+  }
+
+  async function loadStockOverview() {
+    if (els.stockOverviewLoading) els.stockOverviewLoading.style.display = "block";
+    if (els.stockOverviewEmpty) els.stockOverviewEmpty.style.display = "none";
+    if (els.stockOverviewList) els.stockOverviewList.innerHTML = "";
+
+    try {
+      const res = await SS_API.getMyStockOverview();
+      stockOverviewData = res.products || [];
+      renderStockOverviewList();
+    } catch (err) {
+      console.error("STOCK OVERVIEW LOAD FAILED:", err);
+      ssToast(err.message || "Couldn't load stock overview", "fa-triangle-exclamation");
+    } finally {
+      if (els.stockOverviewLoading) els.stockOverviewLoading.style.display = "none";
+    }
+  }
+
+  function renderStockOverviewList() {
+    if (!els.stockOverviewList) return;
+
+    if (!stockOverviewData.length) {
+      if (els.stockOverviewEmpty) els.stockOverviewEmpty.style.display = "block";
+      return;
+    }
+    if (els.stockOverviewEmpty) els.stockOverviewEmpty.style.display = "none";
+
+    els.stockOverviewList.innerHTML = stockOverviewData.map(stockRowHtml).join("");
+
+    els.stockOverviewList.querySelectorAll("[data-stock-save]").forEach((btn) => {
+      btn.addEventListener("click", () => saveStockReminder(btn.dataset.stockSave));
+    });
+  }
+
+  function stockRowHtml(p) {
+    const low = p.isLowStock;
+    const badge = !p.stockReminderEnabled
+      ? `<span class="stock-mgr-badge off"><i class="fa-solid fa-bell-slash"></i> Reminders off</span>`
+      : low
+      ? `<span class="stock-mgr-badge low"><i class="fa-solid fa-triangle-exclamation"></i> Low stock</span>`
+      : `<span class="stock-mgr-badge ok"><i class="fa-solid fa-circle-check"></i> Stock OK</span>`;
+
+    const cover = p.image || "https://placehold.co/60x60/E4D6BD/5B564C?text=%20";
+
+    return `
+      <div class="stock-mgr-row ${low ? "tone-low" : ""}" data-stock-row="${p.id}">
+        <img src="${cover}" alt="" />
+        <div class="stock-mgr-info">
+          <div class="stock-mgr-name">${escapeHtml(p.name)}</div>
+          <div class="stock-mgr-stock"><strong>${p.stock}</strong> in stock</div>
+          ${badge}
+        </div>
+        <div class="stock-mgr-controls">
+          <label class="stock-mgr-toggle">
+            <input type="checkbox" data-stock-enabled="${p.id}" ${p.stockReminderEnabled ? "checked" : ""} />
+            Email reminder
+          </label>
+          <div class="stock-mgr-threshold">
+            <label for="stock_th_${p.id}">Remind at ≤</label>
+            <input type="number" min="0" step="1" id="stock_th_${p.id}" data-stock-threshold="${p.id}" value="${p.stockReminderThreshold ?? 5}" />
+          </div>
+          <button type="button" class="stock-mgr-save" data-stock-save="${p.id}">Save</button>
+        </div>
+      </div>`;
+  }
+
+  async function saveStockReminder(productId) {
+    const btn = els.stockOverviewList.querySelector(`[data-stock-save="${productId}"]`);
+    const enabledInput = els.stockOverviewList.querySelector(`[data-stock-enabled="${productId}"]`);
+    const thresholdInput = els.stockOverviewList.querySelector(`[data-stock-threshold="${productId}"]`);
+
+    const stockReminderEnabled = !!enabledInput?.checked;
+    const stockReminderThreshold = Number(thresholdInput?.value);
+
+    if (Number.isNaN(stockReminderThreshold) || stockReminderThreshold < 0) {
+      ssToast("Please enter a valid threshold (0 or more)", "fa-triangle-exclamation");
+      return;
+    }
+
+    if (btn) { btn.disabled = true; btn.classList.remove("saved"); btn.textContent = "Saving…"; }
+
+    try {
+      await SS_API.updateStockReminder(productId, { stockReminderEnabled, stockReminderThreshold });
+      ssToast("Stock reminder settings saved", "fa-circle-check");
+      if (btn) { btn.textContent = "Saved"; btn.classList.add("saved"); btn.disabled = false; }
+      loadStockOverview();
+    } catch (err) {
+      ssToast(err.message || "Couldn't save stock reminder settings", "fa-triangle-exclamation");
+      if (btn) { btn.disabled = false; btn.textContent = "Save"; }
+    }
+  }
+
+
 
   // =========================================================
   // ---------- EARNINGS "page" (opened by the header wallet icon) ----------
