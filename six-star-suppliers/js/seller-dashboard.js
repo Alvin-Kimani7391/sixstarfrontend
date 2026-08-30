@@ -244,6 +244,21 @@ try {
   // ---------- flash sale state ----------
   let myFlashSales = []; // this seller's own submissions, any status
 
+    // ---------- earnings: per-transaction list state (NEW) ----------
+      // ---------- earnings: per-transaction list state (NEW) ----------
+  let earnTxnFilter = "all";
+  let earnTxnPage = 1;
+  let earnTxnHasMore = false;
+  let earnTxnList = [];
+  const EARN_TXN_PAGE_SIZE = 10;
+
+  // ---------- earnings: top/least product expand state (NEW) ----------
+  let earnTopProductsData = [];
+  let earnLeastProductsData = [];
+  let earnTopExpanded = false;
+  let earnLeastExpanded = false;
+  const EARN_PRODUCTS_PREVIEW = 3;
+
   // ---------- category / attribute / variant state ----------
   let categoryTree = [];
   let categoryNodeMap = {}; // id -> node (node.children always present, [] if leaf)
@@ -435,11 +450,15 @@ try {
     earnUnitsSold: document.getElementById("earnUnitsSold"),
     earnOrderCount: document.getElementById("earnOrderCount"),
     earnAvgOrderNote: document.getElementById("earnAvgOrderNote"),
-    earnPendingBanner: document.getElementById("earnPendingBanner"),
+        earnPendingBanner: document.getElementById("earnPendingBanner"),
     earnPendingHeadline: document.getElementById("earnPendingHeadline"),
     earnTrend: document.getElementById("earnTrend"),
     earnTopProducts: document.getElementById("earnTopProducts"),
     earnLeastProducts: document.getElementById("earnLeastProducts"),
+    earnTopShowMoreBtn: document.getElementById("earnTopShowMoreBtn"),
+    earnLeastShowMoreBtn: document.getElementById("earnLeastShowMoreBtn"),
+    earnViewTxnBtn: document.getElementById("earnViewTxnBtn"),
+    earnTxnCollapse: document.getElementById("earnTxnCollapse"),
 
     // Flash Sale "page"
     flashSaleToggleBtn: document.getElementById("flashSaleToggleBtn"),
@@ -493,6 +512,13 @@ try {
     shopHoursInput: document.getElementById("shopHoursInput"),
     cancelShopForm: document.getElementById("cancelShopForm"),
     saveShopBtn: document.getElementById("saveShopBtn"),
+
+        earnTxnFees: document.getElementById("earnTxnFees"),
+    earnTxnFilterTabs: document.getElementById("earnTxnFilterTabs"),
+    earnTxnListEl: document.getElementById("earnTxnList"),
+    earnTxnEmpty: document.getElementById("earnTxnEmpty"),
+    earnTxnLoadMoreWrap: document.getElementById("earnTxnLoadMoreWrap"),
+    earnTxnLoadMoreBtn: document.getElementById("earnTxnLoadMoreBtn"),
   };
 
   function hideLoader() {
@@ -1837,10 +1863,11 @@ try {
   // confirmation shows separately in the pending banner so it's visible
   // without inflating "real" earnings.
   // =========================================================
-  function openEarnings() {
+    function openEarnings() {
     if (!els.earningsOverlay) return;
     els.earningsOverlay.classList.add("active");
     document.body.style.overflow = "hidden";
+    collapseEarnTxnPanel();
     loadEarnings();
   }
 
@@ -1866,9 +1893,10 @@ try {
     if (els.earningsEmpty) els.earningsEmpty.style.display = "none";
     if (els.earningsErrorState) els.earningsErrorState.style.display = "none";
 
-    try {
+        try {
       const res = await SS_API.getMyEarnings();
       renderEarnings(res);
+      resetAndLoadEarningsTransactions();
     } catch (err) {
       console.error("EARNINGS LOAD FAILED:", err);
       if (els.earningsLoading) els.earningsLoading.style.display = "none";
@@ -1905,6 +1933,7 @@ try {
     // ---- Stat cards ----
     if (els.earnGrossSales) els.earnGrossSales.textContent = kes(data.totalRevenue);
     if (els.earnCommission) els.earnCommission.textContent = kes(data.totalCommission);
+        if (els.earnTxnFees) els.earnTxnFees.textContent = kes(data.totalTransactionFees);
     if (els.earnCommissionRateNote) {
       els.earnCommissionRateNote.textContent = `avg. ${data.effectiveCommissionRate || 0}% taken`;
     }
@@ -1944,20 +1973,28 @@ try {
         .join("");
     }
 
-    // ---- Top / least selling products ----
-    renderEarningsProductList(els.earnTopProducts, data.topProducts || [], "No confirmed sales yet.");
-    renderEarningsProductList(els.earnLeastProducts, data.leastProducts || [], "No confirmed sales yet.");
+        // ---- Top / least selling products ----
+    earnTopProductsData = data.topProducts || [];
+    earnLeastProductsData = data.leastProducts || [];
+    earnTopExpanded = false;
+    earnLeastExpanded = false;
+    renderEarningsProductList(els.earnTopProducts, earnTopProductsData, "No confirmed sales yet.", els.earnTopShowMoreBtn, earnTopExpanded);
+    renderEarningsProductList(els.earnLeastProducts, earnLeastProductsData, "No confirmed sales yet.", els.earnLeastShowMoreBtn, earnLeastExpanded);
   }
 
-  function renderEarningsProductList(container, products, emptyText) {
+   function renderEarningsProductList(container, products, emptyText, showMoreBtn, isExpanded) {
     if (!container) return;
+
     if (!products.length) {
       container.innerHTML = `<div class="earn-product-row-empty">${escapeHtml(emptyText)}</div>`;
+      if (showMoreBtn) showMoreBtn.style.display = "none";
       return;
     }
 
+    const visible = isExpanded ? products : products.slice(0, EARN_PRODUCTS_PREVIEW);
     const maxUnits = Math.max(1, ...products.map((p) => p.unitsSold || 0));
-    container.innerHTML = products
+
+    container.innerHTML = visible
       .map((p) => {
         const pct = Math.max(2, Math.round(((p.unitsSold || 0) / maxUnits) * 100));
         const cover = p.image || "https://placehold.co/60x60/E4D6BD/5B564C?text=%20";
@@ -1971,6 +2008,218 @@ try {
         </div>`;
       })
       .join("");
+
+    if (showMoreBtn) {
+      if (products.length > EARN_PRODUCTS_PREVIEW) {
+        showMoreBtn.style.display = "flex";
+        showMoreBtn.innerHTML = isExpanded
+          ? `<span>Show less</span><i class="fa-solid fa-chevron-up"></i>`
+          : `<span>Show all ${products.length}</span><i class="fa-solid fa-chevron-down"></i>`;
+      } else {
+        showMoreBtn.style.display = "none";
+      }
+    }
+  }
+
+  if (els.earnTopShowMoreBtn) {
+    els.earnTopShowMoreBtn.addEventListener("click", () => {
+      earnTopExpanded = !earnTopExpanded;
+      renderEarningsProductList(els.earnTopProducts, earnTopProductsData, "No confirmed sales yet.", els.earnTopShowMoreBtn, earnTopExpanded);
+    });
+  }
+  if (els.earnLeastShowMoreBtn) {
+    els.earnLeastShowMoreBtn.addEventListener("click", () => {
+      earnLeastExpanded = !earnLeastExpanded;
+      renderEarningsProductList(els.earnLeastProducts, earnLeastProductsData, "No confirmed sales yet.", els.earnLeastShowMoreBtn, earnLeastExpanded);
+    });
+  }
+
+  // ---------- earnings: "View transactions" toggle (lives in the Gross Sales card) ----------
+  function collapseEarnTxnPanel() {
+    if (els.earnTxnCollapse) els.earnTxnCollapse.classList.remove("open");
+    if (els.earnViewTxnBtn) {
+      els.earnViewTxnBtn.classList.remove("open");
+      els.earnViewTxnBtn.setAttribute("aria-expanded", "false");
+    }
+  }
+
+  function toggleEarnTxnPanel() {
+    if (!els.earnTxnCollapse) return;
+    const willOpen = !els.earnTxnCollapse.classList.contains("open");
+    els.earnTxnCollapse.classList.toggle("open", willOpen);
+    if (els.earnViewTxnBtn) {
+      els.earnViewTxnBtn.classList.toggle("open", willOpen);
+      els.earnViewTxnBtn.setAttribute("aria-expanded", String(willOpen));
+    }
+    if (willOpen) {
+      setTimeout(() => {
+        els.earnTxnCollapse.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }, 150);
+    }
+  }
+
+  if (els.earnViewTxnBtn) {
+    els.earnViewTxnBtn.addEventListener("click", toggleEarnTxnPanel);
+  }
+
+
+    // =========================================================
+  // ---------- earnings: per-transaction expandable list (NEW) ----------
+  // =========================================================
+  function resetAndLoadEarningsTransactions() {
+    earnTxnPage = 1;
+    earnTxnList = [];
+    if (els.earnTxnListEl) els.earnTxnListEl.innerHTML = "";
+    if (els.earnTxnEmpty) els.earnTxnEmpty.style.display = "none";
+    loadEarningsTransactionsPage();
+  }
+
+  async function loadEarningsTransactionsPage() {
+    if (els.earnTxnLoadMoreBtn) {
+      els.earnTxnLoadMoreBtn.disabled = true;
+      els.earnTxnLoadMoreBtn.textContent = "Loading…";
+    }
+    try {
+      const res = await SS_API.getMyEarningsTransactions({
+        status: earnTxnFilter,
+        page: earnTxnPage,
+        limit: EARN_TXN_PAGE_SIZE,
+      });
+      const txns = res.transactions || [];
+      earnTxnList = earnTxnPage === 1 ? txns : earnTxnList.concat(txns);
+      earnTxnHasMore = earnTxnPage < (res.pages || 1);
+      renderEarningsTransactions();
+    } catch (err) {
+      console.error("EARNINGS TRANSACTIONS LOAD FAILED:", err);
+      if (earnTxnPage === 1 && els.earnTxnListEl) {
+        els.earnTxnListEl.innerHTML = "";
+        if (els.earnTxnEmpty) {
+          els.earnTxnEmpty.style.display = "block";
+          els.earnTxnEmpty.textContent = err.message || "Couldn't load transactions.";
+        }
+      }
+    } finally {
+      if (els.earnTxnLoadMoreBtn) {
+        els.earnTxnLoadMoreBtn.disabled = false;
+        els.earnTxnLoadMoreBtn.textContent = "Load more";
+      }
+    }
+  }
+
+  function renderEarningsTransactions() {
+    if (!els.earnTxnListEl) return;
+
+    if (!earnTxnList.length) {
+      els.earnTxnListEl.innerHTML = "";
+      if (els.earnTxnEmpty) {
+        els.earnTxnEmpty.style.display = "block";
+        els.earnTxnEmpty.textContent = "No transactions in this view yet.";
+      }
+      if (els.earnTxnLoadMoreWrap) els.earnTxnLoadMoreWrap.style.display = "none";
+      return;
+    }
+
+    if (els.earnTxnEmpty) els.earnTxnEmpty.style.display = "none";
+
+    // Preserve which rows are currently open across a re-render (e.g. after "Load more").
+    const openIds = new Set(
+      Array.from(els.earnTxnListEl.querySelectorAll(".txn-row.open")).map((el) => el.dataset.txnId)
+    );
+
+    els.earnTxnListEl.innerHTML = earnTxnList.map((t) => txnRowHtml(t, openIds.has(String(t.orderId)))).join("");
+
+    els.earnTxnListEl.querySelectorAll("[data-txn-toggle]").forEach((head) => {
+      head.addEventListener("click", () => {
+        head.closest(".txn-row")?.classList.toggle("open");
+      });
+    });
+
+    if (els.earnTxnLoadMoreWrap) {
+      els.earnTxnLoadMoreWrap.style.display = earnTxnHasMore ? "flex" : "none";
+    }
+  }
+
+  function txnRowHtml(t, isOpen) {
+    const kes = (n) => `KES ${Math.round(n || 0).toLocaleString()}`;
+    const date = new Date(t.createdAt).toLocaleDateString("en-KE", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+
+    const itemsHtml = t.items
+      .map(
+        (i) => `<div class="txn-item-row">
+          <img src="${i.image || 'https://placehold.co/60x60/E4D6BD/5B564C?text=%20'}" alt="" />
+          <div class="txn-item-row__name">${escapeHtml(i.name)}</div>
+          <div class="txn-item-row__meta">Qty ${i.quantity} · ${kes(i.unitPrice)} each</div>
+        </div>`
+      )
+      .join("");
+
+    let tierNote = "No fee tier matched";
+    if (t.transactionFeeTier) {
+      const { amountFrom, amountTo, label } = t.transactionFeeTier;
+      tierNote = label
+        ? escapeHtml(label)
+        : `Tier: KES ${amountFrom?.toLocaleString?.() ?? amountFrom}–${
+            amountTo == null ? "∞" : amountTo.toLocaleString()
+          }`;
+    }
+
+    return `
+      <div class="txn-row ${isOpen ? "open" : ""}" data-txn-id="${t.orderId}">
+        <div class="txn-row__head" data-txn-toggle>
+          <i class="fa-solid fa-chevron-down txn-row__chev"></i>
+          <div>
+            <div class="txn-row__id">${escapeHtml(t.orderNumber || "Order")}</div>
+            <div class="txn-row__date">${date}</div>
+          </div>
+          <span class="txn-status-pill ${t.earningsStatus}">${t.earningsStatus}</span>
+          <div class="txn-row__spacer"></div>
+          <div class="txn-row__net">${kes(t.netPayout)}</div>
+        </div>
+        <div class="txn-row__body">
+          <div class="txn-items">${itemsHtml}</div>
+          <div class="txn-breakdown">
+            <div class="txn-breakdown__item">
+              <span class="txn-breakdown__label">Gross revenue</span>
+              <span class="txn-breakdown__value">${kes(t.grossRevenue)}</span>
+            </div>
+            <div class="txn-breakdown__item">
+              <span class="txn-breakdown__label">Marketplace commission</span>
+              <span class="txn-breakdown__value tone-commission">-${kes(t.commission)}</span>
+            </div>
+            <div class="txn-breakdown__item">
+              <span class="txn-breakdown__label">Transaction fee</span>
+              <span class="txn-breakdown__value tone-fee">-${kes(t.transactionFee)}</span>
+              <span class="txn-breakdown__tier">${tierNote}</span>
+            </div>
+            <div class="txn-breakdown__item">
+              <span class="txn-breakdown__label">Net payout</span>
+              <span class="txn-breakdown__value tone-net">${kes(t.netPayout)}</span>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  if (els.earnTxnFilterTabs) {
+    els.earnTxnFilterTabs.addEventListener("click", (e) => {
+      const btn = e.target.closest(".earn-txn-filter-tab");
+      if (!btn) return;
+      els.earnTxnFilterTabs.querySelectorAll(".earn-txn-filter-tab").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      earnTxnFilter = btn.dataset.txnFilter;
+      resetAndLoadEarningsTransactions();
+    });
+  }
+
+  if (els.earnTxnLoadMoreBtn) {
+    els.earnTxnLoadMoreBtn.addEventListener("click", () => {
+      earnTxnPage++;
+      loadEarningsTransactionsPage();
+    });
   }
 
   // =========================================================

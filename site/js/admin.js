@@ -14,6 +14,7 @@ let orderSubTab = 'pending-payment';
 let earningsFilters = { paymentStatus: 'confirmed', from: '', to: '', search: '', page: 1 };
 let earningsOrdersCache = [];
 let expandedCategoryIds = new Set();
+let feeTiersCache = []; // NEW — seller transaction-fee ladder
 
 // caches backing the expandable rows
 let allOrdersCache = [];      // last fetched "all orders" list, keyed by lookup below
@@ -110,7 +111,7 @@ async function init() {
   wireModalCloseButtons();
   wireStaticButtons();
   populateLegalTypeSelect();
-  wireRFQTab();                 // <-- ADD THIS LINE
+  wireRFQTab();
   await checkAuth();
 }
 
@@ -222,7 +223,7 @@ function switchTab(tab) {
   if (tab === 'orders') loadOrdersTab();
   if (tab === 'users') loadUsers();
   if (tab === 'agents') loadAgents();
-  if (tab === 'rfq') loadRFQs();      // <-- ADD THIS LINE
+  if (tab === 'rfq') loadRFQs();
   if (tab === 'earnings') loadEarnings();
 }
 
@@ -427,6 +428,10 @@ function wireStaticButtons() {
   document.getElementById('addAttributeBtn').addEventListener('click', () => openAttributeModal(null));
   document.getElementById('addAdBtn').addEventListener('click', () => openAdModal(null));
   document.getElementById('addAgentBtn').addEventListener('click', () => openAgentModal(null));
+
+  // NEW — Transaction Fee Tier wiring
+  document.getElementById('addFeeTierBtn').addEventListener('click', () => openFeeTierModal(null));
+  document.getElementById('feeTierForm').addEventListener('submit', submitFeeTierForm);
 
   // Attribute type select toggles the "options" field (only relevant for select/multiselect)
   document.getElementById('attrType').addEventListener('change', (e) => {
@@ -1778,9 +1783,6 @@ async function approveVerificationRow(id) {
 
 // ===================================================================
 // SELLER ORDERS MODAL — opened from the Verification review screen.
-// Shows this seller's pickup location once at the top, then every order
-// that contains at least one of their items (backend already supports
-// ?sellerId= on /admin/orders).
 // ===================================================================
 async function openSellerOrdersModal(v) {
   const sellerId = v.seller?._id || v.seller;
@@ -1829,7 +1831,7 @@ async function openSellerOrdersModal(v) {
 }
 
 // ===================================================================
-// LEGAL DOCUMENTS (Terms, Seller Agreement, policies — draft → published → archived)
+// LEGAL DOCUMENTS
 // ===================================================================
 function docTypeLabel(t) {
   return t.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
@@ -2137,7 +2139,7 @@ async function submitAdForm(e) {
 }
 
 // ===================================================================
-// FLASH SALE (daily 2:00 PM – midnight deals: review / approve / reject)
+// FLASH SALE
 // ===================================================================
 async function loadFlashSales() {
   const tbody = document.getElementById('flashSalesBody');
@@ -2165,7 +2167,6 @@ function renderFlashSalesTable() {
     );
   }
 
-  // Most urgent first: pending review oldest-first, everything else newest-first
   list = [...list].sort((a, b) =>
     flashSaleFilters.subtab === 'pending_review'
       ? new Date(a.submittedAt || a.createdAt) - new Date(b.submittedAt || b.createdAt)
@@ -2307,7 +2308,6 @@ async function approveFlashSaleRow(id) {
 // ORDERS (payment verification + full oversight, with expandable detail rows)
 // ===================================================================
 
-
 const STK_FAILURE_LABELS = {
   wrong_pin: 'Wrong M-Pesa PIN',
   insufficient_funds: 'Insufficient Balance',
@@ -2319,11 +2319,6 @@ const STK_FAILURE_LABELS = {
   '': 'Waiting for M-Pesa response',
 };
 
-// Resolves a clear, method-aware label + pill class for an order's payment
-// state. Plain o.paymentStatus alone can't distinguish "confirmed via M-Pesa
-// STK" from "confirmed by an admin eyeballing a pasted SMS" — both are just
-// 'confirmed' in the DB — so this factors in paymentMethod (and, for
-// unresolved STK, the failure reason) to make that distinction visible.
 function paymentStatusDisplay(o) {
   const method = o.paymentMethod || 'manual';
 
@@ -2342,14 +2337,11 @@ function paymentStatusDisplay(o) {
     return { label: 'Payment Rejected', pillClass: 'pill-rejected', title: o.rejectionReason || '' };
   }
 
-  // paymentStatus === 'pending_verification'
   if (method === 'stk') {
     return { label: 'STK — Awaiting Response', pillClass: 'pill-pending_verification', title: 'Waiting on M-Pesa\'s webhook — see STK Push Issues if this sits too long' };
   }
   return { label: 'Pending Verification', pillClass: 'pill-pending_verification', title: 'Buyer pasted an M-Pesa SMS — needs manual review' };
 }
-
-
 
 function loadOrdersTab() {
   document.getElementById('panel-pending-payment').style.display = orderSubTab === 'pending-payment' ? 'block' : 'none';
@@ -2414,9 +2406,6 @@ async function verifyPayment(id, decision) {
     showToast(err.message, 'error');
   }
 }
-
-
-
 
 async function loadStkIssues() {
   const tbody = document.getElementById('stkIssuesBody');
@@ -2489,7 +2478,6 @@ async function cancelStkOrderRow(id) {
   }
 }
 
-
 async function loadAllOrders() {
   const tbody = document.getElementById('allOrdersBody');
   tbody.innerHTML = `<tr><td colspan="9"><div class="spinner"></div></td></tr>`;
@@ -2523,7 +2511,7 @@ async function loadAllOrders() {
           showToast('Order status updated');
         } catch (err) {
           showToast(err.message, 'error');
-          sel.value = previousValue; // roll back the dropdown if the save failed
+          sel.value = previousValue;
         } finally {
           sel.disabled = false;
         }
@@ -2534,11 +2522,6 @@ async function loadAllOrders() {
   }
 }
 
-// Renders a normal summary row plus a hidden detail row right below it.
-// Clicking the chevron toggles the detail row instead of navigating anywhere else.
-// `scope` namespaces the toggle id/data-attribute so the same order can appear
-// (and be independently expanded) in both the All Orders table and the
-// per-seller Orders modal without id collisions.
 function orderRowPairHtml(o, statusOptions, scope) {
   const id = o._id;
   const pay = paymentStatusDisplay(o);
@@ -2563,22 +2546,14 @@ function orderRowPairHtml(o, statusOptions, scope) {
     </tr>`;
 }
 
-// Modern expand panel. Deliberately does NOT repeat buyer name, total, agent
-// code, payment-status pill, or date — those are already visible in the
-// collapsed row directly above. This surfaces what the row can't show:
-// contact info, shipping address, seller pickup/warehouse location(s),
-// payment verification trail, delivery-fee breakdown, marketplace commission
-// & seller payout, agent commission, and the per-item table.
 function orderDetailHtml(o) {
   const dd = o.deliveryDetails || {};
   const subtotal = (o.totalAmount || 0) - (o.deliveryFee || 0);
 
-  // Marketplace commission / seller payout totals for this order — sum from
-  // the per-item snapshots (see models/Order.js orderItemSchema) rather than
-  // re-deriving anything client-side, so this always matches what was
-  // actually resolved and locked in at purchase time.
   const totalCommission = o.items.reduce((sum, i) => sum + (i.commissionAmount || 0), 0);
   const totalPayout = o.items.reduce((sum, i) => sum + (i.sellerPayout || 0), 0);
+  // NEW — total seller transaction fees on this order
+  const totalTxnFees = (o.sellerFees || []).reduce((sum, f) => sum + (f.transactionFee || 0), 0);
 
   const statsHtml = `
     <div class="od-stats">
@@ -2586,6 +2561,7 @@ function orderDetailHtml(o) {
       <div class="od-stat"><span class="od-stat-label">Delivery Fee</span><span class="od-stat-value">KSh ${(o.deliveryFee || 0).toLocaleString()}</span></div>
       <div class="od-stat tone-commission"><span class="od-stat-label">Marketplace Commission</span><span class="od-stat-value">KSh ${totalCommission.toLocaleString()}</span></div>
       <div class="od-stat tone-payout"><span class="od-stat-label">Seller Payout</span><span class="od-stat-value">KSh ${totalPayout.toLocaleString()}</span></div>
+      <div class="od-stat"><span class="od-stat-label">Transaction Fees</span><span class="od-stat-value">KSh ${totalTxnFees.toLocaleString()}</span></div>
       ${o.agent ? `<div class="od-stat"><span class="od-stat-label">Agent Commission</span><span class="od-stat-value">KSh ${(o.commissionAmount || 0).toLocaleString()}</span></div>` : ''}
     </div>`;
 
@@ -2615,7 +2591,6 @@ function orderDetailHtml(o) {
       ${(dd.notes || []).map((n) => `<div class="od-note">${escapeHtml(n)}</div>`).join('')}
     </div>`;
 
-  // ---- Pickup Locations: one card per distinct seller in this order ----
   const uniqueSellers = [];
   const seenSellerIds = new Set();
   o.items.forEach((i) => {
@@ -2633,6 +2608,38 @@ function orderDetailHtml(o) {
     ? `<div class="od-card od-card--pickup">
          <h5><i class="fa-solid fa-warehouse"></i> Pickup Location${uniqueSellers.length > 1 ? 's' : ''}</h5>
          ${pickupCards}
+       </div>`
+    : '';
+
+  // NEW — per-seller transaction fee breakdown card (uses item.seller for labels
+  // since Order.sellerFees[].seller is just an ObjectId, not populated)
+  const sellerNameMap = {};
+  o.items.forEach((i) => {
+    const sid = i.seller?._id || i.seller;
+    if (sid) sellerNameMap[String(sid)] = i.seller?.businessName || i.seller?.shopName || i.seller?.name || 'Seller';
+  });
+
+  const feesSection = (o.sellerFees || []).length
+    ? `<div class="od-items-wrap" style="margin-bottom:20px;">
+         <h5><i class="fa-solid fa-sack-dollar"></i> Seller Transaction Fees</h5>
+         <table class="dtable">
+           <thead><tr><th>Seller</th><th>Subtotal</th><th>Tier</th><th>Fee</th></tr></thead>
+           <tbody>
+             ${o.sellerFees
+               .map((f) => {
+                 const sid = f.seller?._id || f.seller;
+                 const label = sellerNameMap[String(sid)] || 'Seller';
+                 return `
+               <tr>
+                 <td>${escapeHtml(label)}</td>
+                 <td>KSh ${(f.subtotal || 0).toLocaleString()}</td>
+                 <td class="text-muted">${escapeHtml(f.tier?.label || '—')}</td>
+                 <td>KSh ${(f.transactionFee || 0).toLocaleString()}</td>
+               </tr>`;
+               })
+               .join('')}
+           </tbody>
+         </table>
        </div>`
     : '';
 
@@ -2676,6 +2683,7 @@ function orderDetailHtml(o) {
         ${paymentCard}
       </div>
       ${pickupSection}
+      ${feesSection}
       <div class="od-items-wrap">
         <h5><i class="fa-solid fa-boxes-stacked"></i> Items</h5>
         <table class="dtable">
@@ -2696,7 +2704,7 @@ function toggleOrderDetail(id, scope) {
 }
 
 // ===================================================================
-// USERS (view + suspend/reactivate wholesalers, retailers, buyers)
+// USERS
 // ===================================================================
 async function loadUsers() {
   const tbody = document.getElementById('usersBody');
@@ -2747,7 +2755,7 @@ async function loadUsers() {
 }
 
 // ===================================================================
-// AGENTS (create, edit, activate/deactivate, delete + expandable order history)
+// AGENTS
 // ===================================================================
 async function loadAgents() {
   const tbody = document.getElementById('agentsBody');
@@ -2930,15 +2938,133 @@ async function deleteAgentRow(id) {
 }
 
 // ===================================================================
-// EARNINGS (marketplace commission + agent payouts, per-order detail)
+// TRANSACTION FEE TIERS (NEW — seller-side payment-processing fee ladder)
+// ===================================================================
+async function loadTransactionFeeTiers() {
+  const tbody = document.getElementById('feeTiersBody');
+  tbody.innerHTML = `<tr><td colspan="5"><div class="spinner"></div></td></tr>`;
+  try {
+    const { tiers } = await apiGet('/admin/transaction-fees');
+    feeTiersCache = [...tiers].sort((a, b) => a.amountFrom - b.amountFrom);
+    renderFeeTiersTable();
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="5"><div class="dash-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>${err.message}</p></div></td></tr>`;
+  }
+}
+
+function renderFeeTiersTable() {
+  const tbody = document.getElementById('feeTiersBody');
+
+  if (feeTiersCache.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5"><div class="dash-empty"><i class="fa-solid fa-sack-dollar"></i><p>No fee tiers yet — sellers won't be charged any transaction fee until you add some.</p></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = feeTiersCache
+    .map(
+      (t) => `
+    <tr>
+      <td>KSh ${t.amountFrom.toLocaleString()} – ${t.amountTo != null ? 'KSh ' + t.amountTo.toLocaleString() : 'and above'}</td>
+      <td>KSh ${t.fee.toLocaleString()}</td>
+      <td class="wrap-cell text-muted">${escapeHtml(t.label || '—')}</td>
+      <td>
+        <label class="switch">
+          <input type="checkbox" ${t.isActive ? 'checked' : ''} data-toggle-fee-tier="${t._id}">
+          <span class="track"></span>
+        </label>
+      </td>
+      <td>
+        <div class="row-actions">
+          <button class="act-edit" data-edit-fee-tier="${t._id}">Edit</button>
+          <button class="act-reject" data-delete-fee-tier="${t._id}">Delete</button>
+        </div>
+      </td>
+    </tr>`
+    )
+    .join('');
+
+  tbody.querySelectorAll('[data-edit-fee-tier]').forEach((btn) =>
+    btn.addEventListener('click', () => openFeeTierModal(feeTiersCache.find((t) => t._id === btn.dataset.editFeeTier)))
+  );
+  tbody.querySelectorAll('[data-delete-fee-tier]').forEach((btn) =>
+    btn.addEventListener('click', () => deleteFeeTierRow(btn.dataset.deleteFeeTier))
+  );
+  tbody.querySelectorAll('[data-toggle-fee-tier]').forEach((toggle) =>
+    toggle.addEventListener('change', async () => {
+      try {
+        await apiPatch(`/admin/transaction-fees/${toggle.dataset.toggleFeeTier}`, { isActive: toggle.checked });
+        showToast(`Tier ${toggle.checked ? 'activated' : 'deactivated'}`);
+        loadTransactionFeeTiers();
+      } catch (err) {
+        showToast(err.message, 'error');
+        toggle.checked = !toggle.checked;
+      }
+    })
+  );
+}
+
+function openFeeTierModal(tier) {
+  const modal = document.getElementById('feeTierModal');
+  modal.dataset.tierId = tier?._id || '';
+  document.getElementById('feeTierModalTitle').textContent = tier ? 'Edit Fee Tier' : 'Add Fee Tier';
+  document.getElementById('feeTierFrom').value = tier?.amountFrom ?? '';
+  document.getElementById('feeTierTo').value = tier?.amountTo ?? '';
+  document.getElementById('feeTierFee').value = tier?.fee ?? '';
+  document.getElementById('feeTierLabel').value = tier?.label || '';
+  document.getElementById('feeTierActive').checked = tier ? tier.isActive : true;
+  openModal('feeTierModal');
+}
+
+async function submitFeeTierForm(e) {
+  e.preventDefault();
+  const modal = document.getElementById('feeTierModal');
+  const id = modal.dataset.tierId;
+
+  const toRaw = document.getElementById('feeTierTo').value.trim();
+  const payload = {
+    amountFrom: Number(document.getElementById('feeTierFrom').value),
+    amountTo: toRaw === '' ? null : Number(toRaw),
+    fee: Number(document.getElementById('feeTierFee').value),
+    label: document.getElementById('feeTierLabel').value.trim(),
+    isActive: document.getElementById('feeTierActive').checked,
+  };
+
+  try {
+    if (id) {
+      await apiPatch(`/admin/transaction-fees/${id}`, payload);
+      showToast('Fee tier updated');
+    } else {
+      await apiPost('/admin/transaction-fees', payload);
+      showToast('Fee tier created');
+    }
+    closeModal('feeTierModal');
+    loadTransactionFeeTiers();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function deleteFeeTierRow(id) {
+  if (!confirm('Delete this fee tier permanently?')) return;
+  try {
+    await apiDelete(`/admin/transaction-fees/${id}`);
+    showToast('Fee tier deleted');
+    loadTransactionFeeTiers();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+// ===================================================================
+// EARNINGS (marketplace commission + agent payouts + transaction fees)
 // ===================================================================
 async function loadEarnings() {
-  await Promise.all([loadEarningsSummary(), loadEarningsOrders()]);
+  await Promise.all([loadTransactionFeeTiers(), loadEarningsSummary(), loadEarningsOrders()]);
 }
 
 async function loadEarningsSummary() {
   const grid = document.getElementById('earningsStatGrid');
-  grid.innerHTML = `<div class="stat-card"><div class="spinner"></div></div>`.repeat(4);
+  grid.innerHTML = `<div class="stat-card"><div class="spinner"></div></div>`.repeat(5);
   try {
     const params = new URLSearchParams();
     params.set('paymentStatus', earningsFilters.paymentStatus);
@@ -2953,6 +3079,11 @@ async function loadEarningsSummary() {
         <div class="stat-label">Marketplace Commission</div>
         <div class="stat-value">KSh ${(t.totalMarketplaceCommission || 0).toLocaleString()}</div>
         <div class="stat-sub">Gross earnings from product sales</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Transaction Fees Charged</div>
+        <div class="stat-value">KSh ${(t.totalTransactionFees || 0).toLocaleString()}</div>
+        <div class="stat-sub">Tiered fee charged to sellers per order</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Agent Commission Paid</div>
@@ -3022,7 +3153,7 @@ async function loadEarningsSummary() {
 
 async function loadEarningsOrders() {
   const tbody = document.getElementById('earningsOrdersBody');
-  tbody.innerHTML = `<tr><td colspan="8"><div class="spinner"></div></td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="9"><div class="spinner"></div></td></tr>`;
   try {
     const params = new URLSearchParams();
     params.set('paymentStatus', earningsFilters.paymentStatus);
@@ -3036,7 +3167,7 @@ async function loadEarningsOrders() {
     earningsOrdersCache = orders;
 
     if (orders.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="8"><div class="dash-empty"><i class="fa-solid fa-sack-dollar"></i><p>No orders match these filters.</p></div></td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="9"><div class="dash-empty"><i class="fa-solid fa-sack-dollar"></i><p>No orders match these filters.</p></div></td></tr>`;
       document.getElementById('earningsPagination').innerHTML = '';
       return;
     }
@@ -3049,7 +3180,7 @@ async function loadEarningsOrders() {
 
     renderEarningsPagination(page, pages);
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="8"><div class="dash-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>${err.message}</p></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9"><div class="dash-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>${err.message}</p></div></td></tr>`;
   }
 }
 
@@ -3062,15 +3193,36 @@ function earningsRowPairHtml(o) {
       <td><span class="pill pill-${o.paymentStatus}">${o.paymentStatus.replace(/_/g, ' ')}</span></td>
       <td>KSh ${(o.totalAmount || 0).toLocaleString()}</td>
       <td>KSh ${(o.marketplaceCommission || 0).toLocaleString()}</td>
+      <td>KSh ${(o.transactionFeesTotal || 0).toLocaleString()}</td>
       <td>${o.agent ? 'KSh ' + (o.agentCommission || 0).toLocaleString() : '<span class="text-muted">—</span>'}</td>
       <td>KSh ${(o.netMarketplaceEarning || 0).toLocaleString()}</td>
     </tr>
     <tr class="order-detail-row" id="earn-detail-${o._id}" style="display:none;">
-      <td colspan="8">${earningsDetailHtml(o)}</td>
+      <td colspan="9">${earningsDetailHtml(o)}</td>
     </tr>`;
 }
 
 function earningsDetailHtml(o) {
+  const sellerNameMap = {};
+  o.items.forEach((i) => {
+    const sid = i.seller?._id || i.seller;
+    if (sid) sellerNameMap[String(sid)] = i.seller?.businessName || i.seller?.shopName || i.seller?.name || 'Seller';
+  });
+
+  const feesHtml = (o.sellerFees || [])
+    .map((f) => {
+      const sid = f.seller?._id || f.seller;
+      const label = sellerNameMap[String(sid)] || 'Seller';
+      return `
+      <tr>
+        <td>${escapeHtml(label)}</td>
+        <td>KSh ${(f.subtotal || 0).toLocaleString()}</td>
+        <td class="text-muted">${escapeHtml(f.tier?.label || '—')}</td>
+        <td>KSh ${(f.transactionFee || 0).toLocaleString()}</td>
+      </tr>`;
+    })
+    .join('');
+
   const itemsHtml = o.items
     .map(
       (i) => `
@@ -3093,7 +3245,18 @@ function earningsDetailHtml(o) {
         <div class="od-stat tone-commission"><span class="od-stat-label">Marketplace Commission</span><span class="od-stat-value">KSh ${(o.marketplaceCommission || 0).toLocaleString()}</span></div>
         ${o.agent ? `<div class="od-stat"><span class="od-stat-label">Agent</span><span class="od-stat-value">${escapeHtml(o.agent.name)} (${escapeHtml(o.agent.code)})</span></div>` : ''}
         <div class="od-stat tone-payout"><span class="od-stat-label">Seller Payout</span><span class="od-stat-value">KSh ${(o.sellerPayout || 0).toLocaleString()}</span></div>
+        <div class="od-stat"><span class="od-stat-label">Transaction Fees</span><span class="od-stat-value">KSh ${(o.transactionFeesTotal || 0).toLocaleString()}</span></div>
       </div>
+
+      ${(o.sellerFees || []).length ? `
+      <div class="od-items-wrap" style="margin-bottom:16px;">
+        <h5><i class="fa-solid fa-sack-dollar"></i> Seller Transaction Fees</h5>
+        <table class="dtable">
+          <thead><tr><th>Seller</th><th>Subtotal</th><th>Tier</th><th>Fee</th></tr></thead>
+          <tbody>${feesHtml}</tbody>
+        </table>
+      </div>` : ''}
+
       <div class="od-items-wrap">
         <h5><i class="fa-solid fa-boxes-stacked"></i> Item Commission Breakdown</h5>
         <table class="dtable">

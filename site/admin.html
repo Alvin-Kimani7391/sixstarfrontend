@@ -443,7 +443,24 @@
 
 
 <!-- ===== EARNINGS ===== -->
+<!-- ===== EARNINGS ===== -->
 <div class="tab-panel" id="panel-earnings">
+
+  <!-- NEW: Transaction Fee Tiers -->
+  <div class="dash-card" style="margin-bottom:20px;">
+    <div class="dash-card__head">
+      <h3>Seller Transaction Fee Tiers</h3>
+      <button class="btn btn-dark btn-sm" id="addFeeTierBtn"><i class="fa-solid fa-plus"></i> Add Tier</button>
+    </div>
+    <p class="text-muted" style="padding:0 18px;">Flat KSh fee charged to a seller, based on that seller's own subtotal within a single order. Ranges shouldn't overlap between active tiers — leave "Up to" blank on your top tier for an open-ended range (e.g. "2500 and above"). Editing this ladder only affects future orders; past orders keep the fee that was snapshotted at the time.</p>
+    <div class="table-scroll">
+      <table class="dtable">
+        <thead><tr><th>Range (KSh)</th><th>Fee (KSh)</th><th>Label</th><th>Active</th><th>Actions</th></tr></thead>
+        <tbody id="feeTiersBody"></tbody>
+      </table>
+    </div>
+  </div>
+
   <div class="dash-card" style="margin-bottom:20px;">
     <div class="dash-card__head">
       <h3>Marketplace Earnings</h3>
@@ -506,7 +523,7 @@
     <div class="table-scroll">
       <table class="dtable">
         <thead>
-          <tr><th></th><th>Order</th><th>Date</th><th>Payment</th><th>Order Total</th><th>Commission</th><th>Agent Cut</th><th>Net</th></tr>
+          <tr><th></th><th>Order</th><th>Date</th><th>Payment</th><th>Order Total</th><th>Commission</th><th>Txn Fee</th><th>Agent Cut</th><th>Net</th></tr>
         </thead>
         <tbody id="earningsOrdersBody"></tbody>
       </table>
@@ -1303,6 +1320,42 @@
     </form>
   </div>
 </div>
+
+
+<!-- Transaction Fee Tier modal (add/edit) -->
+<div class="modal-overlay" id="feeTierModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="feeTierModalTitle">Add Fee Tier</h3>
+      <button class="modal-close" data-close-modal="feeTierModal">&times;</button>
+    </div>
+    <form id="feeTierForm" class="form-grid">
+      <div class="form-field">
+        <label for="feeTierFrom">From (KSh)</label>
+        <input type="number" id="feeTierFrom" min="0" step="1" required>
+      </div>
+      <div class="form-field">
+        <label for="feeTierTo">Up to (KSh) <span style="font-weight:400; color:var(--ink-soft);">(leave blank for open-ended top tier)</span></label>
+        <input type="number" id="feeTierTo" min="0" step="1">
+      </div>
+      <div class="form-field">
+        <label for="feeTierFee">Flat Fee (KSh)</label>
+        <input type="number" id="feeTierFee" min="0" step="1" required>
+      </div>
+      <div class="form-field">
+        <label for="feeTierLabel">Label (optional, internal note)</label>
+        <input type="text" id="feeTierLabel" placeholder="e.g. Tier 1">
+      </div>
+      <div class="form-field" style="flex-direction:row; align-items:center; gap:10px;">
+        <label class="switch"><input type="checkbox" id="feeTierActive" checked><span class="track"></span></label>
+        <label for="feeTierActive" style="margin:0;">Active</label>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Save Tier</button>
+    </form>
+  </div>
+</div>
+
+
 
 <!-- Agent modal (add/edit) -->
 <div class="modal-overlay" id="agentModal">

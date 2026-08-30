@@ -412,6 +412,35 @@ const SS_API = (() => {
     getMyEarnings() {
       return request("/orders/my-earnings", { requiresAuth: true });
     },
+
+    // Per-order ("per-transaction") earnings breakdown — status: 'all' | 'confirmed' | 'pending'.
+    getMyEarningsTransactions(params = {}) {
+      return request('/orders/my-earnings/transactions', { query: params, requiresAuth: true });
+    },
+
+
+        // ============================================================
+    // TRANSACTION FEES (seller-side payment-processing fee ladder)
+    // ============================================================
+    getActiveTransactionFees() {
+      return request('/transaction-fees', { requiresAuth: false });
+    },
+    getTransactionFeeTiersAdmin() {
+      return request('/admin/transaction-fees', { requiresAuth: true });
+    },
+    createTransactionFeeTier(payload) {
+      return request('/admin/transaction-fees', { method: 'POST', body: payload, requiresAuth: true });
+    },
+    updateTransactionFeeTier(id, payload) {
+      return request(`/admin/transaction-fees/${id}`, { method: 'PATCH', body: payload, requiresAuth: true });
+    },
+    deleteTransactionFeeTier(id) {
+      return request(`/admin/transaction-fees/${id}`, { method: 'DELETE', requiresAuth: true });
+    },
+
+
+    
+
     updateOrderStatus(id, orderStatus) {
       return request(`/orders/${id}/status`, { method: "PATCH", body: { orderStatus }, requiresAuth: true });
     },
