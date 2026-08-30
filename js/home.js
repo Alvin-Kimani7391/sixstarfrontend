@@ -13,7 +13,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // "Top selling Categories" tile grid — capped at 8 so every phone size
   // renders it as a clean 4-across, 2-row block (see #categoryGrid rules
   // in theme.css).
-  ssRenderSubcategoryGrid("categoryGrid", 8);
+  ssRenderSubcategoryGrid("categoryGrid", 12);
   ssRenderMegaMenu("megaMenu");
 
   // Hero ad carousel just under the header — was interval:5000 (felt slow),
