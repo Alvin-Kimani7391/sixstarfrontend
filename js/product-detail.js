@@ -29,10 +29,20 @@
    sync whether the user swipes, clicks an arrow, or clicks a
    thumb — whichever one moves, the others follow.
 
+   LIGHTBOX (NEW): tapping the main image, or the small expand
+   icon at its bottom-right, opens a full-screen viewer. It has
+   its own scroll-snap track (same technique as the main gallery)
+   so multi-image products can be swiped/scrolled through at full
+   size, plus arrow buttons, a thumbnail strip, and a counter.
+   Closing it syncs the main gallery to whatever image was left
+   on screen.
+
    IMAGE QUALITY: gallery images go through Cloudinary transforms
    (ssCldTransform, from ui.js) instead of rendering the raw
    uploaded URL — the main slides request a large, dpr_auto,
-   best-quality asset; thumbnails request a small cropped one.
+   best-quality asset; thumbnails request a small cropped one;
+   the lightbox requests an even larger asset since it fills the
+   whole screen.
    ============================================================ */
 (function () {
   const id = new URLSearchParams(location.search).get("id");
@@ -170,6 +180,12 @@
     return cld(url, "f_auto,q_auto:good,w_160,h_160,c_fill,dpr_auto");
   }
 
+  // Lightbox slides: larger than the main gallery image so it still looks
+  // sharp filling the whole screen on big displays.
+  function lightboxImgUrl(url) {
+    return cld(url, "f_auto,q_auto:best,w_1800,dpr_auto");
+  }
+
   /* ---------------- share helpers ---------------- */
 
   // Canonical, shareable link for THIS product (drops any other query params
@@ -220,6 +236,9 @@
               <button type="button" class="pd-gallery__nav pd-gallery__nav--next" id="pdGalleryNext" aria-label="Next image"><i class="fa-solid fa-chevron-right"></i></button>
               <div class="pd-gallery__counter" id="pdGalleryCounter">1 / ${images.length}</div>
             ` : ""}
+            <button type="button" class="pd-gallery__expand" id="pdGalleryExpand" aria-label="View full size" title="View full size">
+              <i class="fa-solid fa-expand"></i>
+            </button>
           </div>
           ${images.length > 1 ? `<div class="pd-gallery__thumbs">
             ${images.map((img, i) => `<img src="${thumbImgUrl(img)}" data-i="${i}" class="${i === 0 ? "active" : ""}">`).join("")}
@@ -360,9 +379,31 @@
           </div>
         </div>
       </div>
+
+      <div class="pd-lightbox" id="pdLightbox" hidden>
+        <div class="pd-lightbox__backdrop" id="pdLightboxBackdrop"></div>
+        <div class="pd-lightbox__topbar">
+          <span class="pd-lightbox__counter" id="pdLightboxCounter">1 / ${images.length}</span>
+          <button type="button" class="pd-lightbox__close" id="pdLightboxClose" aria-label="Close full screen view"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="pd-lightbox__track" id="pdLightboxTrack">
+          ${images.map((img, i) => `
+            <div class="pd-lightbox__slide" data-i="${i}">
+              <img src="${lightboxImgUrl(img)}" alt="${p.name}" loading="${i === 0 ? "eager" : "lazy"}">
+            </div>`).join("")}
+        </div>
+        ${images.length > 1 ? `
+          <button type="button" class="pd-lightbox__nav pd-lightbox__nav--prev" id="pdLightboxPrev" aria-label="Previous image"><i class="fa-solid fa-chevron-left"></i></button>
+          <button type="button" class="pd-lightbox__nav pd-lightbox__nav--next" id="pdLightboxNext" aria-label="Next image"><i class="fa-solid fa-chevron-right"></i></button>
+          <div class="pd-lightbox__thumbs" id="pdLightboxThumbs">
+            ${images.map((img, i) => `<img src="${thumbImgUrl(img)}" data-i="${i}" class="${i === 0 ? "active" : ""}">`).join("")}
+          </div>
+        ` : ""}
+      </div>
     `;
 
     bindGallery();
+    bindLightbox(images);
     bindDescriptionToggle();
     bindQty(p, wholesale, moq, stock);
     bindActions(p, wholesale, moq);
@@ -480,21 +521,24 @@
       if (counterEl) counterEl.textContent = `${current + 1} / ${total}`;
       if (prevBtn) prevBtn.disabled = current === 0;
       if (nextBtn) nextBtn.disabled = current === total - 1;
+      track.dataset.current = String(current);
     }
 
     // Moves to `index` by scrolling the track — used by arrows and thumbs.
     // The track's own scroll listener below keeps `current` in sync when
-    // the user swipes directly instead.
-    function goTo(index) {
+    // the user swipes directly instead. `smooth=false` does an instant
+    // jump — used when syncing back from the lightbox on close.
+    function goTo(index, smooth = true) {
       current = Math.max(0, Math.min(total - 1, index));
       isSyncingFromScroll = true;
-      track.scrollTo({ left: slides[current].offsetLeft, behavior: "smooth" });
+      track.scrollTo({ left: slides[current].offsetLeft, behavior: smooth ? "smooth" : "auto" });
       updateControls();
       // release the guard once the smooth-scroll settles, so a real user
       // swipe right after isn't ignored
       clearTimeout(track._syncGuard);
       track._syncGuard = setTimeout(() => { isSyncingFromScroll = false; }, 400);
     }
+    track._goTo = goTo; // exposed so bindLightbox() can sync the main gallery on close
 
     prevBtn?.addEventListener("click", () => goTo(current - 1));
     nextBtn?.addEventListener("click", () => goTo(current + 1));
@@ -525,6 +569,102 @@
     });
 
     updateControls();
+  }
+
+  /* ---------------- full-screen lightbox ----------------
+     Opens when the shopper taps the main image or the small expand
+     icon — several product photos are hard to make out at the small
+     gallery size, so this gives a real full-screen view. Its own
+     horizontally-scrolling track (same scroll-snap technique as the
+     main gallery) gives native swipe between every image. Closing it
+     syncs the main gallery to whichever image was left on screen. */
+  function bindLightbox(images) {
+    const lightbox = document.getElementById("pdLightbox");
+    const mainTrack = document.getElementById("pdGalleryTrack");
+    if (!lightbox || !mainTrack) return;
+
+    const track = document.getElementById("pdLightboxTrack");
+    const slides = Array.from(track.querySelectorAll(".pd-lightbox__slide"));
+    const total = slides.length;
+    const thumbs = Array.from(lightbox.querySelectorAll(".pd-lightbox__thumbs img"));
+    const counterEl = document.getElementById("pdLightboxCounter");
+    const prevBtn = document.getElementById("pdLightboxPrev");
+    const nextBtn = document.getElementById("pdLightboxNext");
+    const closeBtn = document.getElementById("pdLightboxClose");
+    const backdrop = document.getElementById("pdLightboxBackdrop");
+    const expandBtn = document.getElementById("pdGalleryExpand");
+
+    let current = 0;
+    let isSyncingFromScroll = false;
+
+    function updateControls() {
+      thumbs.forEach(t => t.classList.toggle("active", Number(t.dataset.i) === current));
+      if (counterEl) counterEl.textContent = `${current + 1} / ${total}`;
+      if (prevBtn) prevBtn.disabled = current === 0;
+      if (nextBtn) nextBtn.disabled = current === total - 1;
+    }
+
+    function goTo(index, smooth = true) {
+      current = Math.max(0, Math.min(total - 1, index));
+      isSyncingFromScroll = true;
+      track.scrollTo({ left: slides[current].offsetLeft, behavior: smooth ? "smooth" : "auto" });
+      updateControls();
+      clearTimeout(track._syncGuard);
+      track._syncGuard = setTimeout(() => { isSyncingFromScroll = false; }, 400);
+    }
+
+    function open(startIndex) {
+      lightbox.hidden = false;
+      document.body.classList.add("pd-lightbox-open");
+      // The track has zero size while [hidden], so jump to the right
+      // slide (instantly) only once it's actually laid out, then fade
+      // the overlay in.
+      requestAnimationFrame(() => {
+        goTo(startIndex, false);
+        lightbox.classList.add("open");
+      });
+    }
+
+    function close() {
+      lightbox.classList.remove("open");
+      document.body.classList.remove("pd-lightbox-open");
+      setTimeout(() => { lightbox.hidden = true; }, 220);
+      if (typeof mainTrack._goTo === "function") mainTrack._goTo(current, false);
+    }
+
+    expandBtn?.addEventListener("click", () => {
+      open(Number(mainTrack.dataset.current || 0));
+    });
+
+    // Tapping the main product image itself also opens the lightbox —
+    // handy on mobile where the expand icon is small.
+    mainTrack.querySelectorAll(".pd-gallery__slide").forEach(slide => {
+      slide.addEventListener("click", () => open(Number(slide.dataset.i)));
+    });
+
+    closeBtn?.addEventListener("click", close);
+    backdrop?.addEventListener("click", close);
+    prevBtn?.addEventListener("click", () => goTo(current - 1));
+    nextBtn?.addEventListener("click", () => goTo(current + 1));
+    thumbs.forEach(img => img.addEventListener("click", () => goTo(Number(img.dataset.i))));
+
+    let scrollTimer = null;
+    track.addEventListener("scroll", () => {
+      if (isSyncingFromScroll) return;
+      clearTimeout(scrollTimer);
+      scrollTimer = setTimeout(() => {
+        const idx = Math.round(track.scrollLeft / track.clientWidth);
+        current = Math.max(0, Math.min(total - 1, idx));
+        updateControls();
+      }, 90);
+    }, { passive: true });
+
+    document.addEventListener("keydown", (e) => {
+      if (lightbox.hidden) return;
+      if (e.key === "Escape") close();
+      if (e.key === "ArrowLeft") goTo(current - 1);
+      if (e.key === "ArrowRight") goTo(current + 1);
+    });
   }
 
   /* ---------------- description read-more ---------------- */

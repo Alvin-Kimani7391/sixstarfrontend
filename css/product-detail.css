@@ -759,3 +759,208 @@
   #pdContent .pd-gallery__nav { width: 32px; height: 32px; font-size: 12px; }
   #pdContent .pd-gallery__counter { font-size: 10px; padding: 2px 8px; }
 }
+
+
+
+
+
+/* ============================================================
+   NEW — expand icon + full-screen image lightbox
+   ============================================================ */
+
+/* Small "view full size" icon, bottom-right of the main image */
+#pdContent .pd-gallery__expand {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(23, 24, 28, .6);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  cursor: pointer;
+  z-index: 6;
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  transition: background .2s ease, transform .15s ease;
+}
+#pdContent .pd-gallery__expand:hover { background: var(--pd-brand, #E8500F); }
+#pdContent .pd-gallery__expand:active { transform: scale(.92); }
+
+/* If the counter is also showing (multiple images), stack the expand
+   icon above it so the two never overlap. */
+#pdContent .pd-gallery__counter ~ .pd-gallery__expand { right: 10px; bottom: 46px; }
+
+#pdContent .pd-gallery__slide { cursor: zoom-in; }
+
+/* ---------------------------------------------------------- */
+/* 11. Full-screen image lightbox                                */
+/* ---------------------------------------------------------- */
+.pd-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 100010; /* above the share popover (100000) */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity .25s ease;
+}
+.pd-lightbox[hidden] { display: none; }
+.pd-lightbox.open { opacity: 1; }
+
+.pd-lightbox__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 10, 12, .96);
+}
+
+.pd-lightbox__topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 14px 40px;
+  background: linear-gradient(to bottom, rgba(0,0,0,.55), transparent);
+  pointer-events: none;
+}
+.pd-lightbox__topbar > * { pointer-events: auto; }
+
+.pd-lightbox__counter {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(255,255,255,.12);
+  padding: 5px 12px;
+  border-radius: 20px;
+}
+
+.pd-lightbox__close {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,.12);
+  color: #fff;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background .2s ease, transform .15s ease;
+}
+.pd-lightbox__close:hover { background: rgba(255,255,255,.24); }
+.pd-lightbox__close:active { transform: scale(.9); }
+
+.pd-lightbox__track {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  outline: none;
+}
+.pd-lightbox__track::-webkit-scrollbar { display: none; }
+
+.pd-lightbox__slide {
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  padding: 60px 16px;
+}
+.pd-lightbox__slide img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+  -webkit-user-select: none;
+  user-select: none;
+  pointer-events: none;
+}
+
+.pd-lightbox__nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 3;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,.12);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background .2s ease, transform .15s ease;
+}
+.pd-lightbox__nav:hover { background: rgba(255,255,255,.24); }
+.pd-lightbox__nav:active { transform: translateY(-50%) scale(.9); }
+.pd-lightbox__nav:disabled { opacity: 0; pointer-events: none; }
+.pd-lightbox__nav--prev { left: 14px; }
+.pd-lightbox__nav--next { right: 14px; }
+
+.pd-lightbox__thumbs {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 14px calc(14px + env(safe-area-inset-bottom, 0));
+  background: linear-gradient(to top, rgba(0,0,0,.55), transparent);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.pd-lightbox__thumbs::-webkit-scrollbar { display: none; }
+.pd-lightbox__thumbs img {
+  width: 46px;
+  height: 46px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0;
+  opacity: .5;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: opacity .2s ease, border-color .2s ease;
+}
+.pd-lightbox__thumbs img.active {
+  opacity: 1;
+  border-color: var(--pd-brand, #E8500F);
+}
+
+/* Prevent the page behind the lightbox from scrolling while it's open */
+body.pd-lightbox-open { overflow: hidden; }
+
+@media (hover: none) {
+  .pd-lightbox__nav { opacity: .85; }
+}
+
+@media (max-width: 480px) {
+  .pd-lightbox__slide { padding: 50px 8px; }
+  .pd-lightbox__nav { width: 36px; height: 36px; font-size: 13px; }
+  .pd-lightbox__thumbs img { width: 38px; height: 38px; }
+}
