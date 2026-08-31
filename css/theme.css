@@ -2617,4 +2617,161 @@ body[data-page="index.html"] .p-card__add{
   body[data-page="index.html"] .price-tag{
     font-size:14px;
   }
-}  
+}
+
+
+/* ============================================================
+   DARK MODE
+   Toggled by setting data-theme="dark" on <html> (see ui.js —
+   ssApplyTheme() / the new drawer toggle switch). This block is
+   100% additive: nothing above it is modified. It works by
+   overriding the same CSS custom properties (--ink, --surface,
+   --bg-page, --line, etc.) that almost every rule in this file
+   already reads from, so most of the site re-colors itself for
+   free with zero other changes needed.
+
+   A few elements use those SAME tokens to mean "always near-black"
+   rather than "current theme text color" (the ticker, footer,
+   drawer, toast, scroll-top button, and the RFQ modal's dark hero/
+   CTA) — those get --ink re-pinned back to its light-mode value so
+   they don't invert into unreadable light-on-light. Product cards
+   (and their loading skeletons) are deliberately re-pinned to stay
+   on a white surface in dark mode too, matching the reference
+   screenshot.
+   ============================================================ */
+
+:root[data-theme="dark"]{
+  --ink:#F4F5F7;
+  --ink-soft:#B9BAC2;
+  --ink-faint:#7D7E88;
+
+  --bg-page:#0B0B0D;
+  --surface:#17181D;
+  --line:#2A2B31;
+  --line-soft:#1F2025;
+
+  --shadow-soft:0 8px 24px rgba(0,0,0,.5);
+  --shadow-pop:0 16px 34px rgba(255,90,31,.3);
+  --shadow-card-hover:0 14px 28px rgba(0,0,0,.6);
+}
+
+/* smooth, non-jarring page-level fade when the theme is switched
+   (kept to html/body only — never redeclares a "transition" on any
+   element that already has its own, so no existing hover/transform
+   animation anywhere else in this file is affected) */
+html, body{ transition:background-color .3s ease, color .3s ease; }
+
+/* ---- Always-dark elements: these already render as a fixed dark
+   panel with hardcoded light text/icons in normal (light) mode too
+   — they read var(--ink) expecting it to be near-black. Re-pinning
+   it here is a no-op in light mode (same value as :root default)
+   and keeps them correct once --ink itself becomes a light color
+   in dark mode. ---- */
+.ticker,
+.site-footer,
+.drawer,
+#toast,
+.scroll-top-btn,
+.rfq-intro-modal__hero,
+.rfq-intro-modal__actions .btn-primary{
+  --ink:#15161A;
+}
+
+/* ---- Product cards, their loading skeletons, and any embedded
+   related-product / wholesale-panel cards stay on a white surface
+   in dark mode, matching the reference screenshot. Re-pinning the
+   tokens here means every existing .p-card descendant rule above
+   (name, price, badges, seller line, stock states, etc.) keeps
+   working exactly as written — nothing about .p-card's own CSS
+   needs to change. ---- */
+:root[data-theme="dark"] .p-card,
+:root[data-theme="dark"] .skel-card{
+  --ink:#15161A;
+  --ink-soft:#6B6D78;
+  --ink-faint:#9A9CA6;
+  --surface:#FFFFFF;
+  --line:#E7E8EE;
+  --line-soft:#F0F1F5;
+  background:var(--surface);
+}
+
+/* ---- Category filter cascade <select> boxes: hardcoded white
+   background, so their text needs to stay dark-ink regardless of
+   theme for legibility. ---- */
+:root[data-theme="dark"] .cat-cascade__select{
+  --ink:#15161A;
+  background:#fff;
+  color:#15161A;
+}
+
+/* ---- Catalog section: give it a distinct dark panel instead of
+   its light-mode cream tint, so it still reads as its own zone. ---- */
+:root[data-theme="dark"] .block--catalog{
+  background:#131418;
+  border-color:var(--line-soft);
+}
+
+/* ============================================================
+   DARK-MODE TOGGLE — the switch row appended to the end of the
+   mobile drawer (see ui.js). Lives inside .drawer, so it always
+   uses the drawer's own fixed dark palette (see the --ink re-pin
+   on .drawer above) rather than the page tokens — it looks right
+   whether the page itself is currently light or dark.
+   ============================================================ */
+.drawer-theme-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:15px 26px;
+  border-top:1px solid rgba(255,255,255,.08);
+  margin-top:8px;
+}
+.drawer-theme-row__label{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  color:#F0F0F2;
+  font-weight:600;
+  font-size:15px;
+}
+.drawer-theme-row__label i{
+  width:20px;
+  text-align:center;
+  color:var(--sun);
+  font-size:16px;
+}
+.theme-toggle{
+  position:relative;
+  width:46px;
+  height:26px;
+  border-radius:20px;
+  border:none;
+  background:rgba(255,255,255,.14);
+  cursor:pointer;
+  flex-shrink:0;
+  padding:0;
+  transition:background .25s ease;
+}
+.theme-toggle__thumb{
+  position:absolute;
+  top:3px;
+  left:3px;
+  width:20px;
+  height:20px;
+  border-radius:50%;
+  background:#fff;
+  transition:transform .25s cubic-bezier(.22,1,.36,1);
+  box-shadow:0 2px 6px rgba(0,0,0,.3);
+}
+.theme-toggle.active{
+  background:linear-gradient(90deg,var(--brand),var(--brand-dark));
+}
+.theme-toggle.active .theme-toggle__thumb{
+  transform:translateX(20px);
+}
+
+@media(max-width:599px){
+  .drawer-theme-row{ padding:13px 20px; }
+  .drawer-theme-row__label{ font-size:14px; }
+}

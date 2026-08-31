@@ -80,6 +80,47 @@ function ssEscapeHtml(str = "") {
     .replace(/'/g, "&#039;");
 }
 
+
+/* ---------- dark mode ---------- */
+function ssGetTheme() {
+  try {
+    const saved = localStorage.getItem("ss-theme");
+    if (saved === "dark" || saved === "light") return saved;
+  } catch (_) {}
+  return (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
+}
+
+function ssApplyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  try { localStorage.setItem("ss-theme", theme); } catch (_) {}
+}
+
+function ssInitTheme() {
+  ssApplyTheme(ssGetTheme());
+}
+
+function ssSyncThemeToggleUI() {
+  const btn = document.getElementById("drawerThemeToggle");
+  if (!btn) return;
+  const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+  btn.classList.toggle("active", isDark);
+  btn.setAttribute("aria-checked", isDark ? "true" : "false");
+  const icon = btn.parentElement.querySelector(".drawer-theme-row__label i");
+  if (icon) icon.className = isDark ? "fa-solid fa-sun" : "fa-solid fa-moon";
+}
+
+function ssToggleTheme() {
+  const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+  ssApplyTheme(next);
+  ssSyncThemeToggleUI();
+}
+
+// Applied immediately at parse time (not waiting for DOMContentLoaded) so
+// the page repaints in the right theme as early as possible.
+ssInitTheme();
+
+
+
 /* ---------- auth state helpers ----------
    auth.js is cookie-based: the backend sets an httpOnly cookie on
    login/register, and SS_AUTH just keeps a non-authoritative copy of
@@ -409,8 +450,15 @@ function ssRenderHeader(active = "") {
 
       ${link("/about.html", "About", "fa-circle-info")}
        ${link("/contact.html", "Contact", "fa-phone")}
-      ${authLinkHtml}
+            ${authLinkHtml}
       ${link("/register.html", "Sell With Us", "fa-store")}
+
+      <div class="drawer-theme-row">
+        <span class="drawer-theme-row__label"><i class="fa-solid fa-moon"></i> Dark Mode</span>
+        <button type="button" class="theme-toggle" id="drawerThemeToggle" role="switch" aria-checked="false" aria-label="Toggle dark mode">
+          <span class="theme-toggle__thumb"></span>
+        </button>
+      </div>
     </div>
   `;
   document.body.appendChild(overlay);
@@ -484,6 +532,12 @@ function ssRenderHeader(active = "") {
       }
     });
   }
+
+   const themeToggleBtn = document.getElementById("drawerThemeToggle");
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener("click", ssToggleTheme);
+  }
+  ssSyncThemeToggleUI();
 
   SS_CART.updateBadge();
 }
