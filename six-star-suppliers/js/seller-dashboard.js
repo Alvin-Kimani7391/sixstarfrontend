@@ -284,6 +284,12 @@ try {
 
     let stockOverviewData = [];
 
+
+      let stockFilter = "all"; // 'all' | 'out' | 'low' | 'reminders_on' | 'reminders_off'
+  let selectedStockIds = new Set(); // hybrid: individually-ticked OR select-all-in-view
+
+
+
   const els = {
     greeting: document.getElementById("greeting"),
     businessLine: document.getElementById("businessLine"),
@@ -441,6 +447,28 @@ try {
     stockOverviewLoading: document.getElementById("stockOverviewLoading"),
     stockOverviewEmpty: document.getElementById("stockOverviewEmpty"),
     stockOverviewList: document.getElementById("stockOverviewList"),
+        stockMgrFilters: document.getElementById("stockMgrFilters"),
+    stockCountAll: document.getElementById("stockCountAll"),
+    stockCountOut: document.getElementById("stockCountOut"),
+    stockCountLow: document.getElementById("stockCountLow"),
+    stockCountRemOn: document.getElementById("stockCountRemOn"),
+    stockCountRemOff: document.getElementById("stockCountRemOff"),
+    stockOverviewNoMatch: document.getElementById("stockOverviewNoMatch"),
+
+    stockBulkBar: document.getElementById("stockBulkBar"),
+    stockSelectAllCheckbox: document.getElementById("stockSelectAllCheckbox"),
+    stockSelectAllLabel: document.getElementById("stockSelectAllLabel"),
+    stockSelectedCount: document.getElementById("stockSelectedCount"),
+    stockBulkActions: document.getElementById("stockBulkActions"),
+    stockBulkClearBtn: document.getElementById("stockBulkClearBtn"),
+    stockBulkEditBtn: document.getElementById("stockBulkEditBtn"),
+
+    stockBulkPanel: document.getElementById("stockBulkPanel"),
+    stockBulkEnabledCheckbox: document.getElementById("stockBulkEnabledCheckbox"),
+    stockBulkThresholdInput: document.getElementById("stockBulkThresholdInput"),
+    stockBulkApplyBtn: document.getElementById("stockBulkApplyBtn"),
+    stockBulkApplyCount: document.getElementById("stockBulkApplyCount"),
+    stockBulkCancelBtn: document.getElementById("stockBulkCancelBtn"),
 
 
 
@@ -1875,7 +1903,7 @@ try {
     // =========================================================
   // ---------- MANAGE STOCK (inside Analytics) ----------
   // =========================================================
-  if (els.analyticsTabs) {
+   if (els.analyticsTabs) {
     els.analyticsTabs.addEventListener("click", (e) => {
       const btn = e.target.closest("[data-analytics-tab]");
       if (!btn) return;
@@ -1890,11 +1918,15 @@ try {
   async function loadStockOverview() {
     if (els.stockOverviewLoading) els.stockOverviewLoading.style.display = "block";
     if (els.stockOverviewEmpty) els.stockOverviewEmpty.style.display = "none";
+    if (els.stockOverviewNoMatch) els.stockOverviewNoMatch.style.display = "none";
     if (els.stockOverviewList) els.stockOverviewList.innerHTML = "";
 
     try {
       const res = await SS_API.getMyStockOverview();
       stockOverviewData = res.products || [];
+      // Drop any stale selections for products that no longer exist.
+      const validIds = new Set(stockOverviewData.map((p) => p.id));
+      selectedStockIds.forEach((id) => { if (!validIds.has(id)) selectedStockIds.delete(id); });
       renderStockOverviewList();
     } catch (err) {
       console.error("STOCK OVERVIEW LOAD FAILED:", err);
@@ -1904,34 +1936,211 @@ try {
     }
   }
 
+  // ---- filtering helpers ----
+  function getFilteredStockData() {
+    switch (stockFilter) {
+      case "out":
+        return stockOverviewData.filter((p) => p.stock <= 0);
+      case "low":
+        return stockOverviewData.filter((p) => p.stock > 0 && p.isLowStock);
+      case "reminders_on":
+        return stockOverviewData.filter((p) => p.stockReminderEnabled);
+      case "reminders_off":
+        return stockOverviewData.filter((p) => !p.stockReminderEnabled);
+      default:
+        return stockOverviewData;
+    }
+  }
+
+  function updateStockFilterCounts() {
+    const out = stockOverviewData.filter((p) => p.stock <= 0).length;
+    const low = stockOverviewData.filter((p) => p.stock > 0 && p.isLowStock).length;
+    const remOn = stockOverviewData.filter((p) => p.stockReminderEnabled).length;
+    const remOff = stockOverviewData.filter((p) => !p.stockReminderEnabled).length;
+    if (els.stockCountAll) els.stockCountAll.textContent = stockOverviewData.length;
+    if (els.stockCountOut) els.stockCountOut.textContent = out;
+    if (els.stockCountLow) els.stockCountLow.textContent = low;
+    if (els.stockCountRemOn) els.stockCountRemOn.textContent = remOn;
+    if (els.stockCountRemOff) els.stockCountRemOff.textContent = remOff;
+  }
+
+  if (els.stockMgrFilters) {
+    els.stockMgrFilters.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-stock-filter]");
+      if (!btn) return;
+      stockFilter = btn.dataset.stockFilter;
+      els.stockMgrFilters.querySelectorAll(".stock-filter-tab").forEach((b) => b.classList.toggle("active", b === btn));
+      renderStockOverviewList();
+    });
+  }
+
+  // ---- hybrid selection: select-all-in-view + individually ticked rows ----
+  function updateBulkBarUI(visibleList) {
+    const visibleIds = visibleList.map((p) => p.id);
+    const selectedVisibleCount = visibleIds.filter((id) => selectedStockIds.has(id)).length;
+    const totalSelected = selectedStockIds.size;
+
+    if (els.stockSelectAllCheckbox) {
+      els.stockSelectAllCheckbox.checked = visibleIds.length > 0 && selectedVisibleCount === visibleIds.length;
+      els.stockSelectAllCheckbox.indeterminate = selectedVisibleCount > 0 && selectedVisibleCount < visibleIds.length;
+    }
+    if (els.stockSelectAllLabel) {
+      els.stockSelectAllLabel.textContent =
+        visibleIds.length > 0 && selectedVisibleCount === visibleIds.length ? "Deselect all" : "Select all";
+    }
+
+    if (els.stockSelectedCount) {
+      els.stockSelectedCount.style.display = totalSelected > 0 ? "inline-flex" : "none";
+      els.stockSelectedCount.textContent = `${totalSelected} selected`;
+    }
+    if (els.stockBulkActions) {
+      els.stockBulkActions.style.display = totalSelected > 0 ? "flex" : "none";
+    }
+    if (els.stockBulkApplyCount) els.stockBulkApplyCount.textContent = totalSelected;
+
+    if (totalSelected === 0 && els.stockBulkPanel) {
+      els.stockBulkPanel.style.display = "none";
+    }
+  }
+
+  if (els.stockSelectAllCheckbox) {
+    els.stockSelectAllCheckbox.addEventListener("change", () => {
+      const visibleIds = getFilteredStockData().map((p) => p.id);
+      const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedStockIds.has(id));
+      if (allSelected) {
+        visibleIds.forEach((id) => selectedStockIds.delete(id));
+      } else {
+        visibleIds.forEach((id) => selectedStockIds.add(id));
+      }
+      renderStockOverviewList();
+    });
+  }
+
+  if (els.stockBulkClearBtn) {
+    els.stockBulkClearBtn.addEventListener("click", () => {
+      selectedStockIds.clear();
+      if (els.stockBulkPanel) els.stockBulkPanel.style.display = "none";
+      renderStockOverviewList();
+    });
+  }
+
+  if (els.stockBulkEditBtn) {
+    els.stockBulkEditBtn.addEventListener("click", () => {
+      if (els.stockBulkPanel) els.stockBulkPanel.style.display = "block";
+      if (els.stockBulkApplyCount) els.stockBulkApplyCount.textContent = selectedStockIds.size;
+      els.stockBulkPanel?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+  }
+
+  if (els.stockBulkCancelBtn) {
+    els.stockBulkCancelBtn.addEventListener("click", () => {
+      if (els.stockBulkPanel) els.stockBulkPanel.style.display = "none";
+    });
+  }
+
+  if (els.stockBulkApplyBtn) {
+    els.stockBulkApplyBtn.addEventListener("click", async () => {
+      const ids = Array.from(selectedStockIds);
+      if (!ids.length) return;
+
+      const stockReminderEnabled = !!els.stockBulkEnabledCheckbox?.checked;
+      const stockReminderThreshold = Number(els.stockBulkThresholdInput?.value);
+
+      if (Number.isNaN(stockReminderThreshold) || stockReminderThreshold < 0) {
+        ssToast("Please enter a valid threshold (0 or more)", "fa-triangle-exclamation");
+        return;
+      }
+
+      els.stockBulkApplyBtn.disabled = true;
+      const originalLabel = els.stockBulkApplyBtn.innerHTML;
+      els.stockBulkApplyBtn.textContent = "Applying…";
+
+      try {
+        const res = await SS_API.bulkUpdateStockReminder({
+          productIds: ids,
+          stockReminderEnabled,
+          stockReminderThreshold,
+        });
+        ssToast(`Updated stock reminders for ${res.updatedCount || ids.length} product(s)`, "fa-circle-check");
+        selectedStockIds.clear();
+        if (els.stockBulkPanel) els.stockBulkPanel.style.display = "none";
+        loadStockOverview();
+      } catch (err) {
+        ssToast(err.message || "Couldn't update selected products", "fa-triangle-exclamation");
+      } finally {
+        els.stockBulkApplyBtn.disabled = false;
+        els.stockBulkApplyBtn.innerHTML = originalLabel;
+      }
+    });
+  }
+
   function renderStockOverviewList() {
     if (!els.stockOverviewList) return;
 
+    updateStockFilterCounts();
+
     if (!stockOverviewData.length) {
       if (els.stockOverviewEmpty) els.stockOverviewEmpty.style.display = "block";
+      if (els.stockOverviewNoMatch) els.stockOverviewNoMatch.style.display = "none";
+      if (els.stockMgrFilters) els.stockMgrFilters.style.display = "none";
+      if (els.stockBulkBar) els.stockBulkBar.style.display = "none";
+      els.stockOverviewList.innerHTML = "";
       return;
     }
-    if (els.stockOverviewEmpty) els.stockOverviewEmpty.style.display = "none";
 
-    els.stockOverviewList.innerHTML = stockOverviewData.map(stockRowHtml).join("");
+    if (els.stockOverviewEmpty) els.stockOverviewEmpty.style.display = "none";
+    if (els.stockMgrFilters) els.stockMgrFilters.style.display = "flex";
+    if (els.stockBulkBar) els.stockBulkBar.style.display = "flex";
+
+    const filtered = getFilteredStockData();
+
+    if (!filtered.length) {
+      els.stockOverviewList.innerHTML = "";
+      if (els.stockOverviewNoMatch) els.stockOverviewNoMatch.style.display = "block";
+      updateBulkBarUI([]);
+      return;
+    }
+    if (els.stockOverviewNoMatch) els.stockOverviewNoMatch.style.display = "none";
+
+    els.stockOverviewList.innerHTML = filtered.map(stockRowHtml).join("");
 
     els.stockOverviewList.querySelectorAll("[data-stock-save]").forEach((btn) => {
       btn.addEventListener("click", () => saveStockReminder(btn.dataset.stockSave));
     });
+
+    els.stockOverviewList.querySelectorAll("[data-stock-checkbox]").forEach((cb) => {
+      cb.addEventListener("change", () => {
+        const id = cb.dataset.stockCheckbox;
+        if (cb.checked) selectedStockIds.add(id);
+        else selectedStockIds.delete(id);
+        cb.closest(".stock-mgr-row")?.classList.toggle("selected", cb.checked);
+        updateBulkBarUI(filtered);
+      });
+    });
+
+    updateBulkBarUI(filtered);
   }
 
   function stockRowHtml(p) {
-    const low = p.isLowStock;
-    const badge = !p.stockReminderEnabled
+    const isOut = p.stock <= 0;
+    const isLow = !isOut && p.isLowStock;
+    const tone = isOut ? "tone-out" : isLow ? "tone-low" : "";
+
+    const badge = isOut
+      ? `<span class="stock-mgr-badge out"><i class="fa-solid fa-ban"></i> Out of stock</span>`
+      : !p.stockReminderEnabled
       ? `<span class="stock-mgr-badge off"><i class="fa-solid fa-bell-slash"></i> Reminders off</span>`
-      : low
+      : isLow
       ? `<span class="stock-mgr-badge low"><i class="fa-solid fa-triangle-exclamation"></i> Low stock</span>`
       : `<span class="stock-mgr-badge ok"><i class="fa-solid fa-circle-check"></i> Stock OK</span>`;
 
     const cover = p.image || "https://placehold.co/60x60/E4D6BD/5B564C?text=%20";
+    const checked = selectedStockIds.has(p.id) ? "checked" : "";
+    const selectedClass = selectedStockIds.has(p.id) ? "selected" : "";
 
     return `
-      <div class="stock-mgr-row ${low ? "tone-low" : ""}" data-stock-row="${p.id}">
+      <div class="stock-mgr-row ${tone} ${selectedClass}" data-stock-row="${p.id}">
+        <input type="checkbox" class="stock-mgr-row-checkbox" data-stock-checkbox="${p.id}" ${checked} aria-label="Select ${escapeHtml(p.name)}" />
         <img src="${cover}" alt="" />
         <div class="stock-mgr-info">
           <div class="stock-mgr-name">${escapeHtml(p.name)}</div>

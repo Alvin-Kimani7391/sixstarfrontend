@@ -1014,6 +1014,181 @@
     font-size: 1rem;
   }
 }
+
+
+/* ---- Manage Stock: filters ---- */
+.stock-mgr-filters{
+  display:flex; gap:6px; overflow-x:auto; -webkit-overflow-scrolling:touch;
+  margin-bottom:14px; padding-bottom:2px;
+}
+.stock-filter-tab{
+  display:flex; align-items:center; gap:7px; white-space:nowrap; flex-shrink:0;
+  padding:8px 14px; border-radius:999px; border:1px solid var(--line,#e4d6bd);
+  background:var(--white,#fff); font-size:12.5px; font-weight:600; color:var(--ink-soft,#7a7268);
+  cursor:pointer; transition:.15s;
+}
+.stock-filter-tab .count{
+  font-family:var(--font-mono,monospace); font-size:10.5px; font-weight:800;
+  background:rgba(0,0,0,.06); padding:1px 7px; border-radius:999px; color:var(--ink-soft,#7a7268);
+}
+.stock-filter-tab.active{
+  background:var(--navy-deep,#16324f); border-color:var(--navy-deep,#16324f); color:#fff;
+}
+.stock-filter-tab.active .count{ background:rgba(255,255,255,.2); color:#fff; }
+.stock-filter-tab[data-stock-filter="out"].active{ background:#b13a3a; border-color:#b13a3a; }
+
+/* ---- Manage Stock: bulk selection bar ---- */
+.stock-mgr-bulkbar{
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  padding:10px 14px; border:1px solid var(--line,#e4d6bd); border-radius:12px;
+  background:var(--paper-dim,#f1e4ce); margin-bottom:12px;
+}
+.stock-mgr-selectall{
+  display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700;
+  color:var(--ink,#1b1f23); cursor:pointer;
+}
+.stock-mgr-selectall input{ width:16px; height:16px; accent-color:var(--marigold,#f2a93b); }
+.stock-mgr-bulkbar__count{
+  font-size:12px; font-weight:700; color:var(--marigold-deep,#d98c1f);
+  background:rgba(242,169,59,.16); padding:4px 10px; border-radius:999px; display:none;
+}
+.stock-mgr-bulkbar__actions{ display:none; gap:8px; margin-left:auto; }
+
+/* ---- Manage Stock: bulk edit panel ---- */
+.stock-bulk-panel{
+  border:1.5px dashed var(--marigold,#f2a93b); background:rgba(242,169,59,.06);
+  border-radius:14px; padding:14px 16px; margin-bottom:16px;
+}
+.stock-bulk-panel__row{ display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+.stock-bulk-panel .stock-mgr-toggle{ font-weight:700; color:var(--ink,#1b1f23); }
+.stock-bulk-panel .stock-mgr-save{ margin-left:auto; }
+
+/* ---- Manage Stock: row checkbox + out-of-stock tone ---- */
+.stock-mgr-row-checkbox{
+  width:18px; height:18px; flex-shrink:0; cursor:pointer; margin-right:2px;
+  accent-color:var(--marigold,#f2a93b);
+}
+.stock-mgr-row.tone-out{ border-color:rgba(178,58,58,.5); background:rgba(178,58,58,.05); }
+.stock-mgr-row.selected{ border-color:var(--marigold,#f2a93b); box-shadow:0 0 0 2px rgba(242,169,59,.25); }
+.stock-mgr-badge.out{ background:#b13a3a; color:#fff; }
+
+@media (max-width:640px){
+  .stock-mgr-bulkbar{ flex-direction:column; align-items:stretch; }
+  .stock-mgr-bulkbar__actions{ margin-left:0; width:100%; }
+  .stock-mgr-bulkbar__actions .btn{ flex:1; justify-content:center; }
+  .stock-bulk-panel__row{ flex-direction:column; align-items:stretch; }
+  .stock-bulk-panel .stock-mgr-save{ margin-left:0; width:100%; text-align:center; }
+}
+
+
+
+/* ============================================================
+   DROP-IN FIX — Flash Sale submit button should match the
+   Add Product wizard's Save button, responsively, on all screens
+   ============================================================ */
+
+/* Reset the old hardcoded desktop-only !important sizing */
+#saveFlashSaleBtn,
+#flashSaleForm .wizard-footer #saveFlashSaleBtn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  background: var(--marigold, #f2a93b) !important;
+  color: var(--navy-deep, #16324f) !important;
+  border: 2px solid transparent !important;
+  border-radius: 999px !important;
+  font-weight: 700 !important;
+  letter-spacing: .01em !important;
+  box-shadow: 0 8px 18px -8px rgba(217,143,31,.6) !important;
+  cursor: pointer !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  transition: transform .15s ease, box-shadow .15s ease, background .2s ease !important;
+
+  /* same base size as every other wizard-footer button */
+  padding: 11px 20px !important;
+  font-size: .88rem !important;
+  min-height: 44px !important;
+  width: auto !important;
+  flex: 0 0 auto !important;
+}
+#saveFlashSaleBtn:hover  { background: var(--marigold-deep, #d98c1f) !important; transform: translateY(-1px); }
+#saveFlashSaleBtn:disabled { opacity: .55 !important; cursor: not-allowed !important; transform: none !important; }
+
+/* Footer container — same sticky/flex behaviour as the Add Product footer */
+#flashSaleFormModal .modal-sheet {
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+}
+#flashSaleForm { overflow-y: auto; flex: 1; }
+
+#flashSaleForm .wizard-footer,
+#flashSaleFormModal .wizard-footer {
+  display: flex !important;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 26px;
+  border-top: 1px solid var(--line, #e4d6bd);
+  background: var(--white, #fffdf8);
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+#flashSaleForm .wizard-footer__spacer { flex: 1; }
+
+/* ---- Tablet / small screens ---- */
+@media (max-width: 640px) {
+  #flashSaleForm .wizard-footer,
+  #flashSaleFormModal .wizard-footer {
+    padding: 12px 16px !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+  #flashSaleForm .wizard-footer__spacer { display: none !important; }
+
+  #saveFlashSaleBtn,
+  #flashSaleForm #cancelFlashSaleForm {
+    width: 100% !important;
+    flex: 1 1 100% !important;
+    justify-content: center !important;
+    padding: 10px 16px !important;
+    font-size: .82rem !important;
+    min-height: 38px !important;
+  }
+}
+
+/* ---- Phones ---- */
+@media (max-width: 480px) {
+  #flashSaleFormModal .modal-overlay,
+  #flashSaleFormModal { padding: 0 !important; }
+
+  #flashSaleFormModal .modal-sheet {
+    max-width: 100% !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+  }
+  #flashSaleForm .wizard-footer { padding: 12px 16px !important; }
+
+  #saveFlashSaleBtn,
+  #flashSaleForm #cancelFlashSaleForm {
+    padding: 10px 14px !important;
+    font-size: .8rem !important;
+    min-height: 38px !important;
+  }
+}
+
+/* ---- Extra-small phones ---- */
+@media (max-width: 360px) {
+  #saveFlashSaleBtn,
+  #flashSaleForm #cancelFlashSaleForm {
+    padding: 9px 12px !important;
+    font-size: .76rem !important;
+  }
+}
 </style>
 </head>
 <body>
@@ -1537,13 +1712,15 @@
       </div>
 
       <!-- ---- Manage Stock tab (NEW) ---- -->
+      <!-- ---- Manage Stock tab ---- -->
       <div id="analyticsStockTab" class="shop-tab-content">
         <div class="stock-mgr-intro">
           <i class="fa-solid fa-circle-info"></i>
           <div>
             Set a stock threshold per product. The moment a product's stock drops to or below that
             number, you'll get an email reminder to restock — and admin gets a copy so they can
-            monitor whether you update it.
+            monitor whether you update it. Select products individually or use "Select all" to
+            update several at once.
           </div>
         </div>
 
@@ -1556,6 +1733,54 @@
           <i class="fa-solid fa-boxes-stacked"></i>
           <h3>No products yet</h3>
           <p>Products you add will show up here so you can manage their stock reminders.</p>
+        </div>
+
+        <!-- Filters -->
+        <div class="stock-mgr-filters" id="stockMgrFilters" style="display:none;">
+          <button class="stock-filter-tab active" data-stock-filter="all">All <span class="count" id="stockCountAll">0</span></button>
+          <button class="stock-filter-tab" data-stock-filter="out">Out of stock <span class="count" id="stockCountOut">0</span></button>
+          <button class="stock-filter-tab" data-stock-filter="low">Low stock <span class="count" id="stockCountLow">0</span></button>
+          <button class="stock-filter-tab" data-stock-filter="reminders_on">Reminders on <span class="count" id="stockCountRemOn">0</span></button>
+          <button class="stock-filter-tab" data-stock-filter="reminders_off">Reminders off <span class="count" id="stockCountRemOff">0</span></button>
+        </div>
+
+        <!-- Hybrid selection bar: select-all + individually-ticked rows -->
+        <div class="stock-mgr-bulkbar" id="stockBulkBar" style="display:none;">
+          <label class="stock-mgr-selectall">
+            <input type="checkbox" id="stockSelectAllCheckbox" />
+            <span id="stockSelectAllLabel">Select all</span>
+          </label>
+          <div class="stock-mgr-bulkbar__count" id="stockSelectedCount">0 selected</div>
+          <div class="stock-mgr-bulkbar__actions" id="stockBulkActions">
+            <button type="button" class="btn btn-outline btn-sm" id="stockBulkClearBtn">Clear</button>
+            <button type="button" class="btn btn-primary btn-sm" id="stockBulkEditBtn">
+              <i class="fa-solid fa-bell"></i> Set reminder for selected
+            </button>
+          </div>
+        </div>
+
+        <!-- Bulk edit inline panel -->
+        <div class="stock-bulk-panel" id="stockBulkPanel" style="display:none;">
+          <div class="stock-bulk-panel__row">
+            <label class="stock-mgr-toggle">
+              <input type="checkbox" id="stockBulkEnabledCheckbox" checked />
+              Enable email reminders
+            </label>
+            <div class="stock-mgr-threshold">
+              <label for="stockBulkThresholdInput">Remind at ≤</label>
+              <input type="number" min="0" step="1" id="stockBulkThresholdInput" value="5" />
+            </div>
+            <button type="button" class="btn btn-outline btn-sm" id="stockBulkCancelBtn">Cancel</button>
+            <button type="button" class="stock-mgr-save" id="stockBulkApplyBtn">
+              Apply to <span id="stockBulkApplyCount">0</span> product(s)
+            </button>
+          </div>
+        </div>
+
+        <div id="stockOverviewNoMatch" class="analytics-empty" style="display:none;">
+          <i class="fa-solid fa-filter-circle-xmark"></i>
+          <h3>No products match this filter</h3>
+          <p>Try a different filter above.</p>
         </div>
 
         <div id="stockOverviewList" class="stock-mgr-list"></div>

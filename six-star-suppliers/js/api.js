@@ -452,6 +452,19 @@ const SS_API = (() => {
     },
     
 
+        // Bulk-set stock reminder settings (enable/disable + threshold) across
+    // many products in one call — powers "select all / select some" in
+    // the Manage Stock panel.
+    bulkUpdateStockReminder(payload) {
+      return request("/products/stock-reminder/bulk", {
+        method: "PATCH",
+        body: payload,
+        requiresAuth: true,
+      });
+    },
+
+
+
     updateOrderStatus(id, orderStatus) {
       return request(`/orders/${id}/status`, { method: "PATCH", body: { orderStatus }, requiresAuth: true });
     },
