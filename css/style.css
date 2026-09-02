@@ -3016,3 +3016,32 @@ html, body{ transition:background-color .3s ease, color .3s ease; }
   .drawer-theme-row{ padding:13px 20px; }
   .drawer-theme-row__label{ font-size:14px; }
 }
+
+/* ============================================================
+   DARK MODE — follow-up fixes
+   A couple of spots missed on the first pass, appended here so
+   nothing above (including the first dark-mode block) is touched.
+   ============================================================ */
+
+/* .btn-dark pairs a CONSTANT black background (--navy-deep, which
+   never changes with theme) with var(--paper) text — in dark mode
+   --paper flips to a near-black value too, so the text would sit
+   dark-on-black and disappear. Pin it back to a light color. */
+:root[data-theme="dark"] .btn-dark{
+  color:#FFFBF3;
+}
+
+/* Safety net: a few form controls set a token-based background but
+   never set their own `color`, relying on inherited/browser-default
+   text color. That's fine in light mode (default text is already
+   dark), but native <select>/<button> elements in some browsers can
+   ignore inherited color, which would make the text unreadable once
+   the background goes dark. Pinning color explicitly costs nothing
+   in light mode and guarantees legibility in dark mode. */
+:root[data-theme="dark"] .filter-group select,
+:root[data-theme="dark"] .filter-group input,
+:root[data-theme="dark"] .sort-select,
+:root[data-theme="dark"] .pagination button,
+:root[data-theme="dark"] .chip{
+  color:var(--ink);
+}
