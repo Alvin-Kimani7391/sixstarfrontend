@@ -540,6 +540,18 @@ const SS_API = (() => {
       return request(`/categories/${categoryId}/commission`, { requiresAuth: false });
     },
 
+        // Effective shipping classification ('normal' | 'special') for a category —
+    // own setting if set, otherwise inherited from an ancestor, otherwise 'normal'.
+    // Public so the product wizard can show it live while picking a category.
+    getCategoryShippingType(categoryId) {
+      return request(`/categories/${categoryId}/shipping`, { requiresAuth: false });
+    },
+    // The priced shipping-criteria option groups for a category — only
+    // meaningful when its effective shippingType is 'special', but safe to
+    // call regardless (returns an empty list otherwise).
+    getCategoryShippingCriteria(categoryId) {
+      return request(`/categories/${categoryId}/shipping-criteria`, { requiresAuth: false });
+    },
     // ============================================================
     // RFQ / BIDDING / PRIVATE CHAT — seller side (NEW)
     // Matches backend routes/rfqRoutes.js, mounted at /api/rfq

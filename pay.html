@@ -690,6 +690,41 @@ function showPageError(message) {
    same module everywhere.
    ============================================================ */
 let enriched = []; // one entry per cart line, after enrichment against backend
+
+// NEW — live dynamic shipping quote for the current cart, resolved from
+// POST /api/shipping/quote. This is a client-side PREVIEW only — the
+// server recomputes the exact same thing authoritatively at order time
+// (see orderController.createOrder), so this number can be trusted for
+// display but is never itself sent as the source of truth.
+let currentShippingQuote = null; // { standardShippingFee, normalWeightTotalKg, normalTierApplied, specialBreakdown, warnings }
+let shippingQuoteSeq = 0; // guards against a slow, stale request overwriting a newer one
+
+async function loadShippingQuote() {
+  const live = enriched.filter((e) => !e.error);
+  const lines = live
+    .map((e) => ({ productId: e.product?._id, quantity: e.qty }))
+    .filter((l) => l.productId);
+
+  const requestId = ++shippingQuoteSeq;
+
+  if (!lines.length) {
+    currentShippingQuote = null;
+    updateTotal();
+    return;
+  }
+
+  try {
+    const res = await SS_API.getShippingQuote(lines);
+    if (requestId !== shippingQuoteSeq) return; // a newer cart state was quoted meanwhile
+    currentShippingQuote = res;
+  } catch (e) {
+    if (requestId !== shippingQuoteSeq) return;
+    console.error("Shipping quote failed:", e);
+    currentShippingQuote = { standardShippingFee: 0, normalWeightTotalKg: 0, normalTierApplied: null, specialBreakdown: [], warnings: ["Couldn't calculate shipping right now — it will be recalculated at checkout."] };
+  }
+  updateTotal();
+}
+
 let selectedPaymentMethod = "stk";
 let stkPollInterval = null;
 let stkContext = null; // { orderId, orderNumber, phone, grandTotal, itemCount }
@@ -848,10 +883,10 @@ async function loadCheckout() {
   }
 
   container.innerHTML = "<div class='section-loading'><i class='fa-solid fa-spinner fa-spin'></i>Fetching live prices &amp; stock…</div>";
-  enriched = await Promise.all(rawLines.map(enrichLine));
+    enriched = await Promise.all(rawLines.map(enrichLine));
   renderCheckoutItems();
   renderWholesaleDeliveryCard();
-  updateTotal();
+  loadShippingQuote(); // NEW — calls updateTotal() itself once resolved
 }
 
 function renderCheckoutItems() {
@@ -1000,9 +1035,9 @@ function selectAttr(i, attrId, value) {
     SS_CART.setQty(e.line.lineId, e.qty);
     e.unitPrice = SS_CART.resolveUnitPrice(e.product.displayPrice ?? e.product.finalPrice ?? 0, e.product.pricingTiers || [], e.qty) + (match.priceAdjustment || 0);
   }
-  renderCheckoutItems();
+    renderCheckoutItems();
   renderWholesaleDeliveryCard();
-  updateTotal();
+  loadShippingQuote();
 }
 
 function increaseQty(i) {
@@ -1023,10 +1058,10 @@ function applyQtyChange(e) {
   // Flash Sale lines have a single fixed per-unit price (flashSalePrice) —
   // no pricing tiers, no variant price adjustment — so unitPrice never needs
   // recomputing here, unlike regular lines below.
-  if (e.isFlashDeal) {
+   if (e.isFlashDeal) {
     renderCheckoutItems();
     renderWholesaleDeliveryCard();
-    updateTotal();
+    loadShippingQuote();
     return;
   }
 
@@ -1034,7 +1069,7 @@ function applyQtyChange(e) {
   e.unitPrice = SS_CART.resolveUnitPrice(base, e.product.pricingTiers || [], e.qty) + (e.selectedVariant?.priceAdjustment || 0);
   renderCheckoutItems();
   renderWholesaleDeliveryCard();
-  updateTotal();
+  loadShippingQuote();
 }
 
 function removeLine(i) {
@@ -1086,8 +1121,12 @@ regionSelect.addEventListener("change", () => {
   const towns = DELIVERY_DATA[regionSelect.value] || [];
   towns.forEach((place) => {
     const opt = document.createElement("option");
-    opt.value = place.fee; opt.dataset.town = place.town; opt.dataset.days = place.deliveryDays;
-    opt.textContent = `${place.town} - Ksh ${place.fee}`;
+    // NEW — town no longer carries a fee. Shipping cost is now resolved
+    // dynamically from product weight/criteria (see loadShippingQuote()),
+    // not from the delivery destination. Town selection only fixes the
+    // destination and the estimated delivery window.
+    opt.value = place.town; opt.dataset.town = place.town; opt.dataset.days = place.deliveryDays;
+    opt.textContent = place.town;
     townSelect.appendChild(opt);
   });
   updateTotal();
@@ -1141,8 +1180,13 @@ function updateTotal() {
     modeNote.style.display = "none";
   }
 
-  const itemsTotal = live.reduce((sum, e) => sum + e.unitPrice * e.qty, 0);
-  const transport = hasStandardItem ? (Number(townSelect.value) || 0) : 0;
+    const itemsTotal = live.reduce((sum, e) => sum + e.unitPrice * e.qty, 0);
+  // NEW — dynamic shipping fee (weight tiers for 'normal' categories, priced
+  // criteria for 'special' categories), resolved live from the backend
+  // instead of read off the selected town. Falls back to 0 while the quote
+  // is still loading, in which case the Proceed button stays enabled but the
+  // figure will correct itself the instant loadShippingQuote() resolves.
+  const transport = hasStandardItem ? (currentShippingQuote?.standardShippingFee || 0) : 0;
 
   let wholesaleFee = 0;
   const terms = [];
@@ -1155,8 +1199,10 @@ function updateTotal() {
 
   // Standard Transport row: only meaningful (and only added to the total)
   // when at least one standard-delivery item is in the cart.
-  const transportRow = document.getElementById("transport-row");
+    const transportRow = document.getElementById("transport-row");
   transportRow.style.display = hasStandardItem ? "flex" : "none";
+
+  
 
   const wholesaleFeeRow = document.getElementById("wholesale-fee-row");
   wholesaleFeeRow.style.display = hasHeavyWholesale ? "flex" : "none";
@@ -1206,9 +1252,8 @@ function updateTotal() {
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
        <div style="font-size:13px;color:#FF5A1F;font-weight:800;"><i class="fa-solid fa-truck-fast"></i> SIX STAR EXPRESS</div>
       </div>
-      <div class="delivery-row"><strong>Destination</strong><span>${selected.dataset.town}</span></div>
+            <div class="delivery-row"><strong>Destination</strong><span>${selected.dataset.town}</span></div>
       <div class="delivery-row"><strong>Transport Fee</strong>${hasStandardItem ? `<span>Ksh ${transport}</span>` : `<span class="muted">Not charged — wholesale delivery applies</span>`}</div>
-      <div class="delivery-row"><strong>Dispatch Date</strong><span>Saturday, ${formatDate(dispatchDate)}</span></div>
       <div class="delivery-row"><strong>Expected Delivery</strong><span style="color:#FF5A1F;font-weight:700;">${formatDate(startDelivery)} - ${formatDate(endDelivery)}</span></div>
       ${hasHeavyWholesale && terms.length ? `
         <div class="delivery-row" style="border-top:1px solid var(--line);padding-top:8px;margin-top:8px;">
@@ -1554,10 +1599,13 @@ function collectCheckoutFields(msgEl) {
   const agentCode = document.getElementById("agentSelect").value;
   const deliveryAddress = document.getElementById("deliveryAddress").value.trim();
 
-  const live = enriched.filter((e) => !e.error);
+    const live = enriched.filter((e) => !e.error);
   const hasStandardItem = live.some((e) => isStandardDelivery(e));
   const needsNegotiatedAddress = live.some((e) => isNegotiatedDelivery(e));
-  const transportFee = hasStandardItem ? (Number(townSelect.value) || 0) : 0;
+  // NEW — this is now sent purely for the buyer-facing success-screen total;
+  // the backend recomputes and OVERRIDES this with its own authoritative
+  // calculateDynamicShippingFee() result and never trusts the client's number.
+  const transportFee = hasStandardItem ? (currentShippingQuote?.standardShippingFee || 0) : 0;
 
   if (!name || !phone) {
     msgEl.innerHTML = "<span style='color:#E23744'>Please fill in your name and phone number</span>";

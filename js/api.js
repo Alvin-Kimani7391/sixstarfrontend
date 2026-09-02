@@ -430,6 +430,20 @@ getShopBySlug(slug) {
       return request("/rfq/profile/activity", { query: { limit }, requiresAuth: true });
     },
 
+
+        // ============================================================
+    // DYNAMIC SHIPPING (NEW)
+    // ============================================================
+    // Live shipping quote for the current cart — used by checkout.html to
+    // show a real-time fee as items/quantities change. lines: [{ productId,
+    // quantity }]. Public (no auth) since guests preview carts too. This is
+    // the SAME calculation orderController.createOrder runs authoritatively
+    // at order time, so the number shown here never diverges from what gets
+    // charged.
+    getShippingQuote(lines) {
+      return request("/shipping/quote", { method: "POST", body: { lines }, requiresAuth: false });
+    },
+
         // ============================================================
     // CONTACT
     // ============================================================

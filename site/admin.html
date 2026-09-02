@@ -120,6 +120,26 @@
   }
   .od-stat.tone-commission::before { background: var(--teal, #12726b); }
   .od-stat.tone-payout::before { background: var(--marigold-deep, #d98f1f); }
+
+
+
+  .commission-mini-badge {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 11.5px; font-weight: 700; padding: 6px 12px; border-radius: 999px;
+  background: rgba(242,169,59,.12); color: var(--marigold-deep, #d98c1f);
+  border: 1px solid rgba(242,169,59,.32);
+}
+.commission-mini-badge.cm-default { background: rgba(120,120,120,.12); color: #5c5c5c; border-color: rgba(120,120,120,.28); }
+.commission-mini-badge.cm-inherited { background: rgba(59,130,246,.10); color: #1d4ed8; border-color: rgba(59,130,246,.26); }
+.shipping-pill { background: rgba(59,130,246,.12); color: #1d4ed8; }
+.repeater-row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+.repeater-row input { flex: 2; }
+.repeater-row input[type="number"] { flex: 1; }
+.btn-rm {
+  border:none; background:rgba(184,68,46,.1); color:var(--brick, #b8442e);
+  border-radius:8px; width:34px; height:34px; flex-shrink:0; cursor:pointer;
+}
+.btn-rm:hover { background: var(--brick, #b8442e); color: #fff; }
 </style>
 </head>
 <body class="admin-body">
@@ -159,6 +179,7 @@
       <button data-tab="pending"><i class="fa-solid fa-clipboard-check"></i> Pending Products</button>
       <button data-tab="products"><i class="fa-solid fa-boxes-stacked"></i> All Products</button>
       <button data-tab="categories"><i class="fa-solid fa-tags"></i> Categories</button>
+      <button data-tab="shipping"><i class="fa-solid fa-truck-fast"></i> Shipping</button>
       <button data-tab="attributes"><i class="fa-solid fa-sliders"></i> Attributes</button>
       <button data-tab="shops"><i class="fa-solid fa-store"></i> Shops</button>
       <button data-tab="verification"><i class="fa-solid fa-id-card-clip"></i> Seller Verification</button>
@@ -271,6 +292,38 @@
           </div>
         </div>
       </div>
+
+      <!-- ===== SHIPPING (Weight Tiers + Special Criteria pointer) ===== -->
+<div class="tab-panel" id="panel-shipping">
+  <div class="dash-card" style="margin-bottom:20px;">
+    <div class="dash-card__head">
+      <h3>Weight-Based Shipping Tiers</h3>
+      <button class="btn btn-dark btn-sm" id="addWeightTierBtn"><i class="fa-solid fa-plus"></i> Add Tier</button>
+    </div>
+    <p class="text-muted" style="padding:0 18px;">
+      Applies to every product in a category classified as <strong>Normal</strong> shipping. At checkout, the combined
+      weight of all normal-shipping items in the cart (excluding wholesalers who deliver their own products) is matched
+      against one tier below for a single flat fee. Ranges shouldn't overlap between active tiers — leave "Up to" blank
+      on your top tier for an open-ended range (e.g. "20kg and above"). Editing this ladder only affects future quotes.
+    </p>
+    <div class="table-scroll">
+      <table class="dtable">
+        <thead><tr><th>Weight Range (kg)</th><th>Price (KSh)</th><th>Label</th><th>Active</th><th>Actions</th></tr></thead>
+        <tbody id="weightTiersBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="dash-card">
+    <div class="dash-card__head"><h3>Special Shipping Criteria</h3></div>
+    <p class="text-muted" style="padding:0 18px;">
+      Categories classified as <strong>Special</strong> shipping price their products by custom picked criteria
+      (e.g. Size Class, Fragility) instead of weight. Manage a category's classification and its criteria from the
+      <strong>Categories</strong> tab — click a leaf category's "Shipping" button.
+    </p>
+  </div>
+</div>
+
 
       <!-- ===== SHOPS ===== -->
       <div class="tab-panel" id="panel-shops">
@@ -854,6 +907,19 @@
         <input type="number" id="categoryCommission" min="0" max="100" step="0.1" placeholder="e.g. 12">
         <div class="form-hint" id="categoryCommissionEffective">Categories with no rate of their own inherit from their parent category, then finally the platform default.</div>
       </div>
+
+
+      <div class="form-field">
+  <label for="categoryShippingType">Shipping classification <span style="font-weight:400; color:var(--ink-soft);">(leave as "Inherit" to use the parent's setting)</span></label>
+  <select id="categoryShippingType">
+    <option value="">Inherit</option>
+    <option value="normal">Normal — priced by weight</option>
+    <option value="special">Special — priced by custom criteria</option>
+  </select>
+  <div class="form-hint" id="categoryShippingEffective">Categories with no setting of their own inherit from their parent category, then finally default to Normal.</div>
+</div>
+
+
       <div class="form-field" style="flex-direction:row; align-items:center; gap:10px;">
         <label class="switch"><input type="checkbox" id="categoryActive" checked><span class="track"></span></label>
         <label for="categoryActive" style="margin:0;">Active</label>
@@ -1355,7 +1421,100 @@
   </div>
 </div>
 
+<!-- Weight Tier modal (add/edit) -->
+<div class="modal-overlay" id="weightTierModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="weightTierModalTitle">Add Weight Tier</h3>
+      <button class="modal-close" data-close-modal="weightTierModal">&times;</button>
+    </div>
+    <form id="weightTierForm" class="form-grid">
+      <div class="form-field">
+        <label for="weightTierFrom">From (kg)</label>
+        <input type="number" id="weightTierFrom" min="0" step="0.01" required>
+      </div>
+      <div class="form-field">
+        <label for="weightTierTo">Up to (kg) <span style="font-weight:400; color:var(--ink-soft);">(leave blank for open-ended top tier)</span></label>
+        <input type="number" id="weightTierTo" min="0" step="0.01">
+      </div>
+      <div class="form-field">
+        <label for="weightTierPrice">Price (KSh)</label>
+        <input type="number" id="weightTierPrice" min="0" step="1" required>
+      </div>
+      <div class="form-field">
+        <label for="weightTierLabel">Label (optional, internal note)</label>
+        <input type="text" id="weightTierLabel" placeholder="e.g. Light parcels">
+      </div>
+      <div class="form-field" style="flex-direction:row; align-items:center; gap:10px;">
+        <label class="switch"><input type="checkbox" id="weightTierActive" checked><span class="track"></span></label>
+        <label for="weightTierActive" style="margin:0;">Active</label>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Save Tier</button>
+    </form>
+  </div>
+</div>
 
+
+<!-- Shipping Criteria modal (per-category) -->
+<div class="modal-overlay" id="shippingCriteriaModal">
+  <div class="modal modal-lg">
+    <div class="modal-head">
+      <h3>Shipping — <span id="shipCritCategoryName"></span></h3>
+      <button class="modal-close" data-close-modal="shippingCriteriaModal">&times;</button>
+    </div>
+
+    <div id="shipCritEffectiveBanner" class="commission-mini-badge" style="display:none; margin-bottom:16px;"></div>
+
+    <div class="form-field" style="margin-bottom:18px;">
+      <label for="shipCritTypeSelect">This category's shipping classification</label>
+      <select id="shipCritTypeSelect">
+        <option value="">Inherit from parent</option>
+        <option value="normal">Normal — priced by weight</option>
+        <option value="special">Special — priced by custom criteria</option>
+      </select>
+      <div class="form-hint" id="shipCritTypeHint"></div>
+    </div>
+
+    <div id="shipCritCriteriaSection">
+      <div class="dash-card__head" style="padding:0 0 12px; border:none;">
+        <h3 style="font-size:.95rem;">Criteria Groups</h3>
+        <button type="button" class="btn btn-dark btn-sm" id="addShipCritGroupBtn"><i class="fa-solid fa-plus"></i> Add Group</button>
+      </div>
+      <p class="text-muted" style="margin-bottom:14px;">Each group (e.g. "Size Class") has priced options (e.g. Small = KSh 100). Sellers pick one option per required group when listing a product here. Groups can be pre-configured even before switching this category to "Special".</p>
+      <div id="shipCritGroupsList" class="assigned-attr-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Shipping Criteria GROUP modal (add/edit one group + its priced options) -->
+<div class="modal-overlay" id="shipCritGroupModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="shipCritGroupModalTitle">Add Criteria Group</h3>
+      <button class="modal-close" data-close-modal="shipCritGroupModal">&times;</button>
+    </div>
+    <form id="shipCritGroupForm" class="form-grid">
+      <div class="form-field">
+        <label for="shipCritGroupName">Group Name</label>
+        <input type="text" id="shipCritGroupName" required placeholder="e.g. Size Class">
+      </div>
+      <div class="form-field">
+        <label>Priced Options</label>
+        <div id="shipCritOptionRows"></div>
+        <button type="button" class="btn btn-outline btn-sm" id="addShipCritOptionRowBtn" style="margin-top:8px;"><i class="fa-solid fa-plus"></i> Add option</button>
+      </div>
+      <div class="form-field" style="flex-direction:row; align-items:center; gap:10px;">
+        <label class="switch"><input type="checkbox" id="shipCritGroupRequired" checked><span class="track"></span></label>
+        <label for="shipCritGroupRequired" style="margin:0;">Required (seller must pick an option)</label>
+      </div>
+      <div class="form-field" style="flex-direction:row; align-items:center; gap:10px;">
+        <label class="switch"><input type="checkbox" id="shipCritGroupActive" checked><span class="track"></span></label>
+        <label for="shipCritGroupActive" style="margin:0;">Active</label>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Save Group</button>
+    </form>
+  </div>
+</div>
 
 <!-- Agent modal (add/edit) -->
 <div class="modal-overlay" id="agentModal">

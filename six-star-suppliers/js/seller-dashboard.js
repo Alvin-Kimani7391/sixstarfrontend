@@ -202,16 +202,17 @@ try {
   // ---------- wizard step config ----------
   let currentStepIdx = 0;
 
-  const STEP_META = {
+    const STEP_META = {
     basic: { label: "Basics", icon: "fa-file-lines" },
     pricing: { label: "Pricing & stock", icon: "fa-tags" },
+    shipping: { label: "Shipping", icon: "fa-truck-fast" },
     variants: { label: "Variants", icon: "fa-layer-group" },
     wholesale: { label: "Wholesale", icon: "fa-warehouse" },
     photos: { label: "Photos", icon: "fa-images" },
   };
 
-  function getActiveSteps() {
-    const steps = ["basic", "pricing"];
+    function getActiveSteps() {
+    const steps = ["basic", "pricing", "shipping"];
     if (currentVariantDefs.length) steps.push("variants");
     if (IS_WHOLESALER) steps.push("wholesale");
     steps.push("photos");
@@ -281,6 +282,15 @@ try {
   // ID yet, e.g. mid-cascade).
   let currentCommissionInfo = null;
   let commissionRequestSeq = 0; // guards against a slow, stale request overwriting a newer one
+
+    // ---------- dynamic shipping state (NEW) ----------
+  // Resolved live from GET /api/categories/:id/shipping for whichever leaf
+  // category is currently selected — 'normal' (weight-based) or 'special'
+  // (priced-criteria-based). Defaults to 'normal' until a category is picked.
+  let currentShippingType = "normal";
+  let shippingCriteriaGroups = []; // loaded criteria groups when shippingType === 'special'
+  let shippingSelections = {}; // { criteriaGroupId: selectedOptionId }
+  let shippingRequestSeq = 0; // guards against a slow, stale request overwriting a newer one
 
     let stockOverviewData = [];
 
@@ -373,6 +383,15 @@ try {
     commissionMiniBadge: document.getElementById("commissionMiniBadge"),
     commissionNoticeWrap: document.getElementById("commissionNoticeWrap"),
     commissionCard: document.getElementById("commissionCard"),
+
+
+        // dynamic shipping (NEW)
+    shippingTypeBanner: document.getElementById("shippingTypeBanner"),
+    shippingLoadingNote: document.getElementById("shippingLoadingNote"),
+    shippingWeightField: document.getElementById("shippingWeightField"),
+    pWeightKg: document.getElementById("pWeightKg"),
+    shippingCriteriaField: document.getElementById("shippingCriteriaField"),
+    shippingCriteriaGroupsEl: document.getElementById("shippingCriteriaGroups"),
 
     // variants
     variantsSection: document.getElementById("variantsSection"),
@@ -809,18 +828,21 @@ try {
     els.pCategoryLevel2.addEventListener("change", (e) => onCategoryLevelChosen(2, e.target.value));
   }
 
-  async function selectCategoryLeaf(categoryId) {
+    async function selectCategoryLeaf(categoryId) {
     selectedCategoryId = categoryId;
     if (els.categoryPathHint) {
       els.categoryPathHint.textContent = "Loading the details this category needs…";
     }
     await loadAttributesForCategory(categoryId);
-    // NEW: fire off the commission lookup for this leaf category — it renders
+    // fire off the commission lookup for this leaf category — it renders
     // both the Step 1 mini badge and the Step 2 full card once it resolves.
     loadCommissionForCategory(categoryId);
+    // NEW: fire off the shipping classification lookup — renders the Shipping
+    // step's weight field or priced-criteria picker once it resolves.
+    loadShippingForCategory(categoryId);
   }
 
-  function clearCategoryDrivenUI() {
+    function clearCategoryDrivenUI() {
     currentSimpleDefs = [];
     currentVariantDefs = [];
     variantRows = [];
@@ -832,8 +854,10 @@ try {
     if (els.categoryPathHint) {
       els.categoryPathHint.textContent = "Selecting a category loads its required product details automatically.";
     }
-    // NEW: no category selected (yet) -> hide the commission notice everywhere
+    // no category selected (yet) -> hide the commission notice everywhere
     clearCommissionUI();
+    // NEW: same for the shipping step
+    clearShippingUI();
     renderWizard();
   }
 
@@ -1019,6 +1043,178 @@ try {
   if (els.pPrice) {
     els.pPrice.addEventListener("input", updateCommissionPayoutPreview);
   }
+  // =========================================================
+  // ---------- DYNAMIC SHIPPING (NEW) ----------
+  // Resolves whether the currently-selected leaf category ships as
+  // 'normal' (weight-based, priced by the admin's global Weight Tier
+  // ladder) or 'special' (priced by the category's own admin-configured
+  // criteria groups), and renders the right fields in the Shipping step.
+  // Mirrors the commission lookup pattern (live, request-sequence-guarded).
+  // =========================================================
+
+  function clearShippingUI() {
+    currentShippingType = "normal";
+    shippingCriteriaGroups = [];
+    shippingSelections = {};
+    if (els.shippingTypeBanner) {
+      els.shippingTypeBanner.style.display = "none";
+      els.shippingTypeBanner.innerHTML = "";
+    }
+    if (els.shippingWeightField) els.shippingWeightField.style.display = "none";
+    if (els.shippingCriteriaField) els.shippingCriteriaField.style.display = "none";
+    if (els.shippingCriteriaGroupsEl) els.shippingCriteriaGroupsEl.innerHTML = "";
+    if (els.pWeightKg) els.pWeightKg.value = "";
+  }
+
+  async function loadShippingForCategory(categoryId) {
+    if (!categoryId) {
+      clearShippingUI();
+      return;
+    }
+
+    const requestId = ++shippingRequestSeq;
+    if (els.shippingLoadingNote) els.shippingLoadingNote.style.display = "block";
+    if (els.shippingTypeBanner) {
+      els.shippingTypeBanner.style.display = "inline-flex";
+      els.shippingTypeBanner.className = "commission-mini-badge";
+      els.shippingTypeBanner.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Checking shipping requirements…`;
+    }
+
+    try {
+      const res = await SS_API.getCategoryShippingType(categoryId);
+      if (requestId !== shippingRequestSeq) return; // a newer category was picked meanwhile
+
+      currentShippingType = res.shippingType || "normal";
+
+      if (els.shippingTypeBanner) {
+        const tone = res.source === "default" ? "cm-default" : res.inherited ? "cm-inherited" : "";
+        els.shippingTypeBanner.className = `commission-mini-badge ${tone}`;
+        els.shippingTypeBanner.innerHTML = `
+          <i class="fa-solid fa-truck-fast"></i>
+          This category ships as: <strong style="text-transform:capitalize;">${currentShippingType}</strong>
+          ${res.inherited ? `<span style="opacity:.75;">(inherited from "${escapeHtml(res.sourceName)}")</span>` : ""}`;
+      }
+
+      if (currentShippingType === "normal") {
+        shippingCriteriaGroups = [];
+        shippingSelections = {};
+        if (els.shippingWeightField) els.shippingWeightField.style.display = "block";
+        if (els.shippingCriteriaField) els.shippingCriteriaField.style.display = "none";
+      } else {
+        if (els.shippingWeightField) els.shippingWeightField.style.display = "none";
+        if (els.shippingCriteriaField) els.shippingCriteriaField.style.display = "block";
+        await loadShippingCriteriaGroups(categoryId, requestId);
+      }
+    } catch (err) {
+      if (requestId !== shippingRequestSeq) return;
+      console.error("Shipping classification lookup failed:", err);
+      if (els.shippingTypeBanner) {
+        els.shippingTypeBanner.className = "commission-mini-badge cm-default";
+        els.shippingTypeBanner.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Couldn't check shipping requirements — you can still continue.`;
+      }
+    } finally {
+      if (requestId === shippingRequestSeq && els.shippingLoadingNote) {
+        els.shippingLoadingNote.style.display = "none";
+      }
+    }
+  }
+
+  async function loadShippingCriteriaGroups(categoryId, requestId) {
+    try {
+      const res = await SS_API.getCategoryShippingCriteria(categoryId);
+      if (requestId !== shippingRequestSeq) return;
+      shippingCriteriaGroups = res.criteria || [];
+      renderShippingCriteriaGroups();
+    } catch (err) {
+      if (requestId !== shippingRequestSeq) return;
+      console.error("Shipping criteria load failed:", err);
+      if (els.shippingCriteriaGroupsEl) {
+        els.shippingCriteriaGroupsEl.innerHTML = `<p class="form-hint">Couldn't load shipping options for this category — please refresh and try again.</p>`;
+      }
+    }
+  }
+
+   function shippingCriteriaGroupHtml(group) {
+    // NEW — sellers pick which option matches their product, but never see
+    // the KSh price attached to it (that's admin-controlled pricing info,
+    // not something a seller needs or should be able to infer/compare).
+    const options = (group.options || [])
+      .map((o) => {
+        const isActive = shippingSelections[group._id] === o._id;
+        return `
+        <label class="delivery-type-card ${isActive ? "active" : ""}" data-ship-opt-card>
+          <input type="radio" name="shipCritGroup_${group._id}" value="${o._id}" data-ship-crit-group="${group._id}" ${isActive ? "checked" : ""} />
+          <div>
+            <div class="delivery-type-card__title">${escapeHtml(o.label)}</div>
+          </div>
+        </label>`;
+      })
+      .join("");
+
+    return `<div style="margin-bottom:18px;">
+      <label style="font-weight:700; font-size:13px; display:block; margin-bottom:8px;">
+        ${escapeHtml(group.name)}${group.isRequired ? ' <span style="color:var(--brick,#b8442e);">*</span>' : " (optional)"}
+      </label>
+      <div class="delivery-type-group">${options}</div>
+    </div>`;
+  }
+
+  function renderShippingCriteriaGroups() {
+    if (!els.shippingCriteriaGroupsEl) return;
+
+    if (!shippingCriteriaGroups.length) {
+      els.shippingCriteriaGroupsEl.innerHTML = `<p class="form-hint">No shipping options have been configured for this category yet — please contact support before listing this product.</p>`;
+      return;
+    }
+
+    els.shippingCriteriaGroupsEl.innerHTML = shippingCriteriaGroups.map(shippingCriteriaGroupHtml).join("");
+
+    els.shippingCriteriaGroupsEl.querySelectorAll("[data-ship-crit-group]").forEach((input) => {
+      input.addEventListener("change", () => {
+        shippingSelections[input.dataset.shipCritGroup] = input.value;
+        renderShippingCriteriaGroups(); // re-render so the .active highlight follows the selection
+      });
+    });
+  }
+
+  function collectShippingCriteriaSelections() {
+    return shippingCriteriaGroups
+      .filter((g) => shippingSelections[g._id])
+      .map((g) => ({ criteria: g._id, option: shippingSelections[g._id] }));
+  }
+
+  function validateShippingBeforeSubmit() {
+    if (currentShippingType === "normal") {
+      const w = els.pWeightKg?.value;
+      if (!w || Number(w) <= 0) return "Please enter this product's weight (kg) so shipping can be calculated.";
+      return null;
+    }
+    // special
+    for (const group of shippingCriteriaGroups) {
+      if (group.isRequired && !shippingSelections[group._id]) {
+        return `Please select "${group.name}" for shipping.`;
+      }
+    }
+    return null;
+  }
+
+  // Prefills the Shipping step when editing an existing product — called
+  // after loadShippingForCategory() has resolved, from restoreCategoryPath().
+  function restoreShippingPrefill(product) {
+    if (product.weightKg != null && els.pWeightKg) {
+      els.pWeightKg.value = product.weightKg;
+    }
+    if (Array.isArray(product.shippingCriteriaSelections) && product.shippingCriteriaSelections.length) {
+      product.shippingCriteriaSelections.forEach((sel) => {
+        const critId = sel.criteria?._id || sel.criteria;
+        const optId = sel.option;
+        if (critId && optId) shippingSelections[String(critId)] = String(optId);
+      });
+      renderShippingCriteriaGroups();
+    }
+  }
+
+
 
   // ---------- dynamic attribute fields ----------
   function renderAttributeFields(defs, prefillValues = {}) {
@@ -1451,6 +1647,7 @@ try {
       if (!price || Number(price) <= 0) return "Please enter your asking price.";
       return validateRequiredAttributes();
     }
+    if (key === "shipping") return validateShippingBeforeSubmit();
     if (key === "variants") return validateVariantsBeforeSubmit();
     if (key === "wholesale") return null;
     if (key === "photos") {
@@ -3603,7 +3800,9 @@ try {
       // Tree hasn't loaded yet, or this category isn't in it — just select the leaf directly.
       selectedCategoryId = leafId;
       await loadAttributesForCategory(leafId);
-      loadCommissionForCategory(leafId); // NEW: show commission info when editing too
+      loadCommissionForCategory(leafId); // show commission info when editing too
+      await loadShippingForCategory(leafId); // NEW: show shipping info when editing too
+      restoreShippingPrefill(product); // NEW
       restoreAttributeAndVariantValues(product);
       return;
     }
@@ -3622,7 +3821,9 @@ try {
 
     selectedCategoryId = leafId;
     await loadAttributesForCategory(leafId);
-    loadCommissionForCategory(leafId); // NEW: show commission info when editing too
+    loadCommissionForCategory(leafId); // show commission info when editing too
+    await loadShippingForCategory(leafId); // NEW: show shipping info when editing too
+    restoreShippingPrefill(product); // NEW
     restoreAttributeAndVariantValues(product);
   }
 
@@ -3760,9 +3961,15 @@ try {
         return;
       }
 
-      const variantError = validateVariantsBeforeSubmit();
+            const variantError = validateVariantsBeforeSubmit();
       if (variantError) {
         showFormError(variantError);
+        return;
+      }
+
+      const shippingError = validateShippingBeforeSubmit();
+      if (shippingError) {
+        showFormError(shippingError);
         return;
       }
 
@@ -3780,6 +3987,13 @@ try {
       fd.append("description", description);
       fd.append("attributes", JSON.stringify(collectAttributesFromUI()));
       fd.append("variants", JSON.stringify(collectVariantsFromUI()));
+
+      // NEW — dynamic shipping fields
+      if (currentShippingType === "normal") {
+        fd.append("weightKg", els.pWeightKg?.value || "");
+      } else {
+        fd.append("shippingCriteriaSelections", JSON.stringify(collectShippingCriteriaSelections()));
+      }
 
       if (IS_WHOLESALER) {
         fd.append("deliveryType", currentDeliveryType);

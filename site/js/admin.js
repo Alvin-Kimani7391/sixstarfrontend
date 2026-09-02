@@ -16,6 +16,16 @@ let earningsOrdersCache = [];
 let expandedCategoryIds = new Set();
 let feeTiersCache = []; // NEW — seller transaction-fee ladder
 
+
+// NEW — Dynamic Shipping state
+let weightTiersCache = [];
+let shipCritGroupsCache = [];      // criteria groups for whichever category is currently open
+let shipCritTargetCategoryId = null;
+let shipCritOptionRows = [];       // working option rows for the group modal: [{localId,_id,label,price,isActive}]
+let shipCritOptionRowSeq = 0;
+let shipCritEditingGroupId = null;
+
+
 // caches backing the expandable rows
 let allOrdersCache = [];      // last fetched "all orders" list, keyed by lookup below
 let agentOrdersCache = {};    // agentId -> orders[] (lazy-loaded on first expand)
@@ -215,6 +225,7 @@ function switchTab(tab) {
   if (tab === 'products') loadAllProducts();
   if (tab === 'categories') loadCategoriesTable();
   if (tab === 'attributes') loadAttributes();
+    if (tab === 'shipping') loadWeightTiers();
   if (tab === 'shops') loadShops();
   if (tab === 'verification') loadVerifications();
   if (tab === 'legal') loadLegalDocuments();
@@ -432,6 +443,16 @@ function wireStaticButtons() {
   // NEW — Transaction Fee Tier wiring
   document.getElementById('addFeeTierBtn').addEventListener('click', () => openFeeTierModal(null));
   document.getElementById('feeTierForm').addEventListener('submit', submitFeeTierForm);
+
+    // NEW — Weight Tier wiring
+  document.getElementById('addWeightTierBtn').addEventListener('click', () => openWeightTierModal(null));
+  document.getElementById('weightTierForm').addEventListener('submit', submitWeightTierForm);
+
+  // NEW — Shipping Criteria wiring
+  document.getElementById('addShipCritGroupBtn').addEventListener('click', () => openShipCritGroupModal(null));
+  document.getElementById('addShipCritOptionRowBtn').addEventListener('click', () => addShipCritOptionRow());
+  document.getElementById('shipCritGroupForm').addEventListener('submit', submitShipCritGroupForm);
+  document.getElementById('shipCritTypeSelect').addEventListener('change', onShipCritTypeChange);
 
   // Attribute type select toggles the "options" field (only relevant for select/multiselect)
   document.getElementById('attrType').addEventListener('change', (e) => {
@@ -806,10 +827,13 @@ function renderCategoryNodes(nodes, childrenMap) {
         const kids = childrenMap[c._id] || [];
         const hasKids = kids.length > 0;
         const expanded = expandedCategoryIds.has(c._id);
-        const commissionCell =
+               const commissionCell =
           c.commissionRate !== null && c.commissionRate !== undefined
             ? `<span class="commission-pill">${c.commissionRate}%</span>`
             : `<span class="commission-pill inherited">Inherited</span>`;
+        const shippingCell = c.shippingType
+          ? `<span class="commission-pill shipping-pill">${c.shippingType === 'special' ? 'Special' : 'Normal'}</span>`
+          : `<span class="commission-pill inherited">Ships: Inherited</span>`;
 
         return `
       <li class="cat-tree__node" data-cat-id="${c._id}">
@@ -822,14 +846,16 @@ function renderCategoryNodes(nodes, childrenMap) {
             <strong>${escapeHtml(c.name)}${!c.isActive ? ' <span class="text-muted">(inactive)</span>' : ''}</strong>
             <span class="text-muted">${c.slug}</span>
           </div>
-          ${commissionCell}
+                    ${commissionCell}
+          ${shippingCell}
           <label class="switch">
             <input type="checkbox" ${c.isActive ? 'checked' : ''} data-toggle-cat="${c._id}">
             <span class="track"></span>
           </label>
-          ${hasKids
+                    ${hasKids
             ? `<span class="cat-tree__haskids text-muted">${kids.length} sub${kids.length > 1 ? 's' : ''}</span>`
-            : `<button class="act-edit" data-manage-attrs="${c._id}">Attributes</button>`}
+            : `<button class="act-edit" data-manage-attrs="${c._id}">Attributes</button>
+               <button class="act-edit" data-manage-shipping="${c._id}">Shipping</button>`}
           <button class="act-edit" data-edit-cat="${c._id}">Edit</button>
         </div>
         ${hasKids ? `<div class="cat-tree__children" style="display:${expanded ? 'block' : 'none'}">${renderCategoryNodes(kids, childrenMap)}</div>` : ''}
@@ -864,6 +890,11 @@ function wireCategoryTreeEvents(categories) {
   wrap.querySelectorAll('[data-manage-attrs]').forEach((btn) =>
     btn.addEventListener('click', () => openCategoryAttributesModal(categories.find((c) => c._id === btn.dataset.manageAttrs)))
   );
+
+    wrap.querySelectorAll('[data-manage-shipping]').forEach((btn) =>
+    btn.addEventListener('click', () => openShippingCriteriaModal(categories.find((c) => c._id === btn.dataset.manageShipping)))
+  );
+
   wrap.querySelectorAll('[data-toggle-cat]').forEach((toggle) =>
     toggle.addEventListener('change', async () => {
       try {
@@ -923,6 +954,28 @@ function openCategoryModal(category) {
     effEl.textContent = 'New categories inherit from their parent category (or the platform default) until you set a rate here.';
   }
 
+
+    // ---- Shipping classification ----
+  const shipTypeSelect = document.getElementById('categoryShippingType');
+  const shipEffEl = document.getElementById('categoryShippingEffective');
+  shipTypeSelect.value = category?.shippingType || '';
+
+  if (category?._id) {
+    shipEffEl.textContent = 'Checking effective shipping…';
+    apiGet(`/categories/${category._id}/shipping`)
+      .then((res) => {
+        shipEffEl.textContent = category.shippingType
+          ? `This category's own setting: ${res.shippingType}.`
+          : `Currently inherits "${res.shippingType}" from ${res.sourceName}.`;
+      })
+      .catch(() => {
+        shipEffEl.textContent = 'Categories with no setting of their own inherit from their parent category, then default to Normal.';
+      });
+  } else {
+    shipEffEl.textContent = 'New categories inherit from their parent category (or default to Normal) until you set this here.';
+  }
+
+
   openModal('categoryModal');
 }
 
@@ -938,6 +991,9 @@ async function submitCategoryForm(e) {
 
   const commissionVal = document.getElementById('categoryCommission').value.trim();
   formData.append('commissionRate', commissionVal === '' ? 'null' : commissionVal);
+
+    const shippingTypeVal = document.getElementById('categoryShippingType').value;
+  formData.append('shippingType', shippingTypeVal === '' ? 'null' : shippingTypeVal);
 
   const file = document.getElementById('categoryImageInput').files[0];
   if (file) formData.append('image', file);
@@ -1201,6 +1257,336 @@ async function submitCategoryAttributes() {
     showToast(err.message, 'error');
   }
 }
+// ===================================================================
+// WEIGHT TIERS (NEW — global weight-based shipping ladder for 'normal'
+// categories, mirrors the Transaction Fee Tier pattern exactly)
+// ===================================================================
+async function loadWeightTiers() {
+  const tbody = document.getElementById('weightTiersBody');
+  tbody.innerHTML = `<tr><td colspan="5"><div class="spinner"></div></td></tr>`;
+  try {
+    const { tiers } = await apiGet('/admin/weight-tiers');
+    weightTiersCache = [...tiers].sort((a, b) => a.weightFrom - b.weightFrom);
+    renderWeightTiersTable();
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="5"><div class="dash-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>${err.message}</p></div></td></tr>`;
+  }
+}
+
+function renderWeightTiersTable() {
+  const tbody = document.getElementById('weightTiersBody');
+
+  if (weightTiersCache.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5"><div class="dash-empty"><i class="fa-solid fa-weight-hanging"></i><p>No weight tiers yet — normal-shipping items won't be charged anything until you add some.</p></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = weightTiersCache
+    .map(
+      (t) => `
+    <tr>
+      <td>${t.weightFrom}kg – ${t.weightTo != null ? t.weightTo + 'kg' : 'and above'}</td>
+      <td>KSh ${t.price.toLocaleString()}</td>
+      <td class="wrap-cell text-muted">${escapeHtml(t.label || '—')}</td>
+      <td>
+        <label class="switch">
+          <input type="checkbox" ${t.isActive ? 'checked' : ''} data-toggle-weight-tier="${t._id}">
+          <span class="track"></span>
+        </label>
+      </td>
+      <td>
+        <div class="row-actions">
+          <button class="act-edit" data-edit-weight-tier="${t._id}">Edit</button>
+          <button class="act-reject" data-delete-weight-tier="${t._id}">Delete</button>
+        </div>
+      </td>
+    </tr>`
+    )
+    .join('');
+
+  tbody.querySelectorAll('[data-edit-weight-tier]').forEach((btn) =>
+    btn.addEventListener('click', () => openWeightTierModal(weightTiersCache.find((t) => t._id === btn.dataset.editWeightTier)))
+  );
+  tbody.querySelectorAll('[data-delete-weight-tier]').forEach((btn) =>
+    btn.addEventListener('click', () => deleteWeightTierRow(btn.dataset.deleteWeightTier))
+  );
+  tbody.querySelectorAll('[data-toggle-weight-tier]').forEach((toggle) =>
+    toggle.addEventListener('change', async () => {
+      try {
+        await apiPatch(`/admin/weight-tiers/${toggle.dataset.toggleWeightTier}`, { isActive: toggle.checked });
+        showToast(`Tier ${toggle.checked ? 'activated' : 'deactivated'}`);
+        loadWeightTiers();
+      } catch (err) {
+        showToast(err.message, 'error');
+        toggle.checked = !toggle.checked;
+      }
+    })
+  );
+}
+
+function openWeightTierModal(tier) {
+  const modal = document.getElementById('weightTierModal');
+  modal.dataset.tierId = tier?._id || '';
+  document.getElementById('weightTierModalTitle').textContent = tier ? 'Edit Weight Tier' : 'Add Weight Tier';
+  document.getElementById('weightTierFrom').value = tier?.weightFrom ?? '';
+  document.getElementById('weightTierTo').value = tier?.weightTo ?? '';
+  document.getElementById('weightTierPrice').value = tier?.price ?? '';
+  document.getElementById('weightTierLabel').value = tier?.label || '';
+  document.getElementById('weightTierActive').checked = tier ? tier.isActive : true;
+  openModal('weightTierModal');
+}
+
+async function submitWeightTierForm(e) {
+  e.preventDefault();
+  const modal = document.getElementById('weightTierModal');
+  const id = modal.dataset.tierId;
+
+  const toRaw = document.getElementById('weightTierTo').value.trim();
+  const payload = {
+    weightFrom: Number(document.getElementById('weightTierFrom').value),
+    weightTo: toRaw === '' ? null : Number(toRaw),
+    price: Number(document.getElementById('weightTierPrice').value),
+    label: document.getElementById('weightTierLabel').value.trim(),
+    isActive: document.getElementById('weightTierActive').checked,
+  };
+
+  try {
+    if (id) {
+      await apiPatch(`/admin/weight-tiers/${id}`, payload);
+      showToast('Weight tier updated');
+    } else {
+      await apiPost('/admin/weight-tiers', payload);
+      showToast('Weight tier created');
+    }
+    closeModal('weightTierModal');
+    loadWeightTiers();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function deleteWeightTierRow(id) {
+  if (!confirm('Delete this weight tier permanently?')) return;
+  try {
+    await apiDelete(`/admin/weight-tiers/${id}`);
+    showToast('Weight tier deleted');
+    loadWeightTiers();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+// ===================================================================
+// SHIPPING CRITERIA (NEW — per-category priced option groups for
+// 'special' categories, mirrors the Category ↔ Attribute assignment
+// modal pattern)
+// ===================================================================
+async function openShippingCriteriaModal(category) {
+  shipCritTargetCategoryId = category._id;
+  document.getElementById('shipCritCategoryName').textContent = category.name;
+
+  const typeSelect = document.getElementById('shipCritTypeSelect');
+  typeSelect.value = category.shippingType || '';
+
+  const banner = document.getElementById('shipCritEffectiveBanner');
+  banner.style.display = 'inline-flex';
+  banner.className = 'commission-mini-badge';
+  banner.textContent = 'Checking effective shipping classification…';
+
+  openModal('shippingCriteriaModal');
+  await refreshShipCritEffectiveBanner();
+  loadShipCritGroupsForCategory(category._id);
+}
+
+async function refreshShipCritEffectiveBanner() {
+  const banner = document.getElementById('shipCritEffectiveBanner');
+  const hint = document.getElementById('shipCritTypeHint');
+  try {
+    const res = await apiGet(`/categories/${shipCritTargetCategoryId}/shipping`);
+    const tone = res.source === 'default' ? 'cm-default' : res.inherited ? 'cm-inherited' : '';
+    banner.className = `commission-mini-badge ${tone}`;
+    banner.innerHTML = `<i class="fa-solid fa-truck-fast"></i> Effective shipping: <strong style="text-transform:capitalize;">${res.shippingType}</strong>${res.inherited ? ` (inherited from ${escapeHtml(res.sourceName)})` : ''}`;
+    hint.textContent =
+      res.shippingType === 'special'
+        ? 'This category is priced by custom criteria — manage the groups below.'
+        : 'This category is priced by weight (see the Shipping tab). Switch to "Special" to price it by custom criteria instead.';
+  } catch (err) {
+    banner.style.display = 'none';
+  }
+}
+
+async function onShipCritTypeChange(e) {
+  const val = e.target.value; // '', 'normal', 'special'
+  try {
+    await apiPut(`/categories/${shipCritTargetCategoryId}`, { shippingType: val });
+    showToast('Shipping classification updated');
+    loadCategoriesTable(); // refresh the tree pill in the background
+    refreshShipCritEffectiveBanner();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function loadShipCritGroupsForCategory(categoryId) {
+  const list = document.getElementById('shipCritGroupsList');
+  list.innerHTML = `<div class="spinner"></div>`;
+  try {
+    const { criteria } = await apiGet(`/admin/shipping-criteria?category=${categoryId}`);
+    shipCritGroupsCache = criteria;
+    renderShipCritGroupsList();
+  } catch (err) {
+    list.innerHTML = `<div class="dash-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>${err.message}</p></div>`;
+  }
+}
+
+function renderShipCritGroupsList() {
+  const list = document.getElementById('shipCritGroupsList');
+
+  if (!shipCritGroupsCache.length) {
+    list.innerHTML = `<div class="assigned-attr-empty">No criteria groups yet for this category.</div>`;
+    return;
+  }
+
+  list.innerHTML = shipCritGroupsCache
+    .map(
+      (g) => `
+    <div class="assigned-attr-row" style="flex-direction:column; align-items:stretch; gap:8px;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span class="attr-name">${escapeHtml(g.name)}</span>
+        ${g.isRequired ? '<span class="attr-variant-badge">Required</span>' : ''}
+        ${!g.isActive ? '<span class="pill pill-rejected">Inactive</span>' : ''}
+        <div class="move-btns" style="margin-left:auto;">
+          <button type="button" data-edit-ship-group="${g._id}"><i class="fa-solid fa-pen"></i></button>
+          <button type="button" data-delete-ship-group="${g._id}"><i class="fa-solid fa-trash"></i></button>
+        </div>
+      </div>
+      <div class="badge-row">
+        ${g.options.map((o) => `<span class="commission-pill${!o.isActive ? ' inherited' : ''}">${escapeHtml(o.label)} — KSh ${o.price.toLocaleString()}</span>`).join('')}
+      </div>
+    </div>`
+    )
+    .join('');
+
+  list.querySelectorAll('[data-edit-ship-group]').forEach((btn) =>
+    btn.addEventListener('click', () => openShipCritGroupModal(shipCritGroupsCache.find((g) => g._id === btn.dataset.editShipGroup)))
+  );
+  list.querySelectorAll('[data-delete-ship-group]').forEach((btn) =>
+    btn.addEventListener('click', () => deleteShipCritGroupRow(btn.dataset.deleteShipGroup))
+  );
+}
+
+function addShipCritOptionRow(prefill) {
+  shipCritOptionRows.push({
+    localId: ++shipCritOptionRowSeq,
+    _id: prefill?._id || null,
+    label: prefill?.label ?? '',
+    price: prefill?.price ?? '',
+    isActive: prefill ? prefill.isActive !== false : true,
+  });
+  renderShipCritOptionRows();
+}
+
+function removeShipCritOptionRow(localId) {
+  shipCritOptionRows = shipCritOptionRows.filter((r) => r.localId !== localId);
+  renderShipCritOptionRows();
+}
+
+function renderShipCritOptionRows() {
+  const wrap = document.getElementById('shipCritOptionRows');
+  if (!wrap) return;
+
+  if (!shipCritOptionRows.length) {
+    wrap.innerHTML = `<div class="assigned-attr-empty">No options yet — add at least one.</div>`;
+    return;
+  }
+
+  wrap.innerHTML = shipCritOptionRows
+    .map(
+      (r) => `
+    <div class="repeater-row" data-ship-opt-row="${r.localId}">
+      <input type="text" data-ship-opt-input="label" placeholder="Option label e.g. Small" value="${escapeHtml(r.label)}">
+      <input type="number" min="0" step="1" data-ship-opt-input="price" placeholder="Price (KSh)" value="${escapeHtml(String(r.price))}">
+      <button type="button" class="btn-rm" data-ship-opt-remove="${r.localId}" title="Remove option"><i class="fa-solid fa-trash"></i></button>
+    </div>`
+    )
+    .join('');
+
+  wrap.querySelectorAll('[data-ship-opt-row]').forEach((rowEl) => {
+    const localId = Number(rowEl.dataset.shipOptRow);
+    rowEl.querySelectorAll('[data-ship-opt-input]').forEach((input) => {
+      input.addEventListener('input', () => {
+        const row = shipCritOptionRows.find((r) => r.localId === localId);
+        if (!row) return;
+        row[input.dataset.shipOptInput] = input.value;
+      });
+    });
+  });
+  wrap.querySelectorAll('[data-ship-opt-remove]').forEach((btn) =>
+    btn.addEventListener('click', () => removeShipCritOptionRow(Number(btn.dataset.shipOptRemove)))
+  );
+}
+
+function openShipCritGroupModal(group) {
+  shipCritEditingGroupId = group?._id || null;
+  document.getElementById('shipCritGroupModalTitle').textContent = group ? 'Edit Criteria Group' : 'Add Criteria Group';
+  document.getElementById('shipCritGroupName').value = group?.name || '';
+  document.getElementById('shipCritGroupRequired').checked = group ? group.isRequired : true;
+  document.getElementById('shipCritGroupActive').checked = group ? group.isActive : true;
+
+  shipCritOptionRows = [];
+  (group?.options || []).forEach((o) => shipCritOptionRows.push({
+    localId: ++shipCritOptionRowSeq, _id: o._id, label: o.label, price: o.price, isActive: o.isActive !== false,
+  }));
+  if (!group) shipCritOptionRows.push({ localId: ++shipCritOptionRowSeq, _id: null, label: '', price: '', isActive: true });
+  renderShipCritOptionRows();
+
+  openModal('shipCritGroupModal');
+}
+
+async function submitShipCritGroupForm(e) {
+  e.preventDefault();
+  const name = document.getElementById('shipCritGroupName').value.trim();
+  const isRequired = document.getElementById('shipCritGroupRequired').checked;
+  const isActive = document.getElementById('shipCritGroupActive').checked;
+
+  const options = shipCritOptionRows
+    .filter((r) => r.label.trim() !== '' && r.price !== '')
+    .map((r) => ({ _id: r._id || undefined, label: r.label.trim(), price: Number(r.price), isActive: r.isActive !== false }));
+
+  if (!name) { showToast('Group name is required', 'error'); return; }
+  if (!options.length) { showToast('Add at least one priced option', 'error'); return; }
+
+  const payload = { name, isRequired, isActive, options };
+
+  try {
+    if (shipCritEditingGroupId) {
+      await apiPatch(`/admin/shipping-criteria/${shipCritEditingGroupId}`, payload);
+      showToast('Criteria group updated');
+    } else {
+      payload.category = shipCritTargetCategoryId;
+      await apiPost('/admin/shipping-criteria', payload);
+      showToast('Criteria group created');
+    }
+    closeModal('shipCritGroupModal');
+    loadShipCritGroupsForCategory(shipCritTargetCategoryId);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function deleteShipCritGroupRow(id) {
+  if (!confirm('Delete this shipping criteria group? This only works if no product currently uses it.')) return;
+  try {
+    await apiDelete(`/admin/shipping-criteria/${id}`);
+    showToast('Criteria group deleted');
+    loadShipCritGroupsForCategory(shipCritTargetCategoryId);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+
+
 
 // ===================================================================
 // SHOPS (approve / reject / suspend / reactivate / verify / feature / edit / remove)
