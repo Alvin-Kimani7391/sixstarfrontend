@@ -635,7 +635,7 @@ img{ max-width:100%; display:block; }
   background:#fff; color:var(--pop); border:1px solid rgba(124,58,237,.3);
   padding:5px 12px; border-radius:999px;
 }
-.pd-wholesale-panel__body{ padding:16px 18px 18px; }
+.pd-wholesale-panel__body{ padding:16px 18px; }
 
 /* ---- tiered pricing table ---- */
 .pd-tier-table{ width:100%; border-collapse:collapse; margin-bottom:16px; }
@@ -1610,90 +1610,55 @@ body.drawer-lock {
 
 
 
-/* ============================================================
-   ANCHOR OFFSET — so #own-a-shop, #faq etc. don't land hidden
-   under the sticky header when the footer links jump here.
-   ============================================================ */
-.content-block h2[id]{
-  scroll-margin-top: 130px;
+/* ================= WHOLESALE SECTION — distinct from Top Selling =================
+   Top Selling stays violet (--pop). Wholesale gets its own identity: a deep
+   indigo/blue gradient so the two rails are never confused at a glance,
+   while still feeling premium/B2B rather than "just another orange rail". */
+.sec-head--wholesale{
+  background:linear-gradient(90deg,#1E3A8A,#2563EB 55%,#3B82F6);
+  color:#fff;
+  border-bottom:none;
 }
-@media(max-width:599px){
-  .content-block h2[id]{ scroll-margin-top: 100px; }
+.sec-head--wholesale .see-all{
+  color:#fff;
+  background:rgba(255,255,255,.18);
+  border:1px solid rgba(255,255,255,.3);
+  padding:6px 13px;
+  border-radius:20px;
 }
+.sec-head--wholesale .see-all:hover{ background:#fff; color:#1E3A8A; }
+.sec-head--wholesale h2 i{ color:var(--sun); }
 
-/* ============================================================
-   SHOP OWNERSHIP STEPS — used on about.html's "Own a shop" section
-   ============================================================ */
-.shop-steps{
-  display:grid;
-  gap:14px;
-  margin:20px 0 26px;
+/* ================= CATALOG SECTION — light tint behind the rail =================
+   Everything else on the page sits on var(--bg-page) already, so the
+   Catalog block was blending straight into the page background with
+   nothing to set it apart. This gives it a very light, warm backdrop
+   (distinct from --bg-page) so the section reads as its own zone. */
+.block--catalog{
+  background:#FCFAF6;
+  border-top:1px solid var(--line-soft);
+  border-bottom:1px solid var(--line-soft);
 }
-@media(min-width:640px){
-  .shop-steps{ grid-template-columns:repeat(2,1fr); }
-}
-
-.shop-step{
-  display:flex;
-  gap:14px;
-  align-items:flex-start;
-  background:var(--surface, #fff);
-  border:1px solid var(--line);
-  border-radius:var(--radius-md);
-  padding:16px 18px;
-  transition:.2s var(--ease-out, ease);
-}
-.shop-step:hover{
-  border-color:var(--brand);
-  transform:translateY(-2px);
+.block--catalog .rail{
+  background:var(--surface);
   box-shadow:var(--shadow-soft);
 }
-.shop-step__num{
-  flex-shrink:0;
-  width:34px;
-  height:34px;
-  border-radius:50%;
-  background:var(--grad-brand-deep, linear-gradient(135deg,var(--brand),var(--brand-dark)));
-  color:#fff;
-  font-family:var(--font-mono);
-  font-weight:800;
-  font-size:14px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-.shop-step__body h3{
-  font-family:var(--font-display);
-  font-size:.98rem;
-  font-weight:600;
-  color:var(--ink);
-  margin-bottom:4px;
-}
-.shop-step__body p{
-  font-size:.85rem;
-  color:var(--ink-soft);
-  line-height:1.6;
-  margin:0;
+
+@media(max-width:599px){
+  .block--catalog{ border-left:none; border-right:none; }
 }
 
-.shop-cta{
-  display:flex;
-  gap:12px;
-  flex-wrap:wrap;
-  margin:6px 0 34px;
-}
-@media(max-width:480px){
-  .shop-cta{ flex-direction:column; }
-  .shop-cta .btn{ width:100%; }
-}
 
 
 
 /* ============================================================
    LOAD MORE — used on product.html (loads next 8 in place) and
    on index.html's catalog rail (redirects to product.html).
-   Same component, same look, two different click behaviors
-   wired up in home.js / products.js.
+   Rewritten to only use tokens that exist in theme.css
+   (--brand, --brand-dark, --font-body, --ink-faint) — the
+   previous version referenced --grad-brand-deep / --ease-out,
+   which only exist in style.css, so the button rendered with
+   no background at all.
    ============================================================ */
 
 .load-more-wrap{
@@ -1715,7 +1680,7 @@ body.drawer-lock {
   padding:14px 30px;
   border:none;
   border-radius:999px;
-  background:var(--grad-brand-deep);
+  background:linear-gradient(90deg,var(--brand),var(--brand-dark));
   color:#fff;
   font-family:var(--font-body);
   font-weight:700;
@@ -1723,7 +1688,7 @@ body.drawer-lock {
   letter-spacing:.2px;
   cursor:pointer;
   box-shadow:0 10px 24px -10px rgba(255,90,31,.5);
-  transition:transform .22s var(--ease-out), box-shadow .22s var(--ease-out), filter .2s ease;
+  transition:transform .22s ease, box-shadow .22s ease, filter .2s ease;
 }
 
 .btn-loadmore__label{
@@ -1737,7 +1702,7 @@ body.drawer-lock {
   font-family:"Font Awesome 6 Free";
   font-weight:900;
   font-size:11px;
-  transition:transform .25s var(--ease-out), opacity .2s ease;
+  transition:transform .25s ease, opacity .2s ease;
 }
 
 .btn-loadmore:hover:not(:disabled){
@@ -1793,7 +1758,6 @@ body.drawer-lock {
     font-size:13.5px;
   }
 }
-
 
 
 
@@ -2108,6 +2072,7 @@ body.drawer-lock {
 
 
 
+
 /* ============================================================
    FLASH SALE — live daily event rail (2:00 PM - midnight).
    Deliberately its own orange->gold gradient so it reads as the
@@ -2200,6 +2165,12 @@ body.drawer-lock {
   align-items:center;
   gap:4px;
 }
+
+
+
+
+
+
 
 
 
@@ -2312,6 +2283,75 @@ body.drawer-lock {
 
 
 
+
+
+
+
+
+/* ============================================================
+   FIX: Top Selling Categories / Shop by Category grid for phone
+   ============================================================ */
+
+@media(max-width:599px){
+  /* Increase the category grid to 4 columns on phones 
+     (adjusts the gap for better spacing) */
+  .cat-scroll {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px 8px;
+    padding: 0 14px;
+  }
+  
+  /* Make category items slightly more compact on small screens */
+  .cat-item {
+    gap: 6px;
+  }
+  
+  /* Category thumbnails should be smaller to fit 4 across */
+  .cat-thumb {
+    border-radius: var(--radius-sm);
+  }
+  
+  /* Category labels need to be readable but compact */
+  .cat-item span {
+    font-size: 10.5px;
+    max-width: 100%;
+    line-height: 1.2;
+  }
+}
+
+/* Extra-small phones (under 375px) — drop to 3 columns */
+@media(max-width:374px){
+  .cat-scroll {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px 6px;
+  }
+  
+  .cat-item span {
+    font-size: 10px;
+  }
+}
+
+/* ============================================================
+   "Top selling Categories" grid (#categoryGrid) — pinned to a
+   4-across layout on EVERY phone size (home.js now caps this
+   grid at 8 items, so 4-across always resolves to a clean two
+   rows, never an awkward leftover). #categoryGrid's ID
+   specificity beats the plain .cat-scroll rules above/below on
+   purpose, including the 3-column extra-small-phone override,
+   so this one grid never drops below 4 columns.
+   ============================================================ */
+@media(max-width:599px){
+  #categoryGrid.cat-scroll{
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 12px 8px;
+  }
+}
+@media(max-width:374px){
+  #categoryGrid.cat-scroll{
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 9px 6px;
+  }
+}
 
 /* ============================================================
    DRAWER — Chat badge + "Request a Quote" signature row
@@ -2649,6 +2689,10 @@ body.drawer-lock {
 
 
 
+
+/* ---- "Shop by Category" row: toggle button + View All shortcut into
+   category.html — sits inline with the toggle, doesn't affect the
+   accordion's own open/close behaviour. ---- */
 .drawer-cat-viewall{
   flex-shrink:0;
   font-size:11px;
@@ -2659,6 +2703,8 @@ body.drawer-lock {
 .drawer-cat-viewall:hover{
   text-decoration:underline;
 }
+
+
 
 
 
@@ -2700,3 +2746,273 @@ body.drawer-lock {
 
 .alert-danger{ background:#fdf0ee; border:1px solid #f2c8c1; color:#b3261e; padding:12px 16px; border-radius:10px; margin-bottom:16px; }
 
+
+/* ============================================================
+   DARK MODE
+   Toggled by setting data-theme="dark" on <html> (see ui.js —
+   ssApplyTheme() / the drawer toggle switch already wired up in
+   ssRenderHeader()). This block is 100% additive: nothing above
+   it is modified. It works the same way the theme.css dark block
+   does — overriding the CSS custom properties (--ink, --paper,
+   --white, --line, --bg-page, --surface, etc.) that almost every
+   rule in this file already reads from, so the listing pages,
+   product-detail page, cart/checkout, auth, and static pages all
+   re-color themselves for free.
+
+   A handful of elements use those SAME tokens to mean "always
+   near-black" or "always near-white" rather than "current theme
+   color" (the ticker, drawer, toast, scroll-top button, RFQ modal's
+   dark hero/CTA, timeline dots, the active role-card label, and the
+   orange page-hero heading) — those get the relevant token re-pinned
+   back to its light-mode value so they don't invert into unreadable
+   text. Product cards (grid/rail cards, related-products, and their
+   loading skeletons) are deliberately re-pinned to stay on a white
+   surface in dark mode too, matching theme.css's product cards.
+   ============================================================ */
+
+/* Default so pages that never had --wholesale-bg defined keep the
+   exact same pale-violet chip they already render today — this line
+   changes nothing visually, it just gives the dark override below
+   something real to replace. */
+:root{ --wholesale-bg:#F5F0FF; }
+
+:root[data-theme="dark"]{
+  --ink:#F4F5F7;
+  --ink-soft:#B9BAC2;
+  --ink-faint:#7D7E88;
+
+  --paper:#0B0B0D;
+  --paper-dim:#131318;
+  --white:#17181D;
+
+  --line:#2A2B31;
+  --line-soft:#1F2025;
+
+  --bg-page:#0B0B0D;
+  --surface:#17181D;
+
+  --wholesale-bg:#241A3D;
+
+  --shadow-soft:0 10px 26px rgba(0,0,0,.5);
+  --shadow-pop:0 16px 36px rgba(255,90,31,.32);
+  --shadow-pop-lg:0 22px 48px rgba(255,90,31,.34);
+  --shadow-card-hover:0 16px 32px rgba(0,0,0,.6);
+
+  color-scheme: dark;
+}
+
+/* smooth, non-jarring switch when the toggle is flipped — scoped to
+   html/body only, so it never interferes with any existing hover/
+   transform transition declared elsewhere in this file */
+html, body{ transition:background-color .3s ease, color .3s ease; }
+
+/* body hardcodes its own colors rather than reading the tokens, so
+   it needs its own explicit override */
+:root[data-theme="dark"] body{
+  background:var(--bg-page);
+  color:var(--ink);
+}
+
+:root[data-theme="dark"] ::selection{ color:#17181C; }
+
+/* ---- header chrome: translucent white glass -> translucent dark glass ---- */
+:root[data-theme="dark"] .site-header{
+  background:rgba(14,15,17,.90);
+}
+:root[data-theme="dark"] .top-bar{
+  background:#101012;
+  border-bottom-color:#232328;
+}
+:root[data-theme="dark"] .top-bar a{
+  color:#B9BAC2;
+}
+
+/* ---- always-dark chrome: these already render as a fixed dark
+   panel with hardcoded light text/icons in normal (light) mode too
+   — they read var(--ink) or var(--white) expecting a fixed value.
+   Re-pinning here is a no-op in light mode (same as the base value)
+   and keeps them correct once those tokens change meaning in dark
+   mode. ---- */
+:root[data-theme="dark"] .ticker{
+  background:#1A1A1A;
+}
+:root[data-theme="dark"] .drawer{
+  background:#1A1A1A;
+}
+:root[data-theme="dark"] #toast{
+  background:#1A1A1A;
+  color:#FFFBF3;
+}
+:root[data-theme="dark"] .scroll-top-btn,
+:root[data-theme="dark"] .scroll-top-btn:not(.show){
+  background:#17181C !important;
+}
+:root[data-theme="dark"] .rfq-intro-modal__hero{
+  background:linear-gradient(165deg,#17181C 0%,#23242B 60%,#1A1B20 100%);
+}
+:root[data-theme="dark"] .rfq-intro-modal__actions .btn-primary{
+  background:#000;
+}
+:root[data-theme="dark"] .timeline-dot{
+  color:#fff;
+}
+:root[data-theme="dark"] .timeline-step.done .timeline-dot{
+  background:#17181C;
+}
+:root[data-theme="dark"] .role-card.active div{
+  color:#FFFBF3;
+}
+:root[data-theme="dark"] .page-hero h1{
+  color:#FFFBF3;
+}
+:root[data-theme="dark"] .pd-hotdeal-badge{
+  color:#17181C;
+}
+
+/* ---- form controls / inputs that hardcode a light background ---- */
+:root[data-theme="dark"] .search-bar form{
+  background:#1A1B1F;
+}
+:root[data-theme="dark"] .cat-cascade__select{
+  background:#1A1B1F;
+  color:#F4F5F7;
+  border-color:#2A2B31;
+}
+:root[data-theme="dark"] .qty-stepper button,
+:root[data-theme="dark"] .form-field input,
+:root[data-theme="dark"] .form-field select,
+:root[data-theme="dark"] .form-field textarea{
+  color:var(--ink);
+}
+
+/* ---- product-detail add-on panels: a few literal-white/pale spots
+   that need a dark counterpart; everything else on this page reads
+   the tokens directly and re-colors on its own ---- */
+:root[data-theme="dark"] .pd-moq-chip{
+  background:#22232A;
+}
+:root[data-theme="dark"] .pd-stock-warn{
+  background:#3D2E0A;
+  color:#FFD98A;
+  border-color:#5C4813;
+}
+:root[data-theme="dark"] .pd-delivery-info.free{
+  background:#173620;
+}
+:root[data-theme="dark"] .pd-delivery-info.free i,
+:root[data-theme="dark"] .pd-delivery-info.free strong{
+  color:#8FDDA0;
+}
+
+/* ---- alert banners (auth / forms) ---- */
+:root[data-theme="dark"] .alert-error,
+:root[data-theme="dark"] .alert-danger{
+  background:#3D1712;
+  color:#FF8A7A;
+  border-color:#5C241C;
+}
+:root[data-theme="dark"] .alert-success{
+  background:#0F2A20;
+  color:#5FD9A8;
+  border-color:#1B4335;
+}
+
+/* ---- product cards, their loading skeletons, and any embedded
+   related-product cards stay on a white surface in dark mode,
+   matching theme.css's product cards. Re-pinning the tokens here
+   means every existing .p-card descendant rule above (name, price,
+   badges, seller line, wholesale/MOQ details, stock states, the
+   die-cut price-tag ticket, flash-sale cards which share this same
+   class, etc.) keeps working exactly as written — nothing about
+   .p-card's own CSS needs to change. ---- */
+:root[data-theme="dark"] .p-card,
+:root[data-theme="dark"] .skel-card,
+:root[data-theme="dark"] .pd-related-grid .p-card{
+  --ink:#17181C;
+  --ink-soft:#6b6d78;
+  --ink-faint:#9a9ba5;
+  --paper:#FFFBF3;
+  --paper-dim:#FDF1E2;
+  --white:#FFFFFF;
+  --line:#F0E4D2;
+  --line-soft:#F6EEDF;
+  --bg-page:#FFFBF3;
+  --surface:#FFFFFF;
+  --wholesale-bg:#F5F0FF;
+  background:var(--surface);
+}
+
+/* standalone loading placeholders (category tile shimmer, etc.)
+   also stay on the light shimmer gradient regardless of theme */
+:root[data-theme="dark"] .skel,
+:root[data-theme="dark"] .skeleton-card{
+  background:linear-gradient(100deg,#F0E4D2 30%,#fff 50%,#F0E4D2 70%);
+}
+
+/* ============================================================
+   DARK-MODE TOGGLE — the switch row appended to the end of the
+   mobile drawer (see ui.js). Lives inside .drawer, so it always
+   uses the drawer's own fixed dark palette rather than the page
+   tokens — it looks right whether the page itself is currently
+   light or dark. Unconditional component styling (not wrapped in
+   the dark-mode selector) since the drawer itself is always dark
+   chrome regardless of site theme, exactly like theme.css's copy
+   of this same component.
+   ============================================================ */
+.drawer-theme-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:15px 26px;
+  border-top:1px solid rgba(255,255,255,.08);
+  margin-top:8px;
+}
+.drawer-theme-row__label{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  color:#F0F0F2;
+  font-weight:600;
+  font-size:15px;
+}
+.drawer-theme-row__label i{
+  width:20px;
+  text-align:center;
+  color:var(--sun);
+  font-size:16px;
+}
+.theme-toggle{
+  position:relative;
+  width:46px;
+  height:26px;
+  border-radius:20px;
+  border:none;
+  background:rgba(255,255,255,.14);
+  cursor:pointer;
+  flex-shrink:0;
+  padding:0;
+  transition:background .25s ease;
+}
+.theme-toggle__thumb{
+  position:absolute;
+  top:3px;
+  left:3px;
+  width:20px;
+  height:20px;
+  border-radius:50%;
+  background:#fff;
+  transition:transform .25s cubic-bezier(.22,1,.36,1);
+  box-shadow:0 2px 6px rgba(0,0,0,.3);
+}
+.theme-toggle.active{
+  background:linear-gradient(90deg,var(--brand),var(--brand-dark));
+}
+.theme-toggle.active .theme-toggle__thumb{
+  transform:translateX(20px);
+}
+
+@media(max-width:599px){
+  .drawer-theme-row{ padding:13px 20px; }
+  .drawer-theme-row__label{ font-size:14px; }
+}
