@@ -3045,3 +3045,39 @@ html, body{ transition:background-color .3s ease, color .3s ease; }
 :root[data-theme="dark"] .chip{
   color:var(--ink);
 }
+
+/* ============================================================
+   DARK MODE — profile.html fixes
+   profile.html ships its own inline <style> block (in <head>)
+   that predates dark mode: several rules use var(--navy-deep) as
+   a fixed "dark text on a white card" color. --navy-deep never
+   changes with theme (by design, elsewhere it's a deliberate
+   near-black accent), so once the cards it sits on flip dark via
+   the tokens above, that text goes dark-on-dark and disappears —
+   the order ID/total, the "My Orders" active tab, the expanded
+   order-detail rows, and the "Hide details" toggle once opened.
+   These overrides target profile.html's own class names directly
+   (higher specificity than its inline <style> block, so they win
+   regardless of load order) rather than editing that page's HTML.
+   ============================================================ */
+:root[data-theme="dark"] .acct-user-name,
+:root[data-theme="dark"] .order-id,
+:root[data-theme="dark"] .order-total,
+:root[data-theme="dark"] .order-detail-section h4,
+:root[data-theme="dark"] .detail-item-name,
+:root[data-theme="dark"] .detail-item-total,
+:root[data-theme="dark"] .detail-price-row.total,
+:root[data-theme="dark"] .detail-kv span:last-child{
+  color:var(--ink);
+}
+:root[data-theme="dark"] .acct-tab.active,
+:root[data-theme="dark"] .btn-details-toggle.open{
+  color:#FFFBF3;
+}
+:root[data-theme="dark"] .live-dot{
+  color:#3FDC8B;
+}
+:root[data-theme="dark"] .mini-chip.wholesale{
+  background:#241A3D;
+  color:#C9A8FF;
+}
