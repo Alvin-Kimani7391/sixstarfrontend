@@ -10,36 +10,69 @@ let ssShopDetailState = {
   limit: 12,
   sort: "-createdAt",
   search: "",
-  // Becomes true the moment the shopper explicitly picks a sort option or
-  // runs a search — from then on we stop shuffling and just show exactly
-  // what they asked for. Resets to false on a fresh page load (new shop
-  // visit), matching wholesale.html/product.html's "default view only"
-  // shuffle rule.
   sortTouched: false
 };
 
 function ssGetSlugFromUrl() {
-  // Legacy support: shop-detail.html?slug=xyz or ?id=xyz
   const params = new URLSearchParams(location.search);
   if (params.get("slug")) return params.get("slug");
   if (params.get("id")) return params.get("id");
 
-  // Pretty URL: /shop/miamii-bags -> "miamii-bags"
   const match = location.pathname.match(/\/shop\/([^/?#]+)/);
   if (match) return decodeURIComponent(match[1]);
 
   return "";
 }
 
+// Reads the shop object api/shop-detail.js already fetched server-side
+// (see <!--SSR_SHOP_DATA--> in the template) so the page can paint
+// instantly instead of firing a second request at the same API.
+function ssReadSsrShopData() {
+  const el = document.getElementById("ssrShopData");
+  if (!el || !el.textContent) return null;
+  try {
+    const data = JSON.parse(el.textContent);
+    return data && (data.id || data._id) ? data : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function ssShowShopDetailContent() {
+  const detail = document.getElementById("shopDetailContent");
+  const notFound = document.getElementById("shopNotFound");
+  if (detail) detail.style.display = "";
+  if (notFound) notFound.style.display = "none";
+}
+
+function ssShowShopNotFound() {
+  const detail = document.getElementById("shopDetailContent");
+  const notFound = document.getElementById("shopNotFound");
+  if (detail) detail.style.display = "none";
+  if (notFound) notFound.style.display = "block";
+}
+
 async function ssInitShopDetail() {
   const slug = ssGetSlugFromUrl();
   if (!slug) { ssShowShopNotFound(); return; }
+
+  const ssrShop = ssReadSsrShopData();
+  if (ssrShop) {
+    ssShopDetailState.shop = ssrShop;
+    ssShowShopDetailContent();
+    ssRenderShopPassport(ssrShop);
+    document.title = `${ssrShop.shopName} — Six Star Suppliers`;
+    ssLoadShopProducts();
+    ssLoadShopReviews();
+    return;
+  }
 
   try {
     const res = await SS_API.getShopBySlug(slug);
     const shop = res.shop;
     if (!shop) { ssShowShopNotFound(); return; }
     ssShopDetailState.shop = shop;
+    ssShowShopDetailContent();
     ssRenderShopPassport(shop);
     document.title = `${shop.shopName} — Six Star Suppliers`;
     ssLoadShopProducts();
@@ -48,11 +81,6 @@ async function ssInitShopDetail() {
     console.error("ssInitShopDetail failed:", err);
     ssShowShopNotFound();
   }
-}
-
-function ssShowShopNotFound() {
-  document.getElementById("shopDetailContent").style.display = "none";
-  document.getElementById("shopNotFound").style.display = "block";
 }
 
 function ssRenderShopPassport(shop) {
@@ -94,9 +122,6 @@ function ssRenderShopPassport(shop) {
   `;
 }
 
-// Lightweight refresh for just the passport's rating stat block — used after
-// a review is submitted so the header updates instantly without re-rendering
-// (and losing) the rest of the passport card, like the product count.
 function ssUpdateShopRatingStats(shop) {
   const avgEl = document.getElementById("shopAvgRatingStat");
   const countEl = document.getElementById("shopReviewCountStat");
@@ -108,15 +133,6 @@ function ssUpdateShopRatingStats(shop) {
   }
 }
 
-// ============================================================
-// Randomized display order — ONLY for this shop's default product view.
-// Turns off for the rest of the visit the moment the shopper explicitly
-// changes the sort dropdown or runs a search (see ssShopDetailState.sortTouched,
-// set by the event listeners at the bottom of this file). Shuffling
-// happens per fetched page (server already paginates 12/page), so counts,
-// "X products", and pagination math are all completely unaffected — only
-// the visual order of whatever page just came back changes.
-// ============================================================
 function ssShouldShuffleShopListing() {
   return !ssShopDetailState.search && !ssShopDetailState.sortTouched;
 }
@@ -193,10 +209,6 @@ function ssRenderShopProductsPagination(el, page, pages) {
   });
 }
 
-/* ============================================================
-   SHOP REVIEWS
-   ============================================================ */
-
 function ssStarsHtml(rating, size = 14) {
   const full = Math.round(rating);
   let html = `<span class="star-row" style="font-size:${size}px;">`;
@@ -224,8 +236,6 @@ async function ssLoadShopReviews() {
       <span style="color:var(--ink-faint);font-size:12.5px;margin-left:4px;">(${count} review${count === 1 ? "" : "s"})</span>
     `;
 
-    // Keep the passport header's stat block in sync with whatever we just
-    // fetched, in case it's stale from a previous render.
     ssUpdateShopRatingStats(shop);
 
     if (!reviews.length) {
@@ -252,9 +262,6 @@ async function ssLoadShopReviews() {
 
 function ssRenderShopReviewForm() {
   const wrap = document.getElementById("shopReviewFormWrap");
-  // SS_AUTH exposes get(), not getUser() — that mismatch was the bug causing
-  // this to always fall through to the "log in as a buyer" message even for
-  // logged-in buyers.
   const user = typeof SS_AUTH !== "undefined" && SS_AUTH.get ? SS_AUTH.get() : null;
 
   if (!user) {
@@ -324,8 +331,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.getElementById("shopProductSort").addEventListener("change", e => {
     ssShopDetailState.sort = e.target.value;
-    // User explicitly picked a sort order — respect it exactly, no more
-    // shuffling for the rest of this shop visit.
     ssShopDetailState.sortTouched = true;
     ssShopDetailState.page = 1;
     ssLoadShopProducts();

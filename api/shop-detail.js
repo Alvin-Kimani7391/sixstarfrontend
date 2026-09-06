@@ -1,8 +1,19 @@
 /**
  * api/shop-detail.js  (Vercel Serverless Function)
  * -----------------------------------------------------------------------
- * Reads the template from templates/shop-detail.html to match
- * vercel.json's includeFiles: "templates/shop-detail.html".
+ * Changes from before:
+ *  - Explicit no-store cache headers on every response (defense in depth,
+ *    regardless of what's happening upstream in Cloudflare/Vercel).
+ *  - Injects REAL visible text (shop name, category, description, rating)
+ *    into the page body via <!--SSR_SHOP_INTRO--> — not just <head> meta —
+ *    so a crawler that never runs shop-detail.js still sees genuine,
+ *    unique content that matches the title/meta tags.
+ *  - Hands the already-fetched shop object to the client via
+ *    <!--SSR_SHOP_DATA--> so shop-detail.js can paint instantly instead of
+ *    firing a second request at the (sometimes slow/cold) Render API.
+ *  - The "not found" branch now also flips which block is visible
+ *    server-side, so a genuinely missing shop actually LOOKS like a 404
+ *    even before any JS runs (matches its already-correct 404 status).
  * -----------------------------------------------------------------------
  */
 
@@ -13,11 +24,19 @@ const API_BASE = process.env.RENDER_API_BASE || 'https://sixstarbackend.onrender
 const SITE_URL = (process.env.SITE_URL || 'https://www.sixstarsuppliers.com').replace(/\/$/, '');
 
 const SEO_BLOCK_RE = /<!--SEO_HEAD-->[\s\S]*?<!--\/SEO_HEAD-->/;
+const INTRO_BLOCK_RE = /<!--SSR_SHOP_INTRO-->[\s\S]*?<!--\/SSR_SHOP_INTRO-->/;
+const DATA_BLOCK_RE = /<!--SSR_SHOP_DATA-->[\s\S]*?<!--\/SSR_SHOP_DATA-->/;
 
 function escapeHtml(str = '') {
   return String(str).replace(/[&<>"']/g, (c) => (
     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
   ));
+}
+
+function noStore(res) {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
 }
 
 function readTemplate() {
@@ -26,6 +45,17 @@ function readTemplate() {
 
 function extractSlug(req) {
   return req.query.slug || req.query.id || null;
+}
+
+// Applies every substitution in one place so no branch can ever leave a
+// literal placeholder token in the HTML sent to the browser.
+function render(template, { seo, intro, dataScript, detailDisplay, notFoundDisplay }) {
+  let html = template.replace(SEO_BLOCK_RE, seo);
+  html = html.replace(INTRO_BLOCK_RE, intro);
+  html = html.replace(DATA_BLOCK_RE, dataScript || '');
+  html = html.replace('__DETAIL_DISPLAY__', detailDisplay);
+  html = html.replace('__NOTFOUND_DISPLAY__', notFoundDisplay);
+  return html;
 }
 
 module.exports = async (req, res) => {
@@ -39,9 +69,23 @@ module.exports = async (req, res) => {
     return;
   }
 
+  noStore(res);
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+
   if (!slug) {
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.status(200).send(template);
+    const seo = [
+      `<title>Shops — Six Star Suppliers</title>`,
+      `<meta name="description" content="Browse verified shops on Six Star Suppliers.">`,
+      `<meta name="robots" content="noindex,follow">`,
+      `<link rel="canonical" href="${SITE_URL}/shop.html">`,
+    ].join('\n');
+    const html = render(template, {
+      seo,
+      intro: `<h1>No shop specified</h1><p><a href="/shop.html">Browse all shops</a></p>`,
+      detailDisplay: 'none',
+      notFoundDisplay: 'block',
+    });
+    res.status(404).send(html);
     return;
   }
 
@@ -63,8 +107,16 @@ module.exports = async (req, res) => {
       `<meta name="robots" content="noindex,follow">`,
       `<link rel="canonical" href="${SITE_URL}/shop/${escapeHtml(slug)}">`,
     ].join('\n');
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.status(404).send(template.replace(SEO_BLOCK_RE, seo));
+    const html = render(template, {
+      seo,
+      intro: `
+        <h1>Shop not found</h1>
+        <p>This shop may have been removed or suspended, or the link is incorrect.</p>
+      `,
+      detailDisplay: 'none',
+      notFoundDisplay: 'block',
+    });
+    res.status(404).send(html);
     return;
   }
 
@@ -109,6 +161,26 @@ module.exports = async (req, res) => {
     `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>`,
   ].join('\n');
 
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.status(200).send(template.replace(SEO_BLOCK_RE, seo));
+  // Real, visible text — matches the title/meta above, and is there even
+  // if shop-detail.js never runs or runs before the Render API answers.
+  const intro = `
+    <h1>${escapeHtml(shop.shopName)}</h1>
+    ${shop.businessCategory ? `<p class="ssr-shop-category">${escapeHtml(shop.businessCategory)}</p>` : ''}
+    <p>${escapeHtml(rawDescription)}</p>
+    ${shop.ratingsCount ? `<p>${Number(shop.ratingsAverage || 0).toFixed(1)} out of 5 stars from ${shop.ratingsCount} review${shop.ratingsCount === 1 ? '' : 's'}</p>` : ''}
+  `;
+
+  // Handed straight to the client so shop-detail.js can paint immediately
+  // instead of firing a second, possibly-slow request at the same API.
+  const dataScript = `<script id="ssrShopData" type="application/json">${JSON.stringify(shop).replace(/</g, '\\u003c')}</script>`;
+
+  const html = render(template, {
+    seo,
+    intro,
+    dataScript,
+    detailDisplay: '',
+    notFoundDisplay: 'none',
+  });
+
+  res.status(200).send(html);
 };
