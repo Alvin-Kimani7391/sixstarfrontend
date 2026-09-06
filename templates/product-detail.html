@@ -20,23 +20,47 @@
 <header class="site-header" id="site-header"></header>
 
 <main>
-  <div class="wrap" id="pdContent">
-    <div class="pd-wrap">
-      <div>
-        <div class="pd-gallery__main skel" style="aspect-ratio:1/1;"></div>
-      </div>
-      <div>
-        <div class="skel" style="height:22px;width:120px;margin-bottom:14px;"></div>
-        <div class="skel" style="height:34px;width:80%;margin-bottom:14px;"></div>
-        <div class="skel" style="height:26px;width:140px;"></div>
+  <div class="wrap" id="pdWrap" style="display:__DETAIL_DISPLAY__;">
+    <!-- Real, crawlable text, injected server-side by api/product-detail.js.
+         product-detail.js fills #pdContent below once it runs, but this
+         block is separate and stays in the DOM regardless, so a crawler
+         (or a slow connection) always sees genuine content that matches
+         the <title>/meta tags in <head>. -->
+    <section class="ssr-product-intro" id="ssrProductIntro">
+      <!--SSR_PRODUCT_INTRO-->
+      <h1>Product</h1>
+      <p>Shop quality products at Six Star Suppliers.</p>
+      <!--/SSR_PRODUCT_INTRO-->
+    </section>
+
+    <div id="pdContent">
+      <div class="pd-wrap">
+        <div>
+          <div class="pd-gallery__main skel" style="aspect-ratio:1/1;"></div>
+        </div>
+        <div>
+          <div class="skel" style="height:22px;width:120px;margin-bottom:14px;"></div>
+          <div class="skel" style="height:34px;width:80%;margin-bottom:14px;"></div>
+          <div class="skel" style="height:26px;width:140px;"></div>
+        </div>
       </div>
     </div>
+  </div>
+
+  <div class="empty-state" id="pdNotFound" style="display:__NOTFOUND_DISPLAY__;">
+    <i class="fa-solid fa-triangle-exclamation"></i>
+    <h3>Product not found</h3>
+    <p>This product may have been removed or is no longer available, or the link is incorrect.</p>
+    <p><a href="/product.html">Browse all products</a></p>
   </div>
 </main>
 
 <footer class="site-footer" id="site-footer"></footer>
 <a href="#" class="wa-float" id="wa-float"></a>
 <div id="toast"></div>
+
+<!--SSR_PRODUCT_DATA-->
+<!--/SSR_PRODUCT_DATA-->
 
 <script src="js/config.js"></script>
 <script src="js/api.js"></script>

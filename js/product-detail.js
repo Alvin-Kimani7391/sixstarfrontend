@@ -29,7 +29,7 @@
    sync whether the user swipes, clicks an arrow, or clicks a
    thumb — whichever one moves, the others follow.
 
-   LIGHTBOX (NEW): tapping the main image, or the small expand
+   LIGHTBOX: tapping the main image, or the small expand
    icon at its bottom-right, opens a full-screen viewer. It has
    its own scroll-snap track (same technique as the main gallery)
    so multi-image products can be swiped/scrolled through at full
@@ -43,6 +43,14 @@
    best-quality asset; thumbnails request a small cropped one;
    the lightbox requests an even larger asset since it fills the
    whole screen.
+
+   SSR: api/product-detail.js server-renders real visible text
+   above this content (see #ssrProductIntro in the template) and
+   hands the already-fetched product object down via a
+   #ssrProductData script tag, so this file can paint instantly
+   instead of firing a first request at the Render API. It also
+   toggles #pdWrap / #pdNotFound so a genuinely missing product
+   actually looks like a 404 before this script even runs.
    ============================================================ */
 (function () {
   const id = new URLSearchParams(location.search).get("id");
@@ -55,8 +63,36 @@
   let selectedVariant = null;
   let selectedOptions = {};
 
+  // Reads the product object api/product-detail.js already fetched
+  // server-side (see <!--SSR_PRODUCT_DATA--> in the template) so the page
+  // can paint instantly instead of firing a first request at the same API.
+  function ssReadSsrProductData() {
+    const el = document.getElementById("ssrProductData");
+    if (!el || !el.textContent) return null;
+    try {
+      const data = JSON.parse(el.textContent);
+      return data && (data.id || data._id) ? data : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function ssShowPdContent() {
+    const wrap = document.getElementById("pdWrap");
+    const notFound = document.getElementById("pdNotFound");
+    if (wrap) wrap.style.display = "";
+    if (notFound) notFound.style.display = "none";
+  }
+
+  function ssShowPdNotFound() {
+    const wrap = document.getElementById("pdWrap");
+    const notFound = document.getElementById("pdNotFound");
+    if (wrap) wrap.style.display = "none";
+    if (notFound) notFound.style.display = "block";
+  }
+
   if (!id) {
-    content.innerHTML = `<div class="empty-state"><i class="fa-solid fa-circle-question"></i><h3>No product selected</h3><p><a href="product.html">Browse all products</a></p></div>`;
+    ssShowPdNotFound();
     return;
   }
 
@@ -1101,12 +1137,30 @@
     }
   }
 
-  /* ---------------- load ---------------- */
+  /* ---------------- load ----------------
+     Checks for the SSR-fetched product first (dropped in by
+     api/product-detail.js via #ssrProductData) so the page paints
+     instantly. Falls back to the normal client fetch, then the
+     full-list fallback, exactly as before — only the final "couldn't
+     find it anywhere" branch now toggles #pdNotFound instead of
+     overwriting #pdContent's innerHTML. */
 
   async function load() {
+    const ssrProduct = ssReadSsrProductData();
+    if (ssrProduct) {
+      render(ssrProduct);
+      ssShowPdContent();
+      loadReviews();
+      loadRelated(ssrProduct);
+      SS_API.trackProductView(id).catch(() => {}); // best-effort: adds to buyer's recently-viewed
+      SS_API.trackProductViewCount(id).catch(() => {}); // best-effort: feeds seller analytics
+      return;
+    }
+
     try {
       const p = await SS_API.getProduct(id);
       render(p.product || p);
+      ssShowPdContent();
       loadReviews();
       loadRelated(p.product || p);
       SS_API.trackProductView(id).catch(() => {}); // best-effort: adds to buyer's recently-viewed
@@ -1119,6 +1173,7 @@
         const found = list.find(x => String(x.id) === String(id));
         if (found) {
           render(found);
+          ssShowPdContent();
           loadReviews();
           loadRelated(found);
           SS_API.trackProductView(id).catch(() => {});
@@ -1127,7 +1182,7 @@
         }
         throw new Error("not found");
       } catch (_) {
-        content.innerHTML = `<div class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i><h3>Product not found</h3><p><a href="product.html">Back to all products</a></p></div>`;
+        ssShowPdNotFound();
       }
     }
   }

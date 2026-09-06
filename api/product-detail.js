@@ -1,338 +1,314 @@
-/* ============================================================
-   shop-detail.js — Individual Shop Storefront (shop-detail.html)
-   Reuses ssProductCard() / ssSkeletonCards() from ui.js so
-   products render identically to every other page on the site.
-   ============================================================ */
+/**
+ * api/product-detail.js  (Vercel Serverless Function)
+ * -----------------------------------------------------------------------
+ * Same fixes as api/product-detail.js's original JSON-LD update, PLUS the
+ * SSR-body fix already applied to api/shop-detail.js:
+ *  - Explicit no-store cache headers on every response.
+ *  - Injects REAL visible text (name, price, brand, description, rating)
+ *    into the page body via <!--SSR_PRODUCT_INTRO--> — not just <head>
+ *    meta — so a crawler that never runs product-detail.js still sees
+ *    genuine, unique content that matches the title/meta tags.
+ *  - Hands the already-fetched product object to the client via
+ *    <!--SSR_PRODUCT_DATA--> so product-detail.js can paint instantly
+ *    instead of firing a first request at the (sometimes slow/cold)
+ *    Render API.
+ *  - The "not found" / "no id" branches now also flip which block is
+ *    visible server-side, so a genuinely missing product actually LOOKS
+ *    like a 404 even before any JS runs (matches its already-correct 404
+ *    status) — fixes the soft-404 Search Console flagged.
+ *
+ * All existing structured-data logic (brand, return policy, shipping
+ * details, reviews) is unchanged.
+ * -----------------------------------------------------------------------
+ */
 
-let ssShopDetailState = {
-  shop: null,
-  page: 1,
-  limit: 12,
-  sort: "-createdAt",
-  search: "",
-  sortTouched: false
-};
+const fs = require('fs');
+const path = require('path');
 
-function ssGetSlugFromUrl() {
-  const params = new URLSearchParams(location.search);
-  if (params.get("slug")) return params.get("slug");
-  if (params.get("id")) return params.get("id");
+const API_BASE = process.env.RENDER_API_BASE || 'https://sixstarbackend.onrender.com/api';
+const SITE_URL = (process.env.SITE_URL || 'https://www.sixstarsuppliers.com').replace(/\/$/, '');
 
-  const match = location.pathname.match(/\/shop\/([^/?#]+)/);
-  if (match) return decodeURIComponent(match[1]);
+const SEO_BLOCK_RE = /<!--SEO_HEAD-->[\s\S]*?<!--\/SEO_HEAD-->/;
+const INTRO_BLOCK_RE = /<!--SSR_PRODUCT_INTRO-->[\s\S]*?<!--\/SSR_PRODUCT_INTRO-->/;
+const DATA_BLOCK_RE = /<!--SSR_PRODUCT_DATA-->[\s\S]*?<!--\/SSR_PRODUCT_DATA-->/;
 
-  return "";
+function escapeHtml(str = '') {
+  return String(str).replace(/[&<>"']/g, (c) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
 }
 
-// Reads the shop object api/shop-detail.js already fetched server-side
-// (see <!--SSR_SHOP_DATA--> in the template) so the page can paint
-// instantly instead of firing a second request at the same API.
-function ssReadSsrShopData() {
-  const el = document.getElementById("ssrShopData");
-  if (!el || !el.textContent) return null;
-  try {
-    const data = JSON.parse(el.textContent);
-    return data && (data.id || data._id) ? data : null;
-  } catch (_) {
-    return null;
-  }
+function noStore(res) {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
 }
 
-function ssShowShopDetailContent() {
-  const detail = document.getElementById("shopDetailContent");
-  const notFound = document.getElementById("shopNotFound");
-  if (detail) detail.style.display = "";
-  if (notFound) notFound.style.display = "none";
+// Plain "KES 1,234" formatting for the server-rendered intro text only.
+// This is just crawler/no-JS fallback text — the real, JS-rendered price
+// still goes through your existing ssFmtPrice() in ui.js. If that
+// function formats KES differently, tweak this to match (cosmetic only,
+// doesn't affect any functionality).
+function fmtPrice(amount) {
+  const n = Math.round(Number(amount) || 0);
+  return `KES ${n.toLocaleString('en-US')}`;
 }
 
-function ssShowShopNotFound() {
-  const detail = document.getElementById("shopDetailContent");
-  const notFound = document.getElementById("shopNotFound");
-  if (detail) detail.style.display = "none";
-  if (notFound) notFound.style.display = "block";
+function readTemplate() {
+  return fs.readFileSync(path.join(process.cwd(), 'templates', 'product-detail.html'), 'utf8');
 }
 
-async function ssInitShopDetail() {
-  const slug = ssGetSlugFromUrl();
-  if (!slug) { ssShowShopNotFound(); return; }
-
-  const ssrShop = ssReadSsrShopData();
-  if (ssrShop) {
-    ssShopDetailState.shop = ssrShop;
-    ssShowShopDetailContent();
-    ssRenderShopPassport(ssrShop);
-    document.title = `${ssrShop.shopName} — Six Star Suppliers`;
-    ssLoadShopProducts();
-    ssLoadShopReviews();
-    return;
-  }
-
-  try {
-    const res = await SS_API.getShopBySlug(slug);
-    const shop = res.shop;
-    if (!shop) { ssShowShopNotFound(); return; }
-    ssShopDetailState.shop = shop;
-    ssShowShopDetailContent();
-    ssRenderShopPassport(shop);
-    document.title = `${shop.shopName} — Six Star Suppliers`;
-    ssLoadShopProducts();
-    ssLoadShopReviews();
-  } catch (err) {
-    console.error("ssInitShopDetail failed:", err);
-    ssShowShopNotFound();
-  }
-}
-
-function ssRenderShopPassport(shop) {
-  const bannerWrap = document.getElementById("shopBanner");
-  bannerWrap.innerHTML = shop.banner
-    ? `<img class="shop-hero__banner" src="${shop.banner}" alt="${shop.shopName} banner">`
-    : `<div class="shop-hero__banner-fallback"></div>`;
-
-  const initial = (shop.shopName || "?").trim().charAt(0).toUpperCase();
-  const memberSince = shop.createdAt ? new Date(shop.createdAt).getFullYear() : "—";
-
-  document.getElementById("shopPassportCard").innerHTML = `
-    <div class="shop-passport__logo">${shop.logo ? `<img src="${shop.logo}" alt="">` : initial}</div>
-    <div class="shop-passport__info">
-      <div class="shop-passport__name-row">
-        <span class="shop-passport__name">${shop.shopName}</span>
-        ${shop.verificationStatus === "verified" ? `<span class="shop-verified"><i class="fa-solid fa-check"></i> Verified</span>` : ""}
-      </div>
-      ${shop.businessCategory ? `<div class="shop-passport__category">${shop.businessCategory}</div>` : ""}
-      ${shop.description ? `<p class="shop-passport__desc">${shop.description}</p>` : ""}
-      <div class="shop-passport__stats">
-        <div class="shop-passport__stat"><strong id="shopProductCountStat">—</strong><span>Products</span></div>
-        <div class="shop-passport__stat">
-          <strong id="shopAvgRatingStat">${(shop.ratingsAverage || 0).toFixed(1)} <i class="fa-solid fa-star" style="font-size:.7em;color:var(--sun)"></i></strong>
-          <span id="shopReviewCountStat">${shop.ratingsCount || 0} review${shop.ratingsCount === 1 ? "" : "s"}</span>
-        </div>
-        <div class="shop-passport__stat"><strong>${memberSince}</strong><span>On Six Star since</span></div>
-        ${shop.businessHours ? `<div class="shop-passport__stat"><strong style="font-size:.82rem;">${shop.businessHours}</strong><span>Hours</span></div>` : ""}
-      </div>
-      <div class="shop-hint">
-        <i class="fa-solid fa-shield-halved"></i>
-        <span>All orders, payments and delivery are handled by Six Star Suppliers — sellers are reviewed and approved before their shop goes live.</span>
-      </div>
-    </div>
-    <div class="shop-passport__actions">
-      <a href="/product.html" class="btn btn-outline btn-sm">Continue shopping</a>
-      <a href="/contact.html" class="btn btn-dark btn-sm">Contact support</a>
-    </div>
-  `;
-}
-
-function ssUpdateShopRatingStats(shop) {
-  const avgEl = document.getElementById("shopAvgRatingStat");
-  const countEl = document.getElementById("shopReviewCountStat");
-  if (avgEl) {
-    avgEl.innerHTML = `${(shop.ratingsAverage || 0).toFixed(1)} <i class="fa-solid fa-star" style="font-size:.7em;color:var(--sun)"></i>`;
-  }
-  if (countEl) {
-    countEl.textContent = `${shop.ratingsCount || 0} review${shop.ratingsCount === 1 ? "" : "s"}`;
-  }
-}
-
-function ssShouldShuffleShopListing() {
-  return !ssShopDetailState.search && !ssShopDetailState.sortTouched;
-}
-
-async function ssLoadShopProducts() {
-  const grid = document.getElementById("shopProductsGrid");
-  const pagination = document.getElementById("shopProductsPagination");
-  grid.innerHTML = ssSkeletonCards(8);
-
-  const shop = ssShopDetailState.shop;
-  const params = {
-    shop: shop.id || shop._id,
-    page: ssShopDetailState.page,
-    limit: ssShopDetailState.limit,
-    sort: ssShopDetailState.sort,
-  };
-  if (ssShopDetailState.search) params.search = ssShopDetailState.search;
-
-  try {
-    const res = await SS_API.getProducts(params);
-    let products = res.products || [];
-    const total = res.total ?? products.length;
-    document.getElementById("shopProductCountStat").textContent = total;
-    document.getElementById("shopProductsCount").textContent = `${total} product${total === 1 ? "" : "s"}`;
-
-    if (!products.length) {
-      grid.innerHTML = `
-        <div class="empty-state" style="grid-column:1/-1;">
-          <i class="fa-solid fa-box-open"></i>
-          <h3>No products here yet</h3>
-          <p>This shop hasn't listed anything matching your filters.</p>
-        </div>`;
-      pagination.innerHTML = "";
-      return;
-    }
-
-    if (ssShouldShuffleShopListing()) products = ssShuffle(products);
-
-    grid.innerHTML = products.map(ssProductCard).join("");
-    ssRenderShopProductsPagination(pagination, res.page || 1, res.pages || 1);
-  } catch (err) {
-    console.error("ssLoadShopProducts failed:", err);
-    grid.innerHTML = `
-      <div class="empty-state" style="grid-column:1/-1;">
-        <i class="fa-solid fa-triangle-exclamation"></i>
-        <h3>Couldn't load products</h3>
-        <p>Check your connection and try again.</p>
-      </div>`;
-    pagination.innerHTML = "";
-  }
-}
-
-function ssRenderShopProductsPagination(el, page, pages) {
-  if (pages <= 1) { el.innerHTML = ""; return; }
-  let html = "";
-  html += `<button class="nav" ${page <= 1 ? "disabled" : ""} data-page="${page - 1}"><i class="fa-solid fa-chevron-left"></i></button>`;
-  for (let i = 1; i <= pages; i++) {
-    if (i === 1 || i === pages || Math.abs(i - page) <= 1) {
-      html += `<button class="${i === page ? "active" : ""}" data-page="${i}">${i}</button>`;
-    } else if (i === page - 2 || i === page + 2) {
-      html += `<span style="padding:0 4px;color:var(--ink-faint);">…</span>`;
-    }
-  }
-  html += `<button class="nav" ${page >= pages ? "disabled" : ""} data-page="${page + 1}"><i class="fa-solid fa-chevron-right"></i></button>`;
-  el.innerHTML = html;
-  el.querySelectorAll("button[data-page]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const p = Number(btn.dataset.page);
-      if (!p || p === ssShopDetailState.page) return;
-      ssShopDetailState.page = p;
-      ssLoadShopProducts();
-      window.scrollTo({ top: document.getElementById("shopProductsToolbar").offsetTop - 100, behavior: "smooth" });
-    });
-  });
-}
-
-function ssStarsHtml(rating, size = 14) {
-  const full = Math.round(rating);
-  let html = `<span class="star-row" style="font-size:${size}px;">`;
-  for (let i = 1; i <= 5; i++) {
-    html += `<i class="fa-solid fa-star" style="color:${i <= full ? "var(--sun)" : "var(--line)"}"></i>`;
-  }
-  html += "</span>";
+// Applies every substitution in one place so no branch can ever leave a
+// literal placeholder token in the HTML sent to the browser.
+function render(template, { seo, intro, dataScript, detailDisplay, notFoundDisplay }) {
+  let html = template.replace(SEO_BLOCK_RE, seo);
+  html = html.replace(INTRO_BLOCK_RE, intro);
+  html = html.replace(DATA_BLOCK_RE, dataScript || '');
+  html = html.replace('__DETAIL_DISPLAY__', detailDisplay);
+  html = html.replace('__NOTFOUND_DISPLAY__', notFoundDisplay);
   return html;
 }
 
-async function ssLoadShopReviews() {
-  const shop = ssShopDetailState.shop;
-  const listEl = document.getElementById("shopReviewsList");
-  const summaryEl = document.getElementById("shopRatingSummary");
-  listEl.innerHTML = `<p style="color:var(--ink-faint);">Loading reviews…</p>`;
+// Pulls a Brand-like attribute value off a populated product, same
+// matching logic as the Merchant Center feed's findBrand() — kept
+// consistent so the on-page structured data and the feed never disagree
+// with each other about a product's brand.
+function findBrand(product) {
+  const attrs = Array.isArray(product.attributes) ? product.attributes : [];
+  const match = attrs.find((a) => {
+    const name = a.attribute && a.attribute.name ? String(a.attribute.name).toLowerCase() : '';
+    return name === 'brand' || name === 'manufacturer';
+  });
+  return match ? String(match.value) : null;
+}
+
+// Your published return policy (matches the "Buyer Protections & Rights"
+// accordion card in about.html — 7-day window). Update this in ONE place
+// if that policy ever changes, rather than per-product.
+function buildReturnPolicy() {
+  return {
+    '@type': 'MerchantReturnPolicy',
+    applicableCountry: 'KE',
+    returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnWindow',
+    merchantReturnDays: 7,
+    returnMethod: 'https://schema.org/ReturnByMail',
+    returnFees: 'https://schema.org/FreeReturn',
+  };
+}
+
+// Generic shipping declaration matching your countrywide-delivery
+// messaging. Deliberately account-level/generic rather than per-product —
+// your actual per-product delivery terms (simple vs heavy wholesale, free
+// vs fixed vs quantity-based vs negotiated) are already handled at
+// checkout; this block exists purely to satisfy structured-data
+// requirements with an honest, non-misleading baseline claim ("ships
+// within Kenya, standard handling/transit times"), not to replicate your
+// full checkout pricing logic in JSON-LD.
+function buildShippingDetails() {
+  return {
+    '@type': 'OfferShippingDetails',
+    shippingDestination: {
+      '@type': 'DefinedRegion',
+      addressCountry: 'KE',
+    },
+    deliveryTime: {
+      '@type': 'ShippingDeliveryTime',
+      handlingTime: {
+        '@type': 'QuantitativeValue',
+        minValue: 1,
+        maxValue: 2,
+        unitCode: 'DAY',
+      },
+      transitTime: {
+        '@type': 'QuantitativeValue',
+        minValue: 1,
+        maxValue: 5,
+        unitCode: 'DAY',
+      },
+    },
+  };
+}
+
+// Maps whatever your reviewController actually returns into schema.org
+// Review objects. Field names guessed from your other controllers'
+// conventions (rating/comment/buyer.name/createdAt) — adjust the
+// r.buyer?.name / r.comment lookups below if your real review shape
+// differs.
+function buildReviews(reviews) {
+  if (!Array.isArray(reviews) || !reviews.length) return null;
+  return reviews.slice(0, 20).map((r) => ({
+    '@type': 'Review',
+    reviewRating: {
+      '@type': 'Rating',
+      ratingValue: r.rating,
+      bestRating: 5,
+      worstRating: 1,
+    },
+    author: {
+      '@type': 'Person',
+      name: r.buyer?.name || r.userName || r.name || 'Verified buyer',
+    },
+    reviewBody: r.comment || undefined,
+    datePublished: r.createdAt ? new Date(r.createdAt).toISOString().slice(0, 10) : undefined,
+  }));
+}
+
+module.exports = async (req, res) => {
+  const id = req.query.id;
+  let template;
 
   try {
-    const res = await SS_API.getShopReviews(shop.id || shop._id);
-    const reviews = res.reviews || [];
-    const count = shop.ratingsCount || reviews.length;
-
-    summaryEl.innerHTML = `
-      ${ssStarsHtml(shop.ratingsAverage || 0, 16)}
-      <strong style="margin-left:6px;">${(shop.ratingsAverage || 0).toFixed(1)}</strong>
-      <span style="color:var(--ink-faint);font-size:12.5px;margin-left:4px;">(${count} review${count === 1 ? "" : "s"})</span>
-    `;
-
-    ssUpdateShopRatingStats(shop);
-
-    if (!reviews.length) {
-      listEl.innerHTML = `<p style="color:var(--ink-faint);">No reviews yet — be the first to review this shop.</p>`;
-    } else {
-      listEl.innerHTML = reviews.map(r => `
-        <div class="shop-review-item">
-          <div class="shop-review-item__head">
-            <span class="shop-review-item__name">${r.buyer?.name || "Buyer"}</span>
-            ${ssStarsHtml(r.rating, 12)}
-          </div>
-          ${r.comment ? `<p class="shop-review-item__comment">${r.comment}</p>` : ""}
-          <span class="shop-review-item__date">${new Date(r.createdAt).toLocaleDateString()}</span>
-        </div>
-      `).join("");
-    }
+    template = readTemplate();
   } catch (err) {
-    console.error("ssLoadShopReviews failed:", err);
-    listEl.innerHTML = `<p style="color:var(--ink-faint);">Couldn't load reviews.</p>`;
-  }
-
-  ssRenderShopReviewForm();
-}
-
-function ssRenderShopReviewForm() {
-  const wrap = document.getElementById("shopReviewFormWrap");
-  const user = typeof SS_AUTH !== "undefined" && SS_AUTH.get ? SS_AUTH.get() : null;
-
-  if (!user) {
-    wrap.innerHTML = `<p class="shop-review-cta"><a href="/login.html">Log in</a> as a buyer to leave a review.</p>`;
+    res.status(500).send('Could not load page template');
     return;
   }
-  if (user.role !== "buyer") { wrap.innerHTML = ""; return; }
 
-  wrap.innerHTML = `
-    <form id="shopReviewForm" class="shop-review-form">
-      <div class="shop-review-form__stars" id="shopReviewStarsInput">
-        ${[1, 2, 3, 4, 5].map(i => `<i class="fa-regular fa-star" data-val="${i}"></i>`).join("")}
-      </div>
-      <textarea id="shopReviewComment" placeholder="Share your experience with this shop (optional)" maxlength="1000"></textarea>
-      <button type="submit" class="btn btn-primary btn-sm">Submit review</button>
-    </form>
+  noStore(res);
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+
+  if (!id) {
+    const seo = [
+      `<title>Products — Six Star Suppliers</title>`,
+      `<meta name="description" content="Shop quality products at Six Star Suppliers.">`,
+      `<meta name="robots" content="noindex,follow">`,
+      `<link rel="canonical" href="${SITE_URL}/product.html">`,
+    ].join('\n');
+    const html = render(template, {
+      seo,
+      intro: `<h1>No product specified</h1><p><a href="/product.html">Browse all products</a></p>`,
+      detailDisplay: 'none',
+      notFoundDisplay: 'block',
+    });
+    res.status(404).send(html);
+    return;
+  }
+
+  let product = null;
+  let reviews = [];
+
+  try {
+    const [productRes, reviewsRes] = await Promise.all([
+      fetch(`${API_BASE}/products/${id}`),
+      fetch(`${API_BASE}/products/${id}/reviews`).catch(() => null),
+    ]);
+
+    if (productRes.ok) {
+      const data = await productRes.json();
+      product = data.product || null;
+    }
+    if (reviewsRes && reviewsRes.ok) {
+      const data = await reviewsRes.json();
+      reviews = data.reviews || data.data || (Array.isArray(data) ? data : []);
+    }
+  } catch (err) {
+    product = null;
+  }
+
+  if (!product) {
+    const seo = [
+      `<title>Product not found — Six Star Suppliers</title>`,
+      `<meta name="description" content="This product is no longer available. Browse our full catalog for similar items.">`,
+      `<meta name="robots" content="noindex,follow">`,
+      `<link rel="canonical" href="${SITE_URL}/product-detail.html?id=${escapeHtml(id)}">`,
+    ].join('\n');
+    const html = render(template, {
+      seo,
+      intro: `
+        <h1>Product not found</h1>
+        <p>This product may have been removed or is no longer available, or the link is incorrect.</p>
+      `,
+      detailDisplay: 'none',
+      notFoundDisplay: 'block',
+    });
+    res.status(404).send(html);
+    return;
+  }
+
+  const price = product.discountPercent
+    ? Math.round(product.finalPrice * (1 - product.discountPercent / 100))
+    : product.finalPrice;
+
+  const title = escapeHtml(`${product.name} — Buy Online in Kenya | Six Star Suppliers`);
+  const rawDescription = product.description || `Shop ${product.name} at Six Star Suppliers. Countrywide delivery, secure payment, 1-year warranty.`;
+  const description = escapeHtml(rawDescription.slice(0, 155));
+  const image = (product.images && product.images[0]) || `${SITE_URL}/images/og-default.jpg`;
+  const canonical = `${SITE_URL}/product-detail.html?id=${product._id}`;
+
+  const brand = findBrand(product);
+  const reviewObjects = buildReviews(reviews);
+
+  const jsonLd = {
+    '@context': 'https://schema.org/',
+    '@type': 'Product',
+    name: product.name,
+    description: rawDescription,
+    image: product.images,
+    sku: String(product._id),
+    ...(brand ? { brand: { '@type': 'Brand', name: brand } } : {}),
+    offers: {
+      '@type': 'Offer',
+      url: canonical,
+      priceCurrency: 'KES',
+      price: price || 0,
+      availability: product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+      itemCondition: 'https://schema.org/NewCondition',
+      seller: {
+        '@type': 'Organization',
+        name: 'Six Star Suppliers',
+      },
+      hasMerchantReturnPolicy: buildReturnPolicy(),
+      shippingDetails: buildShippingDetails(),
+    },
+    ...(product.ratingsCount ? {
+      aggregateRating: {
+        '@type': 'AggregateRating',
+        ratingValue: product.ratingsAverage,
+        reviewCount: product.ratingsCount,
+      },
+    } : {}),
+    ...(reviewObjects ? { review: reviewObjects } : {}),
+  };
+
+  const seo = [
+    `<title>${title}</title>`,
+    `<meta name="description" content="${description}">`,
+    `<link rel="canonical" href="${canonical}">`,
+    `<meta property="og:type" content="product">`,
+    `<meta property="og:site_name" content="Six Star Suppliers">`,
+    `<meta property="og:title" content="${title}">`,
+    `<meta property="og:description" content="${description}">`,
+    `<meta property="og:image" content="${image}">`,
+    `<meta property="og:url" content="${canonical}">`,
+    `<meta name="twitter:card" content="summary_large_image">`,
+    `<meta name="twitter:title" content="${title}">`,
+    `<meta name="twitter:description" content="${description}">`,
+    `<meta name="twitter:image" content="${image}">`,
+    `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>`,
+  ].join('\n');
+
+  // Real, visible text — matches the title/meta above, and is there even
+  // if product-detail.js never runs or runs before the Render API answers.
+  const intro = `
+    <h1>${escapeHtml(product.name)}</h1>
+    <p class="ssr-product-price">${fmtPrice(price)}</p>
+    ${brand ? `<p class="ssr-product-brand">Brand: ${escapeHtml(brand)}</p>` : ''}
+    <p>${escapeHtml(rawDescription)}</p>
+    ${product.ratingsCount ? `<p>${Number(product.ratingsAverage || 0).toFixed(1)} out of 5 stars from ${product.ratingsCount} review${product.ratingsCount === 1 ? '' : 's'}</p>` : ''}
   `;
 
-  let selectedRating = 0;
-  const starEls = wrap.querySelectorAll("#shopReviewStarsInput i");
-  starEls.forEach(star => {
-    star.addEventListener("click", () => {
-      selectedRating = Number(star.dataset.val);
-      starEls.forEach(s => {
-        const active = Number(s.dataset.val) <= selectedRating;
-        s.className = active ? "fa-solid fa-star" : "fa-regular fa-star";
-        s.style.color = active ? "var(--sun)" : "";
-      });
-    });
+  // Handed straight to the client so product-detail.js can paint
+  // immediately instead of firing a first, possibly-slow request at the
+  // same API.
+  const dataScript = `<script id="ssrProductData" type="application/json">${JSON.stringify(product).replace(/</g, '\\u003c')}</script>`;
+
+  const html = render(template, {
+    seo,
+    intro,
+    dataScript,
+    detailDisplay: '',
+    notFoundDisplay: 'none',
   });
 
-  document.getElementById("shopReviewForm").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    if (!selectedRating) { ssToast?.("Please select a star rating"); return; }
-
-    const submitBtn = wrap.querySelector("button[type='submit']");
-    if (submitBtn) submitBtn.disabled = true;
-
-    try {
-      await SS_API.addShopReview(ssShopDetailState.shop.id || ssShopDetailState.shop._id, {
-        rating: selectedRating,
-        comment: document.getElementById("shopReviewComment").value.trim(),
-      });
-      ssToast?.("Review submitted, thank you!");
-
-      const res = await SS_API.getShopBySlug(ssGetSlugFromUrl());
-      ssShopDetailState.shop = res.shop;
-
-      ssUpdateShopRatingStats(res.shop);
-      ssLoadShopReviews();
-    } catch (err) {
-      ssToast?.(err.message || "Couldn't submit review");
-      if (submitBtn) submitBtn.disabled = false;
-    }
-  });
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  ssInitShopDetail();
-
-  document.getElementById("shopProductSearchForm").addEventListener("submit", e => {
-    e.preventDefault();
-    ssShopDetailState.search = document.getElementById("shopProductSearchInput").value.trim();
-    ssShopDetailState.page = 1;
-    ssLoadShopProducts();
-  });
-
-  document.getElementById("shopProductSort").addEventListener("change", e => {
-    ssShopDetailState.sort = e.target.value;
-    ssShopDetailState.sortTouched = true;
-    ssShopDetailState.page = 1;
-    ssLoadShopProducts();
-  });
-});
+  res.status(200).send(html);
+};
