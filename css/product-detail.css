@@ -964,3 +964,22 @@ body.pd-lightbox-open { overflow: hidden; }
   .pd-lightbox__nav { width: 36px; height: 36px; font-size: 13px; }
   .pd-lightbox__thumbs img { width: 38px; height: 38px; }
 }
+
+
+
+
+
+/* SSR crawler-fallback text — present in the HTML for search engines
+   and no-JS clients, but never visible to a normal visitor once the
+   real, styled #pdContent has rendered. */
+.ssr-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

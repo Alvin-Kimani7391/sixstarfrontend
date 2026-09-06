@@ -22,11 +22,11 @@
 <main>
   <div class="wrap" id="pdWrap" style="display:__DETAIL_DISPLAY__;">
     <!-- Real, crawlable text, injected server-side by api/product-detail.js.
-         product-detail.js fills #pdContent below once it runs, but this
-         block is separate and stays in the DOM regardless, so a crawler
-         (or a slow connection) always sees genuine content that matches
-         the <title>/meta tags in <head>. -->
-    <section class="ssr-product-intro" id="ssrProductIntro">
+         Visually hidden (see .ssr-visually-hidden in product-detail.css) so
+         a normal visitor only ever sees the real, styled #pdContent below —
+         this block exists purely so a crawler or no-JS client still gets
+         genuine, unique text matching the <title>/meta tags in <head>. -->
+    <section class="ssr-product-intro ssr-visually-hidden" id="ssrProductIntro" aria-hidden="true">
       <!--SSR_PRODUCT_INTRO-->
       <h1>Product</h1>
       <p>Shop quality products at Six Star Suppliers.</p>
