@@ -163,6 +163,9 @@ const SS_AGENT_API = (() => {
     recruitBuyer(payload) {
       return request("/sharing/recruit-buyer", { method: "POST", body: payload });
     },
+        sendInvite(payload) {
+      return request("/sharing/send-invite", { method: "POST", body: payload });
+    },
     recruitSeller(payload) {
       return request("/sharing/recruit-seller", { method: "POST", body: payload });
     },

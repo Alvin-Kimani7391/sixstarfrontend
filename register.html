@@ -202,9 +202,11 @@
       <!-- Holds the value actually submitted; kept in sync by JS below -->
       <input type="hidden" id="roleInput" value="buyer">
 
+      <input type="hidden" id="referralCodeInput" value="">
       <p class="form-hint" id="roleHint">Buyers can browse and order from verified retailers and wholesalers.</p>
     </div>
 
+          
     <!-- ===== Buyer-only: Google sign-up ===== -->
     <!-- Google Identity Services always creates a buyer account, so this
          entire block only ever shows while the "Buy" tab is active. -->
@@ -304,6 +306,25 @@
   window.addEventListener("load", () => document.getElementById("pageLoader").classList.add("hide"));
 
   // ---------------------------------------------------------------
+  // Referral attribution: ?ref=CODE&intent=buyer|seller
+  // ---------------------------------------------------------------
+  const urlParams = new URLSearchParams(location.search);
+  const refCode = urlParams.get("ref");
+  const intent = urlParams.get("intent");
+
+  if (refCode) {
+    document.getElementById("referralCodeInput").value = refCode;
+    fetch(`${SS_CONFIG.API_BASE}/agents/track/${encodeURIComponent(refCode)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: intent === "seller" ? "seller" : intent === "buyer" ? "buyer" : "general",
+        channel: "direct",
+      }),
+    }).catch(() => {});
+  }
+
+  // ---------------------------------------------------------------
   // Account type (Buy / Sell) + Seller sub-type (Retail / Wholesale)
   // + Buyer-only Google sign-up visibility
   // ---------------------------------------------------------------
@@ -326,10 +347,6 @@
     wholesaler: "Wholesalers can list bulk stock for sale, subject to admin review."
   };
 
-  // Field labels/requirements per role, matching model/user.js discriminators:
-  //   wholesaler -> businessName + location
-  //   retailer   -> shopName (reuses the same input) + location
-  //   buyer      -> neither field required
   function applyRoleFields(role) {
     const isSeller = role === "wholesaler" || role === "retailer";
     businessNameField.style.display = isSeller ? "block" : "none";
@@ -384,9 +401,12 @@
     });
   });
 
+  // Pre-select the Sell tab if the referral link asked for it.
+  if (intent === "seller") {
+    document.querySelector('.account-tab[data-account="seller"]').click();
+  }
+
   // ---------- Password show/hide toggle ----------
-  // Purely a display-state flip (input type text <-> password). Nothing here
-  // is sent anywhere — same pattern used on login.html.
   function wirePasswordToggles() {
     document.querySelectorAll("[data-toggle-password]").forEach((btn) => {
       const targetId = btn.getAttribute("data-toggle-password");
@@ -410,9 +430,6 @@
   wirePasswordToggles();
 
   // ---------- Confirm password — frontend-only match check ----------
-  // This never touches the API payload; `confirmPassword` is deliberately
-  // left out of the SS_API.register() call below. It only exists to catch
-  // typos before the request is ever made.
   const passwordInput = document.getElementById("password");
   const confirmPasswordInput = document.getElementById("confirmPassword");
   const confirmPasswordHint = document.getElementById("confirmPasswordHint");
@@ -453,7 +470,6 @@
     const btn = document.getElementById("registerBtn");
     errBox.classList.remove("show");
 
-    // Frontend-only guard — confirmPassword is never part of the payload.
     refreshConfirmPasswordUI();
     if (!passwordsMatch()) {
       errBox.textContent = "Passwords do not match. Please re-check both fields.";
@@ -466,9 +482,6 @@
 
     const role = roleInput.value;
 
-    // Build payload matching the active discriminator's schema fields.
-    // Note: confirmPassword deliberately stays out of this object — it is
-    // a client-side-only check and is never sent to the backend.
     const payload = {
       name: document.getElementById("name").value.trim(),
       phone: document.getElementById("phone").value.trim(),
@@ -484,19 +497,15 @@
       payload.location = locationInput.value.trim();
     }
 
+    // NEW — carry the agent referral code through to registration, if present.
+    const referralCode = document.getElementById("referralCodeInput").value.trim();
+    if (referralCode) payload.ref = referralCode;
+
     try {
       const res = await SS_API.register(payload);
       const user = res.user || res;
-      SS_AUTH.set(user); // keeps businessName/shopName/location etc. for the dashboard
+      SS_AUTH.set(user);
 
-      // Every new account — buyer or seller — starts unverified, and the
-      // backend already fired the first OTP code in the background right
-      // after creating it (see authController.registerUser). Route
-      // everyone through the code-entry screen before letting them any
-      // further in; verify-email.html forwards on to the right place
-      // (index.html for buyers, seller-dashboard.html for sellers, which
-      // itself redirects into seller-verification.html if not yet approved)
-      // once the code is confirmed.
       const dest = role === "buyer" ? "index.html" : "seller-dashboard.html";
       ssToast("Account created — let's verify your email", "fa-circle-check");
       location.href = `verify-email.html?next=${encodeURIComponent(dest)}`;

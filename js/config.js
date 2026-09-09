@@ -5,12 +5,16 @@ window.SS_CONFIG = {
   // TODO: replace with your real Render backend URL (no trailing slash)
   API_BASE: "https://api.sixstarsuppliers.com/api",
 
+  // NEW — the actual storefront/frontend domain. This is what referral
+  // links, agent recruitment links, and share messages are built from.
+  // Must NOT be the API subdomain — that was the bug causing
+  // https://api.sixstarsuppliers.com/?ref=... links to not work.
+  FRONTEND_URL: "https://www.sixstarsuppliers.com",
+
   // From Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client ID.
   // Safe to expose publicly — it identifies your app, it isn't a secret.
   // TODO: replace with your real Google Client ID
   GOOGLE_CLIENT_ID: "921180599621-sfvughebvaqkmao293hsufrnn45caha1.apps.googleusercontent.com",
-
-
 
   WHATSAPP_NUMBER: "254794327798",
   PHONE_1: "+254 115 913 507",
@@ -25,7 +29,6 @@ window.SS_CONFIG = {
 
   PRODUCTS_PER_PAGE: 24,
 
-  // Fallback categories shown while /api/categories loads (or if it fails)
   FALLBACK_CATEGORIES: [
     { name: "Household", slug: "household", image: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=200" },
     { name: "Shoes", slug: "shoes", image: "https://images.unsplash.com/photo-1549298916-b41d501d3772?w=200" },

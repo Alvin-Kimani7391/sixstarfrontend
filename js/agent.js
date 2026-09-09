@@ -359,40 +359,111 @@ function wireSharing() {
 function wireRecruit() {
   document.getElementById("recruitBuyerForm").addEventListener("submit", async (e) => {
     e.preventDefault();
+    const channel = document.getElementById("rbChannel").value;
+    const name = document.getElementById("rbName").value.trim();
+    const phone = document.getElementById("rbPhone").value.trim();
+    const email = document.getElementById("rbEmail").value.trim();
+
+    if (channel === "email" && !email) {
+      ssToast("Enter the recipient's email address to send an invite", "fa-triangle-exclamation");
+      return;
+    }
+
     try {
-      const res = await SS_AGENT_API.recruitBuyer({
-        name: document.getElementById("rbName").value.trim(),
-        phone: document.getElementById("rbPhone").value.trim(),
-        email: document.getElementById("rbEmail").value.trim(),
-        channel: document.getElementById("rbChannel").value,
-      });
-      const box = document.getElementById("rbResult");
-      box.style.display = "block";
-      box.innerHTML = recruitResultHtml(res.link, res.message);
-      wireCopyButtons(box);
-      ssToast("Recruitment content ready", "fa-user-plus");
-    } catch (err) { ssToast(err.message, "fa-triangle-exclamation"); }
+      if (channel === "email") {
+        // NEW — actually sends a branded invite email instead of just
+        // generating copy-paste text.
+        const res = await SS_AGENT_API.sendInvite({ type: "buyer", email, name });
+        showRecruitResult("rbResult", res.link, null, true);
+        ssToast(`Invitation email sent to ${email}`, "fa-paper-plane");
+      } else {
+        const res = await SS_AGENT_API.recruitBuyer({ name, phone, email, channel });
+        if (channel === "whatsapp") {
+          // NEW — opens WhatsApp directly with the message pre-filled,
+          // instead of just showing text to copy.
+          openWhatsApp(phone, res.message);
+          showRecruitResult("rbResult", res.link, res.message, false);
+          ssToast("Opening WhatsApp…", "fa-brands fa-whatsapp");
+        } else {
+          showRecruitResult("rbResult", res.link, res.message, false);
+          ssToast("Recruitment content ready — copy and send it", "fa-user-plus");
+        }
+      }
+      document.getElementById("recruitBuyerForm").reset();
+    } catch (err) {
+      ssToast(err.message, "fa-triangle-exclamation");
+    }
   });
 
   document.getElementById("recruitSellerForm").addEventListener("submit", async (e) => {
     e.preventDefault();
+    const channel = document.getElementById("rsChannel").value;
+    const name = document.getElementById("rsName").value.trim();
+    const phone = document.getElementById("rsPhone").value.trim();
+    const email = document.getElementById("rsEmail").value.trim();
+    const businessName = document.getElementById("rsBusinessName").value.trim();
+    const location = document.getElementById("rsLocation").value.trim();
+
+    if (!name) {
+      ssToast("Enter the lead's name", "fa-triangle-exclamation");
+      return;
+    }
+    if (channel === "email" && !email) {
+      ssToast("Enter the recipient's email address to send an invite", "fa-triangle-exclamation");
+      return;
+    }
+
     try {
-      const res = await SS_AGENT_API.recruitSeller({
-        name: document.getElementById("rsName").value.trim(),
-        phone: document.getElementById("rsPhone").value.trim(),
-        email: document.getElementById("rsEmail").value.trim(),
-        businessName: document.getElementById("rsBusinessName").value.trim(),
-        location: document.getElementById("rsLocation").value.trim(),
-        channel: document.getElementById("rsChannel").value,
-      });
-      const box = document.getElementById("rsResult");
-      box.style.display = "block";
-      box.innerHTML = recruitResultHtml(res.link, res.message);
-      wireCopyButtons(box);
+      if (channel === "email") {
+        const res = await SS_AGENT_API.sendInvite({ type: "seller", email, name });
+        showRecruitResult("rsResult", res.link, null, true);
+        ssToast(`Invitation email sent to ${email}`, "fa-paper-plane");
+        // Still capture the extra business/location details as a lead —
+        // sendInvite only logs name+email.
+        SS_AGENT_API.createLead({ name, phone, email, leadType: "seller", businessName, location, source: "email" }).catch(() => {});
+      } else {
+        const res = await SS_AGENT_API.recruitSeller({ name, phone, email, businessName, location, channel });
+        if (channel === "whatsapp") {
+          openWhatsApp(phone, res.message);
+          showRecruitResult("rsResult", res.link, res.message, false);
+          ssToast("Opening WhatsApp…", "fa-brands fa-whatsapp");
+        } else {
+          showRecruitResult("rsResult", res.link, res.message, false);
+          ssToast("Seller added to your leads", "fa-store");
+        }
+      }
       document.getElementById("recruitSellerForm").reset();
-      ssToast("Seller added to your leads", "fa-store");
-    } catch (err) { ssToast(err.message, "fa-triangle-exclamation"); }
+    } catch (err) {
+      ssToast(err.message, "fa-triangle-exclamation");
+    }
   });
+}
+
+// Opens WhatsApp (app on mobile, web on desktop) with the recruitment
+// message pre-filled. If a phone number was given it's normalized to
+// 254XXXXXXXXX and the chat opens directly with that person; otherwise it
+// opens wa.me's generic composer so the agent can pick any contact.
+function openWhatsApp(phone, message) {
+  const cleanPhone = (phone || "").replace(/[^\d]/g, "");
+  const normalized = cleanPhone
+    ? (cleanPhone.startsWith("0") ? "254" + cleanPhone.slice(1) : cleanPhone)
+    : "";
+  const url = normalized
+    ? `https://wa.me/${normalized}?text=${encodeURIComponent(message)}`
+    : `https://wa.me/?text=${encodeURIComponent(message)}`;
+  window.open(url, "_blank");
+}
+
+function showRecruitResult(boxId, link, message, emailSent) {
+  const box = document.getElementById(boxId);
+  box.style.display = "block";
+  const linkId = boxId + "_link_" + Math.random().toString(36).slice(2, 8);
+  box.innerHTML = `
+    ${emailSent ? `<div class="alert alert-success show" style="margin-bottom:10px;"><i class="fa-solid fa-circle-check"></i> Invitation email sent.</div>` : ''}
+    <div class="link-box" style="margin-bottom:8px;"><input type="text" id="${linkId}" readonly value="${link}"><button class="act-btn act-outline" data-copy="${linkId}">Copy Link</button></div>
+    ${message ? `<textarea readonly rows="6" style="width:100%; padding:10px; border:1.5px solid var(--line); border-radius:8px; font-size:13px;">${message}</textarea>` : ''}
+  `;
+  wireCopyButtons(box);
 }
 
 function recruitResultHtml(link, message) {
