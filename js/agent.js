@@ -2,6 +2,17 @@
    SIX STAR SUPPLIERS — Agent Dashboard
    ============================================================ */
 
+// Frontend (storefront) base URL — used to build referral links.
+// IMPORTANT: this is NOT SS_CONFIG.API_BASE (that points at your backend,
+// e.g. https://api.sixstarsuppliers.com/api). Referral links must point at
+// the storefront the buyer/seller will actually land on. If you add a
+// SITE_URL key to js/config.js this will pick it up automatically;
+// otherwise it falls back to the production storefront domain.
+const SS_SITE_URL = (window.SS_CONFIG && window.SS_CONFIG.SITE_URL) || "https://www.sixstarsuppliers.com";
+
+// Fallback avatar shown whenever an agent has no photo uploaded yet.
+const DEFAULT_AVATAR_FALLBACK = true; // toggles the CSS "fallback" icon vs an <img>
+
 let currentAgent = null;
 let assetsCache = [];
 let leadsCache = [];
@@ -20,6 +31,7 @@ async function init() {
   wireRecruit();
   wireLeads();
   wireProfile();
+  wirePayout();
   await checkAuth();
 }
 
@@ -38,6 +50,7 @@ function showDashboard() {
   document.getElementById("agentLoading").style.display = "none";
   document.getElementById("agentShell").style.display = "grid";
   document.getElementById("agentNameLabel").textContent = currentAgent.name;
+  renderAvatar("sidebarAvatarImg", "sidebarAvatarFallback", currentAgent.avatar);
 
   if (!["approved", "active"].includes(currentAgent.status)) {
     document.querySelector(".agent-body-inner").innerHTML = `
@@ -51,6 +64,27 @@ function showDashboard() {
 
   switchTab("overview");
   refreshNotifBadge();
+}
+
+// ===================================================================
+// AVATAR HELPERS (NEW)
+// ===================================================================
+// Toggles between the <img> and the CSS fallback icon depending on
+// whether the agent has actually uploaded a photo. Reused for the
+// sidebar avatar and the profile-tab avatar preview.
+function renderAvatar(imgId, fallbackId, url) {
+  const img = document.getElementById(imgId);
+  const fallback = document.getElementById(fallbackId);
+  if (!img || !fallback) return;
+  if (url) {
+    img.src = url;
+    img.style.display = "block";
+    fallback.style.display = "none";
+  } else {
+    img.removeAttribute("src");
+    img.style.display = "none";
+    fallback.style.display = "flex";
+  }
 }
 
 // ===================================================================
@@ -129,15 +163,20 @@ async function loadOverview() {
   loadOverviewNotifications();
 }
 
+// ---------------------------------------------------------------
+// Referral links — FIXED to point at the storefront (SS_SITE_URL),
+// never the API host. Each row now has Copy + a native-share button
+// that opens the phone's share sheet via the Web Share API.
+// ---------------------------------------------------------------
 function renderReferralLinks() {
   const grid = document.getElementById("referralLinksGrid");
-  const base = SS_CONFIG.API_BASE.replace(/\/api$/, "");
+  const base = SS_SITE_URL.replace(/\/$/, "");
   const code = currentAgent.code;
   const links = [
-    { label: "General marketplace", url: `${base}/?ref=${code}` },
-    { label: "Buyer referral (shop)", url: `${base}/?ref=${code}&intent=buyer` },
-    { label: "Seller recruitment", url: `${base}/become-a-seller.html?ref=${code}` },
-    { label: "Agent recruitment", url: `${base}/agent-apply.html?ref=${code}` },
+    { label: "General marketplace", url: `${base}/index.html?ref=${code}`, text: "Check out Six Star Suppliers — great deals from verified wholesalers and retailers." },
+    { label: "Buyer referral (shop)", url: `${base}/register.html?ref=${code}&intent=buyer`, text: "Join me on Six Star Suppliers and start shopping!" },
+    { label: "Seller recruitment", url: `${base}/register.html?ref=${code}&intent=seller`, text: "Sell your products on Six Star Suppliers and reach more customers." },
+    { label: "Agent recruitment", url: `${base}/agent-apply.html?ref=${code}`, text: "Become a Six Star Suppliers agent and start earning commission." },
   ];
   grid.innerHTML = links.map((l, i) => `
     <div class="link-grid-item">
@@ -145,9 +184,11 @@ function renderReferralLinks() {
       <div class="link-box">
         <input type="text" id="refLink${i}" value="${l.url}" readonly>
         <button class="act-btn act-outline" data-copy="refLink${i}">Copy</button>
+        <button class="act-btn act-primary" data-native-share="refLink${i}" data-native-share-caption="${escapeHtml(l.text)}" title="Share"><i class="fa-solid fa-share-nodes"></i></button>
       </div>
     </div>`).join("");
   wireCopyButtons(grid);
+  wireNativeShareButtons(grid);
 }
 
 async function loadOverviewNotifications() {
@@ -179,9 +220,14 @@ function wireMarketing() {
       const box = document.getElementById("assetShareResult");
       box.style.display = "block";
       box.innerHTML = `
-        <div class="link-box" style="margin-bottom:10px;"><input type="text" id="shareResLink" readonly value="${res.link}"><button class="act-btn act-outline" data-copy="shareResLink">Copy</button></div>
+        <div class="link-box" style="margin-bottom:10px;">
+          <input type="text" id="shareResLink" readonly value="${res.link}">
+          <button class="act-btn act-outline" data-copy="shareResLink">Copy</button>
+          <button class="act-btn act-primary" data-native-share="shareResLink" data-native-share-caption="${escapeHtml(res.caption || '')}" title="Share"><i class="fa-solid fa-share-nodes"></i></button>
+        </div>
         <textarea readonly style="width:100%; padding:10px; border:1.5px solid var(--line); border-radius:8px; font-size:13px;" rows="4">${res.caption}</textarea>`;
       wireCopyButtons(box);
+      wireNativeShareButtons(box);
       ssToast("Share content ready — copy and send it", "fa-share-nodes");
     } catch (err) { ssToast(err.message, "fa-triangle-exclamation"); }
   });
@@ -333,9 +379,14 @@ function wireSharing() {
       box.style.display = "block";
       box.innerHTML = `
         <img src="${res.qrDataUrl}" alt="QR code">
-        <div class="link-box"><input type="text" id="qrLinkOut" readonly value="${res.link}"><button class="act-btn act-outline" data-copy="qrLinkOut">Copy Link</button></div>
+        <div class="link-box">
+          <input type="text" id="qrLinkOut" readonly value="${res.link}">
+          <button class="act-btn act-outline" data-copy="qrLinkOut">Copy Link</button>
+          <button class="act-btn act-primary" data-native-share="qrLinkOut" title="Share"><i class="fa-solid fa-share-nodes"></i></button>
+        </div>
         <a href="${res.qrDataUrl}" download="referral-qr.png" class="btn btn-outline btn-sm" style="margin-top:10px; display:inline-block;">Download QR Image</a>`;
       wireCopyButtons(box);
+      wireNativeShareButtons(box);
     } catch (err) { ssToast(err.message, "fa-triangle-exclamation"); }
   });
 
@@ -371,16 +422,17 @@ function wireRecruit() {
 
     try {
       if (channel === "email") {
-        // NEW — actually sends a branded invite email instead of just
-        // generating copy-paste text.
-        const res = await SS_AGENT_API.sendInvite({ type: "buyer", email, name });
+        // Actually sends a branded invite email via Brevo. If the toast
+        // below says "sent" but nothing ever arrives, the failure is on the
+        // backend email provider side (see controllers2/sharingController.js
+        // sendInvite's catch block / server logs — most likely a Brevo API
+        // key or unverified-sender issue), not this button.
+        const res = await SS_AGENT_API.sendInvite({ type: "buyer", email, name, phone });
         showRecruitResult("rbResult", res.link, null, true);
         ssToast(`Invitation email sent to ${email}`, "fa-paper-plane");
       } else {
         const res = await SS_AGENT_API.recruitBuyer({ name, phone, email, channel });
         if (channel === "whatsapp") {
-          // NEW — opens WhatsApp directly with the message pre-filled,
-          // instead of just showing text to copy.
           openWhatsApp(phone, res.message);
           showRecruitResult("rbResult", res.link, res.message, false);
           ssToast("Opening WhatsApp…", "fa-brands fa-whatsapp");
@@ -415,12 +467,12 @@ function wireRecruit() {
 
     try {
       if (channel === "email") {
-        const res = await SS_AGENT_API.sendInvite({ type: "seller", email, name });
+        // sendInvite now accepts phone/businessName/location directly and
+        // logs the lead itself — no separate createLead() call needed, which
+        // previously caused a duplicate lead row for every seller email invite.
+        const res = await SS_AGENT_API.sendInvite({ type: "seller", email, name, phone, businessName, location });
         showRecruitResult("rsResult", res.link, null, true);
         ssToast(`Invitation email sent to ${email}`, "fa-paper-plane");
-        // Still capture the extra business/location details as a lead —
-        // sendInvite only logs name+email.
-        SS_AGENT_API.createLead({ name, phone, email, leadType: "seller", businessName, location, source: "email" }).catch(() => {});
       } else {
         const res = await SS_AGENT_API.recruitSeller({ name, phone, email, businessName, location, channel });
         if (channel === "whatsapp") {
@@ -440,9 +492,7 @@ function wireRecruit() {
 }
 
 // Opens WhatsApp (app on mobile, web on desktop) with the recruitment
-// message pre-filled. If a phone number was given it's normalized to
-// 254XXXXXXXXX and the chat opens directly with that person; otherwise it
-// opens wa.me's generic composer so the agent can pick any contact.
+// message pre-filled.
 function openWhatsApp(phone, message) {
   const cleanPhone = (phone || "").replace(/[^\d]/g, "");
   const normalized = cleanPhone
@@ -460,17 +510,15 @@ function showRecruitResult(boxId, link, message, emailSent) {
   const linkId = boxId + "_link_" + Math.random().toString(36).slice(2, 8);
   box.innerHTML = `
     ${emailSent ? `<div class="alert alert-success show" style="margin-bottom:10px;"><i class="fa-solid fa-circle-check"></i> Invitation email sent.</div>` : ''}
-    <div class="link-box" style="margin-bottom:8px;"><input type="text" id="${linkId}" readonly value="${link}"><button class="act-btn act-outline" data-copy="${linkId}">Copy Link</button></div>
+    <div class="link-box" style="margin-bottom:8px;">
+      <input type="text" id="${linkId}" readonly value="${link}">
+      <button class="act-btn act-outline" data-copy="${linkId}">Copy Link</button>
+      <button class="act-btn act-primary" data-native-share="${linkId}" data-native-share-caption="${escapeHtml(message || '')}" title="Share"><i class="fa-solid fa-share-nodes"></i></button>
+    </div>
     ${message ? `<textarea readonly rows="6" style="width:100%; padding:10px; border:1.5px solid var(--line); border-radius:8px; font-size:13px;">${message}</textarea>` : ''}
   `;
   wireCopyButtons(box);
-}
-
-function recruitResultHtml(link, message) {
-  const linkId = "recruitLink_" + Math.random().toString(36).slice(2, 8);
-  return `
-    <div class="link-box" style="margin-bottom:8px;"><input type="text" id="${linkId}" readonly value="${link}"><button class="act-btn act-outline" data-copy="${linkId}">Copy Link</button></div>
-    <textarea readonly rows="6" style="width:100%; padding:10px; border:1.5px solid var(--line); border-radius:8px; font-size:13px;">${message}</textarea>`;
+  wireNativeShareButtons(box);
 }
 
 // ===================================================================
@@ -699,9 +747,13 @@ async function loadLeaderboard() {
       const val = metric === "totalCommission" || metric === "lifetimeMarketplaceProfit"
         ? `KES ${(a[metric]||0).toLocaleString()}`
         : (a[metric] || 0);
+      const avatarHtml = a.avatar
+        ? `<img src="${a.avatar}" class="agent-avatar agent-avatar--xs" alt="">`
+        : `<div class="agent-avatar agent-avatar--xs agent-avatar--fallback"><i class="fa-solid fa-user"></i></div>`;
       return `
         <div class="leaderboard-row" style="${isMe ? 'background:#FFF6EF;' : ''}">
           <div class="leaderboard-rank ${rankClass}">${i + 1}</div>
+          ${avatarHtml}
           <div class="leaderboard-name">${escapeHtml(a.name)}${isMe ? ' <span class="pill pill-active">You</span>' : ''}${a.badge ? ` <span class="pill">${escapeHtml(a.badge.name)}</span>` : ''}</div>
           <div class="leaderboard-value">${val}</div>
         </div>`;
@@ -814,6 +866,14 @@ async function loadFullNotifications() {
 // PROFILE
 // ===================================================================
 function wireProfile() {
+  // Live preview the instant a new photo is picked, before saving.
+  document.getElementById("profAvatarInput").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    renderAvatar("profileAvatarPreview", "profileAvatarFallback", url);
+  });
+
   document.getElementById("profileForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     const fd = new FormData();
@@ -829,6 +889,8 @@ function wireProfile() {
       currentAgent = res.agent;
       SS_AGENT_AUTH.set(res.agent);
       document.getElementById("agentNameLabel").textContent = res.agent.name;
+      renderAvatar("sidebarAvatarImg", "sidebarAvatarFallback", res.agent.avatar);
+      renderAvatar("profileAvatarPreview", "profileAvatarFallback", res.agent.avatar);
       ssToast("Profile updated");
     } catch (err) { ssToast(err.message, "fa-triangle-exclamation"); }
   });
@@ -851,6 +913,84 @@ function loadProfileForm() {
   document.getElementById("profPhone").value = currentAgent.phone || "";
   document.getElementById("profLocation").value = currentAgent.location || "";
   document.getElementById("profBio").value = currentAgent.bio || "";
+  renderAvatar("profileAvatarPreview", "profileAvatarFallback", currentAgent.avatar);
+  loadPayoutForm();
+}
+
+// ===================================================================
+// PAYOUT DETAILS (NEW)
+// ===================================================================
+function wirePayout() {
+  document.querySelectorAll('#payoutMethodChips input[name="payoutMethod"]').forEach((radio) => {
+    radio.addEventListener("change", () => togglePayoutFields(radio.value));
+    radio.closest(".channel-chip").addEventListener("click", () => {
+      document.querySelectorAll('#payoutMethodChips .channel-chip').forEach((c) => c.classList.remove("active"));
+      radio.closest(".channel-chip").classList.add("active");
+    });
+  });
+
+  document.getElementById("payoutForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const method = document.querySelector('#payoutMethodChips input[name="payoutMethod"]:checked').value;
+
+    const payout = {
+      method,
+      idNumber: document.getElementById("payoutIdNumber").value.trim(),
+      mpesaNumber: document.getElementById("payoutMpesaNumber").value.trim(),
+      mpesaName: document.getElementById("payoutMpesaName").value.trim(),
+      bankName: document.getElementById("payoutBankName").value.trim(),
+      accountName: document.getElementById("payoutAccountName").value.trim(),
+      accountNumber: document.getElementById("payoutAccountNumber").value.trim(),
+      branchName: document.getElementById("payoutBranchName").value.trim(),
+    };
+
+    if (!payout.idNumber) {
+      ssToast("Enter the ID number registered on this account", "fa-triangle-exclamation");
+      return;
+    }
+    if (method === "mpesa" && !payout.mpesaNumber) {
+      ssToast("Enter your M-Pesa number", "fa-triangle-exclamation");
+      return;
+    }
+    if (method === "bank" && (!payout.accountNumber || !payout.bankName)) {
+      ssToast("Enter your bank name and account number", "fa-triangle-exclamation");
+      return;
+    }
+
+    const fd = new FormData();
+    fd.append("payout", JSON.stringify(payout));
+
+    try {
+      const res = await SS_AGENT_API.updateMe(fd);
+      currentAgent = res.agent;
+      SS_AGENT_AUTH.set(res.agent);
+      ssToast("Payout details saved");
+    } catch (err) { ssToast(err.message, "fa-triangle-exclamation"); }
+  });
+}
+
+function togglePayoutFields(method) {
+  document.getElementById("payoutMpesaFields").style.display = method === "mpesa" ? "grid" : "none";
+  document.getElementById("payoutBankFields").style.display = method === "bank" ? "block" : "none";
+}
+
+function loadPayoutForm() {
+  const payout = currentAgent.payout || {};
+  const method = payout.method || "mpesa";
+
+  document.querySelectorAll('#payoutMethodChips input[name="payoutMethod"]').forEach((radio) => {
+    radio.checked = radio.value === method;
+    radio.closest(".channel-chip").classList.toggle("active", radio.value === method);
+  });
+  togglePayoutFields(method);
+
+  document.getElementById("payoutIdNumber").value = payout.idNumber || "";
+  document.getElementById("payoutMpesaNumber").value = payout.mpesaNumber || "";
+  document.getElementById("payoutMpesaName").value = payout.mpesaName || "";
+  document.getElementById("payoutBankName").value = payout.bankName || "";
+  document.getElementById("payoutAccountName").value = payout.accountName || "";
+  document.getElementById("payoutAccountNumber").value = payout.accountNumber || "";
+  document.getElementById("payoutBranchName").value = payout.branchName || "";
 }
 
 // ===================================================================
@@ -869,6 +1009,33 @@ function wireCopyButtons(scope) {
       const input = document.getElementById(btn.dataset.copy);
       if (!input) return;
       navigator.clipboard.writeText(input.value).then(() => ssToast("Copied to clipboard", "fa-copy"));
+    });
+  });
+}
+
+// NEW — native share (Web Share API) with graceful fallback. Opens the
+// phone's OS share sheet automatically on mobile; falls back to copying
+// the link on desktop browsers that don't support navigator.share.
+function wireNativeShareButtons(scope) {
+  scope.querySelectorAll("[data-native-share]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const input = document.getElementById(btn.dataset.nativeShare);
+      if (!input) return;
+      const url = input.value;
+      const captionAttr = btn.dataset.nativeShareCaption;
+      const captionFromField = btn.dataset.nativeShareText ? document.getElementById(btn.dataset.nativeShareText)?.value : "";
+      const text = captionAttr || captionFromField || "Six Star Suppliers";
+
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: "Six Star Suppliers", text, url });
+        } catch (err) {
+          // AbortError = user cancelled the share sheet — not an error worth toasting.
+          if (err.name !== "AbortError") ssToast("Couldn't open share sheet", "fa-triangle-exclamation");
+        }
+      } else {
+        navigator.clipboard.writeText(url).then(() => ssToast("Sharing isn't supported here — link copied instead", "fa-copy"));
+      }
     });
   });
 }

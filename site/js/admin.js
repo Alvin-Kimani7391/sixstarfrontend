@@ -29,6 +29,34 @@ let shipCritEditingGroupId = null;
 // caches backing the expandable rows
 let allOrdersCache = [];      // last fetched "all orders" list, keyed by lookup below
 let agentOrdersCache = {};    // agentId -> orders[] (lazy-loaded on first expand)
+// NEW — Agent/Marketing system state
+let agentsSubtab = 'list';
+let agentsCache = [];
+let badgesCache = [];
+let agentFilters = { search: '', status: '' };
+
+let marketingSubtab = 'assets';
+let assetsCache = [];
+let assetFilters = { search: '', status: '', audience: '' };
+let campaignsCache = [];
+
+let commissionsSubtab = 'ledger';
+let commLedgerFilters = { status: '', referralType: '' };
+let rulesCache = [];
+let adjustmentsCache = [];
+
+let agentLeadsCache = [];
+let alFilters = { type: '', status: '' };
+
+let fraudSubtab = 'events';
+let fraudFilters = { status: '', severity: '' };
+let auditFilters = { search: '', page: 1 };
+let auditLogsCache = [];
+
+const ASSET_CHANNELS = ['whatsapp', 'email', 'facebook', 'instagram', 'tiktok', 'linkedin', 'x', 'qr', 'direct', 'other'];
+
+
+
 
 // working state for the category-attributes assignment modal
 let catAttrAssigned = []; // [{ attributeId, name, isRequired }] in display order
@@ -225,7 +253,7 @@ function switchTab(tab) {
   if (tab === 'products') loadAllProducts();
   if (tab === 'categories') loadCategoriesTable();
   if (tab === 'attributes') loadAttributes();
-    if (tab === 'shipping') loadWeightTiers();
+  if (tab === 'shipping') loadWeightTiers();
   if (tab === 'shops') loadShops();
   if (tab === 'verification') loadVerifications();
   if (tab === 'legal') loadLegalDocuments();
@@ -233,7 +261,12 @@ function switchTab(tab) {
   if (tab === 'flashsales') loadFlashSales();
   if (tab === 'orders') loadOrdersTab();
   if (tab === 'users') loadUsers();
-  if (tab === 'agents') loadAgents();
+  if (tab === 'agents') loadAgentsTab();
+  if (tab === 'marketing') loadMarketingTab();
+  if (tab === 'campaigns') loadCampaigns();
+  if (tab === 'commissions') loadCommissionsTab();
+  if (tab === 'agentleads') loadAgentLeads();
+  if (tab === 'fraud') loadFraudTab();
   if (tab === 'rfq') loadRFQs();
   if (tab === 'earnings') loadEarnings();
 }
@@ -598,12 +631,61 @@ function wireStaticButtons() {
     earningsFilters.page = 1;
     loadEarningsOrders();
   }, 400));
+
+
+    // NEW — Agents/Badges
+  wireAgentsSubtabs();
+  document.getElementById('agentSearchInput').addEventListener('input', debounce(() => { agentFilters.search = document.getElementById('agentSearchInput').value.trim(); loadAgentsList(); }, 400));
+  document.getElementById('agentStatusSelect').addEventListener('change', (e) => { agentFilters.status = e.target.value; loadAgentsList(); });
+  document.getElementById('agentForm').addEventListener('submit', submitAgentForm);
+  document.getElementById('addAgentBtn').addEventListener('click', () => openAgentModal(null));
+  document.getElementById('addBadgeBtn').addEventListener('click', () => openBadgeModal(null));
+  document.getElementById('badgeForm').addEventListener('submit', submitBadgeForm);
+
+  // NEW — Marketing Center
+  wireMarketingSubtabs();
+  document.getElementById('assetSearchInput').addEventListener('input', debounce(() => { assetFilters.search = document.getElementById('assetSearchInput').value.trim(); loadAssets(); }, 400));
+  document.getElementById('assetStatusSelect').addEventListener('change', (e) => { assetFilters.status = e.target.value; loadAssets(); });
+  document.getElementById('assetAudienceSelect').addEventListener('change', (e) => { assetFilters.audience = e.target.value; loadAssets(); });
+  document.getElementById('addAssetBtn').addEventListener('click', () => openAssetModal(null));
+  document.getElementById('assetForm').addEventListener('submit', submitAssetForm);
+  document.getElementById('assetReplaceForm').addEventListener('submit', submitAssetReplaceForm);
+  document.getElementById('brandKitForm').addEventListener('submit', submitBrandKitForm);
+
+  // NEW — Campaigns
+  document.getElementById('addCampaignBtn').addEventListener('click', () => openCampaignModal(null));
+  document.getElementById('campaignForm').addEventListener('submit', submitCampaignForm);
+
+  // NEW — Commissions
+  wireCommissionsSubtabs();
+  document.getElementById('commLedgerStatusSelect').addEventListener('change', (e) => { commLedgerFilters.status = e.target.value; loadCommissionLedger(); });
+  document.getElementById('commLedgerTypeSelect').addEventListener('change', (e) => { commLedgerFilters.referralType = e.target.value; loadCommissionLedger(); });
+  document.getElementById('addRuleBtn').addEventListener('click', () => openRuleModal(null));
+  document.getElementById('ruleForm').addEventListener('submit', submitRuleForm);
+  document.getElementById('addAdjustmentBtn').addEventListener('click', openAdjustmentModal);
+  document.getElementById('adjustmentForm').addEventListener('submit', submitAdjustmentForm);
+
+  // NEW — Agent Leads
+  document.getElementById('alTypeSelect').addEventListener('change', (e) => { alFilters.type = e.target.value; loadAgentLeads(); });
+  document.getElementById('alStatusSelect').addEventListener('change', (e) => { alFilters.status = e.target.value; loadAgentLeads(); });
+
+  // NEW — Fraud & Audit
+  wireFraudSubtabs();
+  document.getElementById('fraudStatusSelect').addEventListener('change', (e) => { fraudFilters.status = e.target.value; loadFraudEvents(); });
+  document.getElementById('fraudSeveritySelect').addEventListener('change', (e) => { fraudFilters.severity = e.target.value; loadFraudEvents(); });
+  document.getElementById('fraudMarkReviewedBtn').addEventListener('click', () => reviewFraudEvent('reviewed'));
+  document.getElementById('fraudDismissBtn').addEventListener('click', () => reviewFraudEvent('dismissed'));
+  document.getElementById('auditActionSearch').addEventListener('input', debounce(() => { auditFilters.search = document.getElementById('auditActionSearch').value.trim(); auditFilters.page = 1; loadAuditLogs(); }, 400));
 }
 
 function openRejectModal(productId) {
   document.getElementById('rejectReason').value = '';
   document.getElementById('rejectModal').dataset.productId = productId;
   openModal('rejectModal');
+
+
+
+  
 }
 
 // ===================================================================
@@ -3143,39 +3225,60 @@ async function loadUsers() {
 // ===================================================================
 // AGENTS
 // ===================================================================
-async function loadAgents() {
+// ===================================================================
+// AGENTS — list + application lifecycle + badges
+// ===================================================================
+function wireAgentsSubtabs() {
+  document.querySelectorAll('#agentsSubtabBar button').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#agentsSubtabBar button').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      agentsSubtab = btn.dataset.agentsSubtab;
+      document.getElementById('agentsPanelList').style.display = agentsSubtab === 'list' ? 'block' : 'none';
+      document.getElementById('agentsPanelBadges').style.display = agentsSubtab === 'badges' ? 'block' : 'none';
+      if (agentsSubtab === 'badges') loadBadges();
+    });
+  });
+}
+
+async function loadAgentsTab() {
+  await loadBadges(); // needed for badge dropdown/display even on the list subtab
+  if (agentsSubtab === 'list') loadAgentsList();
+}
+
+async function loadAgentsList() {
   const tbody = document.getElementById('agentsBody');
   tbody.innerHTML = `<tr><td colspan="9"><div class="spinner"></div></td></tr>`;
-  agentOrdersCache = {}; // reset lazy cache on every reload so numbers stay fresh
+  agentOrdersCache = {};
   try {
-    const { agents } = await apiGet('/agents/admin/all');
+    const params = new URLSearchParams();
+    if (agentFilters.status) params.set('status', agentFilters.status);
+    if (agentFilters.search) params.set('search', agentFilters.search);
+    const { agents } = await apiGet(`/agents/admin/all?${params.toString()}`);
+    agentsCache = agents;
 
     if (agents.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="9"><div class="dash-empty"><i class="fa-solid fa-user-tie"></i><p>No agents yet. Add your first one.</p></div></td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="9"><div class="dash-empty"><i class="fa-solid fa-user-tie"></i><p>No agents match these filters.</p></div></td></tr>`;
       return;
     }
 
-    tbody.innerHTML = agents.map((a) => agentRowPairHtml(a)).join('');
+    tbody.innerHTML = agents.map(agentRowPairHtml).join('');
 
-    tbody.querySelectorAll('[data-edit-agent]').forEach((btn) =>
-      btn.addEventListener('click', () => openAgentModal(agents.find((a) => a._id === btn.dataset.editAgent)))
-    );
-    tbody.querySelectorAll('[data-delete-agent]').forEach((btn) =>
-      btn.addEventListener('click', () => deleteAgentRow(btn.dataset.deleteAgent))
-    );
-    tbody.querySelectorAll('[data-toggle-agent]').forEach((toggle) =>
-      toggle.addEventListener('change', async () => {
+    tbody.querySelectorAll('[data-agent-toggle]').forEach((btn) => btn.addEventListener('click', () => toggleAgentDetail(btn.dataset.agentToggle)));
+    tbody.querySelectorAll('[data-agent-approve]').forEach((btn) => btn.addEventListener('click', () => agentAction(btn.dataset.agentApprove, 'approve')));
+    tbody.querySelectorAll('[data-agent-suspend]').forEach((btn) => btn.addEventListener('click', () => agentAction(btn.dataset.agentSuspend, 'suspend')));
+    tbody.querySelectorAll('[data-agent-reactivate]').forEach((btn) => btn.addEventListener('click', () => agentAction(btn.dataset.agentReactivate, 'reactivate')));
+    tbody.querySelectorAll('[data-agent-reject]').forEach((btn) => btn.addEventListener('click', () => openAgentRejectPrompt(btn.dataset.agentReject)));
+    tbody.querySelectorAll('[data-agent-badge-select]').forEach((sel) =>
+      sel.addEventListener('change', async () => {
         try {
-          await apiPut(`/agents/${toggle.dataset.toggleAgent}`, { isActive: toggle.checked });
-          showToast(`Agent ${toggle.checked ? 'activated' : 'deactivated'}`);
+          await apiPut(`/agents/admin/${sel.dataset.agentBadgeSelect}`, { badge: sel.value || null });
+          showToast('Badge updated');
+          loadAgentsList();
         } catch (err) {
           showToast(err.message, 'error');
-          loadAgents();
         }
       })
-    );
-    tbody.querySelectorAll('[data-agent-toggle]').forEach((btn) =>
-      btn.addEventListener('click', () => toggleAgentDetail(btn.dataset.agentToggle))
     );
   } catch (err) {
     tbody.innerHTML = `<tr><td colspan="9"><div class="dash-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>${err.message}</p></div></td></tr>`;
@@ -3184,31 +3287,58 @@ async function loadAgents() {
 
 function agentRowPairHtml(a) {
   const id = a._id;
+  const statusPillClass = { pending: 'pill-pending_review', under_review: 'pill-pending_review', active: 'pill-active', approved: 'pill-active', suspended: 'pill-suspended', rejected: 'pill-rejected', deactivated: 'pill-rejected' }[a.status] || '';
+
+  let actions = '';
+  if (['pending', 'under_review'].includes(a.status)) {
+    actions = `<button class="act-approve" data-agent-approve="${id}">Approve</button><button class="act-reject" data-agent-reject="${id}">Reject</button>`;
+  } else if (a.status === 'active') {
+    actions = `<button class="act-suspend" data-agent-suspend="${id}">Suspend</button>`;
+  } else if (a.status === 'suspended') {
+    actions = `<button class="act-approve" data-agent-reactivate="${id}">Reactivate</button>`;
+  }
+
+  const badgeSelect = `
+    <select class="order-status-select" data-agent-badge-select="${id}" style="min-width:110px;">
+      <option value="">— No badge —</option>
+      ${badgesCache.map((b) => `<option value="${b._id}" ${a.badge?._id === b._id ? 'selected' : ''}>${escapeHtml(b.name)} (${b.commissionRate}%)</option>`).join('')}
+    </select>`;
+
   return `
     <tr>
       <td><button type="button" class="row-toggle-btn" data-agent-toggle="${id}" aria-label="Expand agent"><i class="fa-solid fa-chevron-right"></i></button></td>
-      <td><strong>${escapeHtml(a.name)}</strong></td>
+      <td><strong>${escapeHtml(a.name)}</strong><div class="text-muted">${escapeHtml(a.email || '')}</div></td>
       <td><span class="agent-code">${escapeHtml(a.code)}</span></td>
-      <td>${escapeHtml(a.phone)}${a.email ? `<div class="text-muted">${escapeHtml(a.email)}</div>` : ''}</td>
-      <td>${a.commissionRate}%</td>
-      <td>${a.totalOrders}</td>
-      <td>KSh ${(a.totalCommission || 0).toLocaleString()}</td>
-      <td>
-        <label class="switch">
-          <input type="checkbox" ${a.isActive ? 'checked' : ''} data-toggle-agent="${id}">
-          <span class="track"></span>
-        </label>
-      </td>
-      <td>
-        <div class="row-actions">
-          <button class="act-edit" data-edit-agent="${id}">Edit</button>
-          <button class="act-reject" data-delete-agent="${id}">Delete</button>
-        </div>
-      </td>
+      <td>${escapeHtml(a.phone || '-')}</td>
+      <td>${badgeSelect}</td>
+      <td><span class="pill ${statusPillClass}">${a.status.replace(/_/g, ' ')}</span></td>
+      <td>${a.totalOrders || 0}</td>
+      <td>KES ${(a.totalCommission || 0).toLocaleString()}</td>
+      <td><div class="row-actions">${actions}</div></td>
     </tr>
     <tr class="agent-detail-row" id="agent-detail-${id}" style="display:none;">
       <td colspan="9"><div id="agent-orders-${id}"><div class="spinner"></div></div></td>
     </tr>`;
+}
+
+async function agentAction(id, action) {
+  const labels = { approve: 'approve this agent application', suspend: 'suspend this agent', reactivate: 'reactivate this agent' };
+  if (!confirm(`Are you sure you want to ${labels[action]}?`)) return;
+  try {
+    await apiPatch(`/agents/admin/${id}/${action}`);
+    showToast(`Agent ${action}d`.replace('approved', 'approved').replace('ed', action === 'approve' ? 'ed' : 'd'));
+    loadAgentsList();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+function openAgentRejectPrompt(id) {
+  const reason = prompt('Reason for rejection (shown to the agent):');
+  if (!reason) return;
+  apiPatch(`/agents/admin/${id}/reject`, { reason })
+    .then(() => { showToast('Application rejected'); loadAgentsList(); })
+    .catch((err) => showToast(err.message, 'error'));
 }
 
 async function toggleAgentDetail(id) {
@@ -3221,46 +3351,45 @@ async function toggleAgentDetail(id) {
 
   if (!isOpen && !agentOrdersCache[id]) {
     try {
-      const { orders } = await apiGet(`/agents/admin/${id}/orders`);
+      const [{ orders }, { clicks }] = await Promise.all([
+        apiGet(`/agents/admin/${id}/orders`),
+        apiGet(`/agents/admin/${id}/clicks?limit=20`),
+      ]);
       agentOrdersCache[id] = orders;
-      renderAgentOrders(id, orders);
+      renderAgentOrdersAndClicks(id, orders, clicks);
     } catch (err) {
       const container = document.getElementById(`agent-orders-${id}`);
-      if (container) container.innerHTML = `<div class="dash-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>${err.message}</p></div>`;
+      if (container) container.innerHTML = `<div class="dash-empty"><p>${err.message}</p></div>`;
     }
   }
 }
 
-function renderAgentOrders(id, orders) {
+function renderAgentOrdersAndClicks(id, orders, clicks) {
   const container = document.getElementById(`agent-orders-${id}`);
   if (!container) return;
 
-  if (!orders.length) {
-    container.innerHTML = `<div class="dash-empty"><i class="fa-solid fa-receipt"></i><p>No orders have used this agent's code yet.</p></div>`;
-    return;
-  }
+  const ordersHtml = orders.length
+    ? `<table class="dtable"><thead><tr><th>Order</th><th>Buyer</th><th>Date</th><th>Amount</th><th>Commission</th><th>Payment</th></tr></thead><tbody>
+        ${orders.map((o) => `<tr>
+          <td><span class="agent-code">${escapeHtml(o.orderNumber || ('#' + o._id.slice(-8).toUpperCase()))}</span></td>
+          <td>${escapeHtml(o.buyer?.name || '-')}</td>
+          <td>${new Date(o.createdAt).toLocaleDateString()}</td>
+          <td>KSh ${(o.totalAmount || 0).toLocaleString()}</td>
+          <td>KSh ${(o.commissionAmount || 0).toLocaleString()}</td>
+          <td><span class="pill pill-${o.paymentStatus}">${o.paymentStatus.replace(/_/g, ' ')}</span></td>
+        </tr>`).join('')}
+      </tbody></table>`
+    : `<div class="dash-empty"><p>No orders have used this agent's code yet.</p></div>`;
+
+  const clicksHtml = (clicks || []).length
+    ? `<table class="dtable"><thead><tr><th>Type</th><th>Channel</th><th>Date</th></tr></thead><tbody>
+        ${clicks.map((c) => `<tr><td>${escapeHtml(c.type)}</td><td>${escapeHtml(c.channel)}</td><td>${new Date(c.createdAt).toLocaleString()}</td></tr>`).join('')}
+      </tbody></table>`
+    : `<div class="dash-empty"><p>No referral clicks logged yet.</p></div>`;
 
   container.innerHTML = `
-    <table class="dtable">
-      <thead>
-        <tr><th>Order</th><th>Buyer</th><th>Date</th><th>Amount</th><th>Commission</th><th>Payment</th></tr>
-      </thead>
-      <tbody>
-        ${orders
-          .map(
-            (o) => `
-          <tr>
-            <td><span class="agent-code">${escapeHtml(o.orderNumber || ('#' + o._id.slice(-8).toUpperCase()))}</span></td>
-            <td>${escapeHtml(o.buyer?.name || '-')}<div class="text-muted">${escapeHtml(o.buyer?.phone || '')}</div></td>
-            <td>${new Date(o.createdAt).toLocaleDateString()}</td>
-            <td>KSh ${(o.totalAmount || 0).toLocaleString()}</td>
-            <td>KSh ${(o.commissionAmount || 0).toLocaleString()}</td>
-            <td><span class="pill pill-${o.paymentStatus}">${o.paymentStatus.replace(/_/g, ' ')}</span></td>
-          </tr>`
-          )
-          .join('')}
-      </tbody>
-    </table>`;
+    <h5 style="margin:0 0 8px; font-size:.85rem;">Orders</h5>${ordersHtml}
+    <h5 style="margin:16px 0 8px; font-size:.85rem;">Recent Referral Clicks</h5>${clicksHtml}`;
 }
 
 function openAgentModal(agent) {
@@ -3271,7 +3400,7 @@ function openAgentModal(agent) {
   document.getElementById('agentPhone').value = agent?.phone || '';
   document.getElementById('agentEmail').value = agent?.email || '';
   document.getElementById('agentCommission').value = agent?.commissionRate ?? 5;
-  document.getElementById('agentActive').checked = agent ? agent.isActive : true;
+  document.getElementById('agentActive').checked = agent ? agent.status === 'active' : true;
 
   const codeField = document.getElementById('agentCodeField');
   if (agent) {
@@ -3280,7 +3409,6 @@ function openAgentModal(agent) {
   } else {
     codeField.style.display = 'none';
   }
-
   openModal('agentModal');
 }
 
@@ -3288,40 +3416,944 @@ async function submitAgentForm(e) {
   e.preventDefault();
   const modal = document.getElementById('agentModal');
   const id = modal.dataset.agentId;
-
   const payload = {
     name: document.getElementById('agentName').value.trim(),
     phone: document.getElementById('agentPhone').value.trim(),
     email: document.getElementById('agentEmail').value.trim(),
     commissionRate: Number(document.getElementById('agentCommission').value),
-    isActive: document.getElementById('agentActive').checked,
   };
 
   try {
     if (id) {
-      await apiPut(`/agents/${id}`, payload);
+      await apiPut(`/agents/admin/${id}`, payload);
       showToast('Agent updated');
     } else {
-      await apiPost('/agents', payload);
-      showToast('Agent created');
+      await apiPost('/agents/admin', payload);
+      showToast('Agent created — welcome email sent with temp password');
     }
     closeModal('agentModal');
-    loadAgents();
+    loadAgentsList();
   } catch (err) {
     showToast(err.message, 'error');
   }
 }
 
-async function deleteAgentRow(id) {
-  if (!confirm('Delete this agent? Past orders keep their agent code regardless.')) return;
+// ---------- Badges ----------
+async function loadBadges() {
   try {
-    await apiDelete(`/agents/${id}`);
-    showToast('Agent deleted');
-    loadAgents();
+    const { badges } = await apiGet('/agents/admin/badges');
+    badgesCache = badges;
+    if (agentsSubtab === 'badges') renderBadgesTable();
+  } catch (err) {
+    badgesCache = [];
+  }
+}
+
+function renderBadgesTable() {
+  const tbody = document.getElementById('badgesBody');
+  if (!badgesCache.length) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="dash-empty"><i class="fa-solid fa-medal"></i><p>No badges yet. Add Bronze/Silver/Gold to get started.</p></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = badgesCache
+    .map((b) => {
+      const r = b.requirements || {};
+      const reqParts = [];
+      if (r.minBuyerReferrals) reqParts.push(`${r.minBuyerReferrals} buyers`);
+      if (r.minSellerReferrals) reqParts.push(`${r.minSellerReferrals} sellers`);
+      if (r.minApprovedSellers) reqParts.push(`${r.minApprovedSellers} approved sellers`);
+      if (r.minConfirmedCommission) reqParts.push(`KES ${r.minConfirmedCommission.toLocaleString()} commission`);
+      if (r.minMarketplaceProfit) reqParts.push(`KES ${r.minMarketplaceProfit.toLocaleString()} profit`);
+
+      return `
+      <tr>
+        <td><span class="badge-color-dot" style="background:${b.color}"></span><strong>${escapeHtml(b.name)}</strong></td>
+        <td>${b.commissionRate}%</td>
+        <td class="wrap-cell text-muted">${reqParts.join(', ') || 'None'}</td>
+        <td>${b.isDefault ? '<span class="pill pill-active">Default</span>' : ''}</td>
+        <td><label class="switch"><input type="checkbox" ${b.isActive ? 'checked' : ''} data-toggle-badge="${b._id}"><span class="track"></span></label></td>
+        <td><div class="row-actions"><button class="act-edit" data-edit-badge="${b._id}">Edit</button><button class="act-reject" data-delete-badge="${b._id}">Delete</button></div></td>
+      </tr>`;
+    })
+    .join('');
+
+  tbody.querySelectorAll('[data-edit-badge]').forEach((btn) => btn.addEventListener('click', () => openBadgeModal(badgesCache.find((b) => b._id === btn.dataset.editBadge))));
+  tbody.querySelectorAll('[data-delete-badge]').forEach((btn) => btn.addEventListener('click', () => deleteBadgeRow(btn.dataset.deleteBadge)));
+  tbody.querySelectorAll('[data-toggle-badge]').forEach((toggle) =>
+    toggle.addEventListener('change', async () => {
+      try {
+        await apiPatch(`/agents/admin/badges/${toggle.dataset.toggleBadge}`, { isActive: toggle.checked });
+        showToast(`Badge ${toggle.checked ? 'activated' : 'deactivated'}`);
+        loadBadges();
+      } catch (err) {
+        showToast(err.message, 'error');
+        toggle.checked = !toggle.checked;
+      }
+    })
+  );
+}
+
+function openBadgeModal(badge) {
+  const modal = document.getElementById('badgeModal');
+  modal.dataset.badgeId = badge?._id || '';
+  document.getElementById('badgeModalTitle').textContent = badge ? 'Edit Badge' : 'Add Badge';
+  document.getElementById('badgeName').value = badge?.name || '';
+  document.getElementById('badgeSlug').value = badge?.slug || '';
+  document.getElementById('badgeColor').value = badge?.color || '#c9791f';
+  document.getElementById('badgeCommissionRate').value = badge?.commissionRate ?? '';
+  document.getElementById('badgeSortOrder').value = badge?.sortOrder ?? 0;
+  const r = badge?.requirements || {};
+  document.getElementById('badgeMinBuyers').value = r.minBuyerReferrals || 0;
+  document.getElementById('badgeMinSellers').value = r.minSellerReferrals || 0;
+  document.getElementById('badgeMinApprovedSellers').value = r.minApprovedSellers || 0;
+  document.getElementById('badgeMinCommission').value = r.minConfirmedCommission || 0;
+  document.getElementById('badgeMinProfit').value = r.minMarketplaceProfit || 0;
+  document.getElementById('badgeIsDefault').checked = !!badge?.isDefault;
+  document.getElementById('badgeActive').checked = badge ? badge.isActive : true;
+  openModal('badgeModal');
+}
+
+async function submitBadgeForm(e) {
+  e.preventDefault();
+  const modal = document.getElementById('badgeModal');
+  const id = modal.dataset.badgeId;
+
+  const payload = {
+    name: document.getElementById('badgeName').value.trim(),
+    slug: document.getElementById('badgeSlug').value.trim(),
+    color: document.getElementById('badgeColor').value,
+    commissionRate: Number(document.getElementById('badgeCommissionRate').value),
+    sortOrder: Number(document.getElementById('badgeSortOrder').value) || 0,
+    isDefault: document.getElementById('badgeIsDefault').checked,
+    isActive: document.getElementById('badgeActive').checked,
+    requirements: {
+      minBuyerReferrals: Number(document.getElementById('badgeMinBuyers').value) || 0,
+      minSellerReferrals: Number(document.getElementById('badgeMinSellers').value) || 0,
+      minApprovedSellers: Number(document.getElementById('badgeMinApprovedSellers').value) || 0,
+      minConfirmedCommission: Number(document.getElementById('badgeMinCommission').value) || 0,
+      minMarketplaceProfit: Number(document.getElementById('badgeMinProfit').value) || 0,
+    },
+  };
+
+  try {
+    if (id) {
+      await apiPatch(`/agents/admin/badges/${id}`, payload);
+      showToast('Badge updated');
+    } else {
+      await apiPost('/agents/admin/badges', payload);
+      showToast('Badge created');
+    }
+    closeModal('badgeModal');
+    loadBadges().then(renderBadgesTable);
   } catch (err) {
     showToast(err.message, 'error');
   }
 }
+
+async function deleteBadgeRow(id) {
+  if (!confirm('Delete this badge? Agents on it fall back to their flat commission rate.')) return;
+  try {
+    await apiDelete(`/agents/admin/badges/${id}`);
+    showToast('Badge deleted');
+    loadBadges().then(renderBadgesTable);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+
+
+// ===================================================================
+// MARKETING CENTER — assets + brand kit
+// ===================================================================
+function wireMarketingSubtabs() {
+  document.querySelectorAll('#marketingSubtabBar button').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#marketingSubtabBar button').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      marketingSubtab = btn.dataset.marketingSubtab;
+      document.getElementById('marketingPanelAssets').style.display = marketingSubtab === 'assets' ? 'block' : 'none';
+      document.getElementById('marketingPanelBrandKit').style.display = marketingSubtab === 'brandkit' ? 'block' : 'none';
+      if (marketingSubtab === 'brandkit') loadBrandKit();
+    });
+  });
+}
+
+async function loadMarketingTab() {
+  if (!campaignsCache.length) {
+    try { const { campaigns } = await apiGet('/campaigns/admin'); campaignsCache = campaigns; } catch (_) {}
+  }
+  if (marketingSubtab === 'assets') loadAssets();
+  else loadBrandKit();
+}
+
+async function loadAssets() {
+  const grid = document.getElementById('assetsGrid');
+  grid.innerHTML = `<div class="spinner"></div>`;
+  try {
+    const params = new URLSearchParams();
+    if (assetFilters.search) params.set('search', assetFilters.search);
+    if (assetFilters.status) params.set('status', assetFilters.status);
+    if (assetFilters.audience) params.set('audience', assetFilters.audience);
+    const { assets } = await apiGet(`/marketing/admin/assets?${params.toString()}`);
+    assetsCache = assets;
+
+    if (!assets.length) {
+      grid.innerHTML = `<div class="dash-empty"><i class="fa-solid fa-photo-film"></i><p>No assets match these filters.</p></div>`;
+      return;
+    }
+
+    const statusOptions = ['draft', 'pending_review', 'approved', 'scheduled', 'published', 'expired', 'archived'];
+    grid.innerHTML = assets
+      .map((a) => {
+        const icon = { image: 'fa-image', banner: 'fa-panorama', video: 'fa-video', flyer: 'fa-file-lines', document: 'fa-file-pdf' }[a.assetType] || 'fa-file';
+        const thumb = a.thumbnailUrl || (['image', 'banner'].includes(a.assetType) ? a.fileUrl : '');
+        return `
+        <div class="asset-admin-card">
+          <div class="asset-admin-card__thumb">
+            ${a.isFeatured ? '<span class="asset-admin-card__featured">Featured</span>' : ''}
+            ${thumb ? `<img src="${thumb}" alt="">` : `<i class="fa-solid ${icon}"></i>`}
+          </div>
+          <div class="asset-admin-card__body">
+            <div class="asset-admin-card__title">${escapeHtml(a.title)}</div>
+            <div class="asset-admin-card__meta">
+              <span class="pill pill-${a.status}">${a.status.replace(/_/g, ' ')}</span>
+              <span>v${a.version}</span>
+              <span><i class="fa-solid fa-download"></i> ${a.downloadCount || 0}</span>
+              <span><i class="fa-solid fa-share-nodes"></i> ${a.shareCount || 0}</span>
+            </div>
+            <div class="asset-admin-card__row">
+              <select data-asset-status-select="${a._id}">${statusOptions.map((s) => `<option value="${s}" ${s === a.status ? 'selected' : ''}>${s.replace(/_/g, ' ')}</option>`).join('')}</select>
+            </div>
+            <div class="asset-admin-card__row">
+              <button class="act-edit" data-edit-asset="${a._id}">Edit</button>
+              <button class="act-edit" data-replace-asset="${a._id}">Replace</button>
+              <button class="act-edit" data-analytics-asset="${a._id}"><i class="fa-solid fa-chart-simple"></i></button>
+              <button class="act-suspend" data-feature-asset="${a._id}">${a.isFeatured ? 'Unfeature' : 'Feature'}</button>
+              <button class="act-reject" data-delete-asset="${a._id}">Delete</button>
+            </div>
+          </div>
+        </div>`;
+      })
+      .join('');
+
+    grid.querySelectorAll('[data-asset-status-select]').forEach((sel) =>
+      sel.addEventListener('change', async () => {
+        try {
+          await apiPatch(`/marketing/admin/assets/${sel.dataset.assetStatusSelect}/status`, { status: sel.value });
+          showToast('Asset status updated');
+          loadAssets();
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      })
+    );
+    grid.querySelectorAll('[data-edit-asset]').forEach((btn) => btn.addEventListener('click', () => openAssetModal(assetsCache.find((a) => a._id === btn.dataset.editAsset))));
+    grid.querySelectorAll('[data-replace-asset]').forEach((btn) => btn.addEventListener('click', () => openAssetReplaceModal(btn.dataset.replaceAsset)));
+    grid.querySelectorAll('[data-analytics-asset]').forEach((btn) => btn.addEventListener('click', () => openAssetAnalyticsModal(btn.dataset.analyticsAsset)));
+    grid.querySelectorAll('[data-feature-asset]').forEach((btn) =>
+      btn.addEventListener('click', async () => {
+        try { await apiPatch(`/marketing/admin/assets/${btn.dataset.featureAsset}/feature`); loadAssets(); } catch (err) { showToast(err.message, 'error'); }
+      })
+    );
+    grid.querySelectorAll('[data-delete-asset]').forEach((btn) =>
+      btn.addEventListener('click', async () => {
+        if (!confirm('Delete this asset permanently?')) return;
+        try { await apiDelete(`/marketing/admin/assets/${btn.dataset.deleteAsset}`); showToast('Asset deleted'); loadAssets(); } catch (err) { showToast(err.message, 'error'); }
+      })
+    );
+  } catch (err) {
+    grid.innerHTML = `<div class="dash-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>${err.message}</p></div>`;
+  }
+}
+
+function renderAssetChannelsRow(selected = []) {
+  const row = document.getElementById('assetChannelsRow');
+  row.innerHTML = ASSET_CHANNELS.map((c) => `
+    <label class="chip ${selected.includes(c) ? 'active' : ''}" data-channel-chip="${c}">
+      <input type="checkbox" value="${c}" ${selected.includes(c) ? 'checked' : ''} style="display:none;"> ${c}
+    </label>`).join('');
+  row.querySelectorAll('[data-channel-chip]').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      const cb = chip.querySelector('input');
+      cb.checked = !cb.checked;
+      chip.classList.toggle('active', cb.checked);
+    });
+  });
+}
+
+function openAssetModal(asset) {
+  const modal = document.getElementById('assetModal');
+  modal.dataset.assetId = asset?._id || '';
+  document.getElementById('assetModalTitle').textContent = asset ? 'Edit Asset' : 'Upload Asset';
+  document.getElementById('assetTitle').value = asset?.title || '';
+  document.getElementById('assetDescription').value = asset?.description || '';
+  document.getElementById('assetType').value = asset?.assetType || 'image';
+  document.getElementById('assetType').disabled = !!asset;
+  document.getElementById('assetAudience').value = asset?.audience || 'everyone';
+  document.getElementById('assetCta').value = asset?.cta || 'Shop Now';
+  document.getElementById('assetPublishAt').value = asset?.publishAt ? asset.publishAt.slice(0, 16) : '';
+  document.getElementById('assetExpiryAt').value = asset?.expiryAt ? asset.expiryAt.slice(0, 16) : '';
+  document.getElementById('assetIsAcademy').checked = !!asset?.isAcademyContent;
+  document.getElementById('assetFileInput').value = '';
+  document.getElementById('assetThumbInput').value = '';
+  document.getElementById('assetFileRequired').style.display = asset ? 'none' : 'inline';
+  document.getElementById('assetCurrentFileHint').innerHTML = asset?.fileUrl
+    ? `Current file: <a href="${asset.fileUrl}" target="_blank" rel="noopener">view</a> — leave file blank to keep metadata-only edit; use "Replace" on the card to swap the actual file.`
+    : '';
+
+  const campSelect = document.getElementById('assetCampaign');
+  campSelect.innerHTML = `<option value="">None</option>` + campaignsCache.map((c) => `<option value="${c._id}" ${asset?.campaign?._id === c._id ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('');
+
+  renderAssetChannelsRow(asset?.channels || []);
+  openModal('assetModal');
+}
+
+async function submitAssetForm(e) {
+  e.preventDefault();
+  const modal = document.getElementById('assetModal');
+  const id = modal.dataset.assetId;
+  const file = document.getElementById('assetFileInput').files[0];
+
+  if (!id && !file) {
+    showToast('A file is required for a new asset', 'error');
+    return;
+  }
+
+  const channels = Array.from(document.querySelectorAll('#assetChannelsRow input:checked')).map((i) => i.value);
+
+  const fd = new FormData();
+  fd.append('title', document.getElementById('assetTitle').value.trim());
+  fd.append('description', document.getElementById('assetDescription').value.trim());
+  if (!id) fd.append('assetType', document.getElementById('assetType').value);
+  fd.append('audience', document.getElementById('assetAudience').value);
+  fd.append('campaign', document.getElementById('assetCampaign').value);
+  fd.append('cta', document.getElementById('assetCta').value.trim());
+  fd.append('channels', JSON.stringify(channels));
+  if (document.getElementById('assetPublishAt').value) fd.append('publishAt', document.getElementById('assetPublishAt').value);
+  if (document.getElementById('assetExpiryAt').value) fd.append('expiryAt', document.getElementById('assetExpiryAt').value);
+  fd.append('isAcademyContent', document.getElementById('assetIsAcademy').checked);
+  if (file) fd.append('file', file);
+  const thumb = document.getElementById('assetThumbInput').files[0];
+  if (thumb) fd.append('thumbnail', thumb);
+
+  try {
+    if (id) {
+      await apiPatch(`/marketing/admin/assets/${id}`, fd, true);
+      showToast('Asset updated');
+    } else {
+      await apiPost('/marketing/admin/assets', fd, true);
+      showToast('Asset created as draft');
+    }
+    closeModal('assetModal');
+    loadAssets();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+function openAssetReplaceModal(id) {
+  document.getElementById('assetReplaceModal').dataset.assetId = id;
+  document.getElementById('assetReplaceForm').reset();
+  openModal('assetReplaceModal');
+}
+
+async function submitAssetReplaceForm(e) {
+  e.preventDefault();
+  const id = document.getElementById('assetReplaceModal').dataset.assetId;
+  const file = document.getElementById('assetReplaceFileInput').files[0];
+  if (!file) { showToast('Choose a file', 'error'); return; }
+
+  const fd = new FormData();
+  fd.append('file', file);
+  const thumb = document.getElementById('assetReplaceThumbInput').files[0];
+  if (thumb) fd.append('thumbnail', thumb);
+
+  try {
+    await apiPost(`/marketing/admin/assets/${id}/replace`, fd, true);
+    showToast('New version created — previous version archived');
+    closeModal('assetReplaceModal');
+    loadAssets();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function openAssetAnalyticsModal(id) {
+  const asset = assetsCache.find((a) => a._id === id);
+  document.getElementById('assetAnalyticsTitle').textContent = asset?.title || '';
+  document.getElementById('assetAnalyticsStats').innerHTML = `<div class="stat-card"><div class="spinner"></div></div>`.repeat(3);
+  document.getElementById('assetAnalyticsChannelsBody').innerHTML = '';
+  openModal('assetAnalyticsModal');
+
+  try {
+    const data = await apiGet(`/marketing/admin/assets/${id}/analytics`);
+    document.getElementById('assetAnalyticsStats').innerHTML = `
+      <div class="stat-card"><div class="stat-label">Views</div><div class="stat-value">${data.asset.views}</div></div>
+      <div class="stat-card"><div class="stat-label">Downloads</div><div class="stat-value">${data.asset.downloads}</div></div>
+      <div class="stat-card"><div class="stat-label">Shares</div><div class="stat-value">${data.asset.shares}</div></div>`;
+    document.getElementById('assetAnalyticsChannelsBody').innerHTML = data.channelBreakdown.length
+      ? data.channelBreakdown.map((c) => `<tr><td>${escapeHtml(c._id)}</td><td>${c.count}</td></tr>`).join('')
+      : `<tr><td colspan="2"><div class="dash-empty"><p>No shares yet.</p></div></td></tr>`;
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+// ---------- Brand Kit ----------
+async function loadBrandKit() {
+  try {
+    const { brandKit } = await apiGet('/marketing/admin/brand-kit');
+    document.getElementById('bkSiteName').value = brandKit.siteName || '';
+    document.getElementById('bkSiteUrl').value = brandKit.siteUrl || '';
+    document.getElementById('bkContactEmail').value = brandKit.contactEmail || '';
+    document.getElementById('bkContactPhone').value = brandKit.contactPhone || '';
+    document.getElementById('bkPrimaryColor').value = brandKit.primaryColor || '#101d31';
+    document.getElementById('bkSecondaryColor').value = brandKit.secondaryColor || '#c9791f';
+    document.getElementById('bkDefaultCta').value = brandKit.defaultCta || '';
+    document.getElementById('bkLegalText').value = brandKit.legalText || '';
+    document.getElementById('bkFacebook').value = brandKit.socialAccounts?.facebook || '';
+    document.getElementById('bkInstagram').value = brandKit.socialAccounts?.instagram || '';
+    document.getElementById('bkTiktok').value = brandKit.socialAccounts?.tiktok || '';
+    document.getElementById('bkX').value = brandKit.socialAccounts?.x || '';
+    document.getElementById('bkLogoPreview').innerHTML = brandKit.logo ? `<img src="${brandKit.logo}" alt="">` : '';
+    document.getElementById('bkAltLogoPreview').innerHTML = brandKit.altLogo ? `<img src="${brandKit.altLogo}" alt="">` : '';
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function submitBrandKitForm(e) {
+  e.preventDefault();
+  const fd = new FormData();
+  fd.append('siteName', document.getElementById('bkSiteName').value.trim());
+  fd.append('siteUrl', document.getElementById('bkSiteUrl').value.trim());
+  fd.append('contactEmail', document.getElementById('bkContactEmail').value.trim());
+  fd.append('contactPhone', document.getElementById('bkContactPhone').value.trim());
+  fd.append('primaryColor', document.getElementById('bkPrimaryColor').value);
+  fd.append('secondaryColor', document.getElementById('bkSecondaryColor').value);
+  fd.append('defaultCta', document.getElementById('bkDefaultCta').value.trim());
+  fd.append('legalText', document.getElementById('bkLegalText').value.trim());
+  fd.append('socialAccounts', JSON.stringify({
+    facebook: document.getElementById('bkFacebook').value.trim(),
+    instagram: document.getElementById('bkInstagram').value.trim(),
+    tiktok: document.getElementById('bkTiktok').value.trim(),
+    x: document.getElementById('bkX').value.trim(),
+  }));
+  const logo = document.getElementById('bkLogoInput').files[0];
+  if (logo) fd.append('logo', logo);
+  const altLogo = document.getElementById('bkAltLogoInput').files[0];
+  if (altLogo) fd.append('altLogo', altLogo);
+
+  try {
+    await apiPatch('/marketing/admin/brand-kit', fd, true);
+    showToast('Brand Kit saved');
+    loadBrandKit();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+
+
+
+// ===================================================================
+// CAMPAIGNS
+// ===================================================================
+async function loadCampaigns() {
+  const tbody = document.getElementById('campaignsBody');
+  tbody.innerHTML = `<tr><td colspan="5"><div class="spinner"></div></td></tr>`;
+  try {
+    const { campaigns } = await apiGet('/campaigns/admin');
+    campaignsCache = campaigns;
+
+    if (!campaigns.length) {
+      tbody.innerHTML = `<tr><td colspan="5"><div class="dash-empty"><i class="fa-solid fa-bullhorn"></i><p>No campaigns yet.</p></div></td></tr>`;
+      return;
+    }
+
+    const statusOptions = ['draft', 'scheduled', 'active', 'ended', 'archived'];
+    tbody.innerHTML = campaigns
+      .map((c) => `
+      <tr>
+        <td><strong>${escapeHtml(c.name)}</strong></td>
+        <td class="text-muted" style="text-transform:capitalize;">${c.targetAudience}</td>
+        <td class="text-muted">${new Date(c.startDate).toLocaleDateString()} – ${new Date(c.endDate).toLocaleDateString()}</td>
+        <td><select data-campaign-status-select="${c._id}">${statusOptions.map((s) => `<option value="${s}" ${s === c.status ? 'selected' : ''}>${s}</option>`).join('')}</select></td>
+        <td><div class="row-actions">
+          <button class="act-edit" data-edit-campaign="${c._id}">Edit</button>
+          <button class="act-edit" data-analytics-campaign="${c._id}"><i class="fa-solid fa-chart-simple"></i></button>
+          <button class="act-reject" data-delete-campaign="${c._id}">Delete</button>
+        </div></td>
+      </tr>`)
+      .join('');
+
+    tbody.querySelectorAll('[data-campaign-status-select]').forEach((sel) =>
+      sel.addEventListener('change', async () => {
+        try { await apiPatch(`/campaigns/admin/${sel.dataset.campaignStatusSelect}/status`, { status: sel.value }); showToast('Campaign status updated'); } catch (err) { showToast(err.message, 'error'); }
+      })
+    );
+    tbody.querySelectorAll('[data-edit-campaign]').forEach((btn) => btn.addEventListener('click', () => openCampaignModal(campaignsCache.find((c) => c._id === btn.dataset.editCampaign))));
+    tbody.querySelectorAll('[data-delete-campaign]').forEach((btn) =>
+      btn.addEventListener('click', async () => {
+        if (!confirm('Delete this campaign? Assets stay, but lose their campaign link.')) return;
+        try { await apiDelete(`/campaigns/admin/${btn.dataset.deleteCampaign}`); showToast('Campaign deleted'); loadCampaigns(); } catch (err) { showToast(err.message, 'error'); }
+      })
+    );
+    tbody.querySelectorAll('[data-analytics-campaign]').forEach((btn) => btn.addEventListener('click', () => openCampaignAnalytics(btn.dataset.analyticsCampaign)));
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="5"><div class="dash-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>${err.message}</p></div></td></tr>`;
+  }
+}
+
+function openCampaignModal(campaign) {
+  const modal = document.getElementById('campaignModal');
+  modal.dataset.campaignId = campaign?._id || '';
+  document.getElementById('campaignModalTitle').textContent = campaign ? 'Edit Campaign' : 'Add Campaign';
+  document.getElementById('campaignName').value = campaign?.name || '';
+  document.getElementById('campaignDescription').value = campaign?.description || '';
+  document.getElementById('campaignStartDate').value = campaign?.startDate ? campaign.startDate.slice(0, 10) : '';
+  document.getElementById('campaignEndDate').value = campaign?.endDate ? campaign.endDate.slice(0, 10) : '';
+  document.getElementById('campaignAudience').value = campaign?.targetAudience || 'everyone';
+  openModal('campaignModal');
+}
+
+async function submitCampaignForm(e) {
+  e.preventDefault();
+  const modal = document.getElementById('campaignModal');
+  const id = modal.dataset.campaignId;
+  const payload = {
+    name: document.getElementById('campaignName').value.trim(),
+    description: document.getElementById('campaignDescription').value.trim(),
+    startDate: document.getElementById('campaignStartDate').value,
+    endDate: document.getElementById('campaignEndDate').value,
+    targetAudience: document.getElementById('campaignAudience').value,
+  };
+
+  try {
+    if (id) {
+      await apiPatch(`/campaigns/admin/${id}`, payload);
+      showToast('Campaign updated');
+    } else {
+      await apiPost('/campaigns/admin', payload);
+      showToast('Campaign created');
+    }
+    closeModal('campaignModal');
+    loadCampaigns();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function openCampaignAnalytics(id) {
+  try {
+    const data = await apiGet(`/campaigns/admin/${id}/analytics`);
+    alert(
+      `${data.campaign.name} (${data.campaign.status})\n\n` +
+      `Referral clicks: ${data.clicks}\n` +
+      `Total downloads: ${data.totalDownloads}\n` +
+      `Total shares: ${data.totalShares}\n` +
+      `Assets in this campaign: ${data.assets.length}`
+    );
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ===================================================================
+// AGENT COMMISSIONS
+// ===================================================================
+function wireCommissionsSubtabs() {
+  document.querySelectorAll('#commissionsSubtabBar button').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#commissionsSubtabBar button').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      commissionsSubtab = btn.dataset.commissionsSubtab;
+      document.getElementById('commissionsPanelLedger').style.display = commissionsSubtab === 'ledger' ? 'block' : 'none';
+      document.getElementById('commissionsPanelRules').style.display = commissionsSubtab === 'rules' ? 'block' : 'none';
+      document.getElementById('commissionsPanelAdjustments').style.display = commissionsSubtab === 'adjustments' ? 'block' : 'none';
+      if (commissionsSubtab === 'ledger') loadCommissionLedger();
+      if (commissionsSubtab === 'rules') loadRules();
+      if (commissionsSubtab === 'adjustments') loadAdjustments();
+    });
+  });
+}
+
+function loadCommissionsTab() {
+  if (commissionsSubtab === 'ledger') loadCommissionLedger();
+  else if (commissionsSubtab === 'rules') loadRules();
+  else loadAdjustments();
+}
+
+async function loadCommissionLedger() {
+  const statsGrid = document.getElementById('commissionLedgerStats');
+  statsGrid.innerHTML = `<div class="stat-card"><div class="spinner"></div></div>`.repeat(3);
+  try {
+    const { totals } = await apiGet('/commissions/admin/summary');
+    statsGrid.innerHTML = `
+      <div class="stat-card"><div class="stat-label">Total Generated</div><div class="stat-value">KES ${(totals.totalGenerated||0).toLocaleString()}</div></div>
+      <div class="stat-card"><div class="stat-label">Pending</div><div class="stat-value">KES ${(totals.pending||0).toLocaleString()}</div></div>
+      <div class="stat-card"><div class="stat-label">Confirmed</div><div class="stat-value">KES ${(totals.confirmed||0).toLocaleString()}</div></div>`;
+  } catch (err) { statsGrid.innerHTML = `<div class="dash-empty"><p>${err.message}</p></div>`; }
+
+  const tbody = document.getElementById('commLedgerBody');
+  tbody.innerHTML = `<tr><td colspan="9"><div class="spinner"></div></td></tr>`;
+  try {
+    const params = new URLSearchParams();
+    if (commLedgerFilters.status) params.set('status', commLedgerFilters.status);
+    if (commLedgerFilters.referralType) params.set('referralType', commLedgerFilters.referralType);
+    params.set('limit', 100);
+    const { commissions } = await apiGet(`/commissions/admin?${params.toString()}`);
+
+    if (!commissions.length) {
+      tbody.innerHTML = `<tr><td colspan="9"><div class="dash-empty"><i class="fa-solid fa-sack-dollar"></i><p>No commissions match these filters.</p></div></td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = commissions.map((c) => `
+      <tr>
+        <td><strong>${escapeHtml(c.agent?.name || '-')}</strong><div class="text-muted">${escapeHtml(c.agent?.code || '')}</div></td>
+        <td><span class="agent-code">${escapeHtml(c.order?.orderNumber || '-')}</span></td>
+        <td><span class="pill pill-${c.referralType.includes('buyer') ? 'buyer' : 'retailer'}">${c.referralType.replace('_referral', '')}</span></td>
+        <td>KES ${(c.marketplaceProfit||0).toLocaleString()}</td>
+        <td>${c.commissionRate}%</td>
+        <td><strong>KES ${(c.commissionAmount||0).toLocaleString()}</strong></td>
+        <td><span class="pill pill-${c.status === 'confirmed' ? 'active' : c.status === 'cancelled' || c.status === 'reversed' ? 'rejected' : 'pending_review'}">${c.status}</span></td>
+        <td class="text-muted">${new Date(c.createdAt).toLocaleDateString()}</td>
+        <td>${c.status === 'confirmed' ? `<button class="act-reject" data-reverse-comm="${c._id}">Reverse</button>` : ''}</td>
+      </tr>`).join('');
+
+    tbody.querySelectorAll('[data-reverse-comm]').forEach((btn) =>
+      btn.addEventListener('click', async () => {
+        if (!confirm('Reverse this confirmed commission? This deducts it from the agent\'s total.')) return;
+        try { await apiPatch(`/commissions/admin/${btn.dataset.reverseComm}/reverse`); showToast('Commission reversed'); loadCommissionLedger(); } catch (err) { showToast(err.message, 'error'); }
+      })
+    );
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="9"><div class="dash-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>${err.message}</p></div></td></tr>`;
+  }
+}
+
+// ---------- Rules ----------
+async function loadRules() {
+  const tbody = document.getElementById('rulesBody');
+  tbody.innerHTML = `<tr><td colspan="7"><div class="spinner"></div></td></tr>`;
+  try {
+    const { rules } = await apiGet('/commissions/admin/rules');
+    rulesCache = rules;
+
+    if (!rules.length) {
+      tbody.innerHTML = `<tr><td colspan="7"><div class="dash-empty"><i class="fa-solid fa-sliders"></i><p>No commission rules yet — agents fall back to their own flat rate.</p></div></td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = rules.map((r) => `
+      <tr>
+        <td><strong>${escapeHtml(r.name)}</strong></td>
+        <td class="text-muted">${r.audience.replace('_', ' ')}</td>
+        <td class="text-muted">${r.badge ? escapeHtml(r.badge.name) : 'Any'}</td>
+        <td>${r.commissionRate}%</td>
+        <td>${r.priority}</td>
+        <td><label class="switch"><input type="checkbox" ${r.isActive ? 'checked' : ''} data-toggle-rule="${r._id}"><span class="track"></span></label></td>
+        <td><div class="row-actions"><button class="act-edit" data-edit-rule="${r._id}">Edit</button><button class="act-reject" data-delete-rule="${r._id}">Delete</button></div></td>
+      </tr>`).join('');
+
+    tbody.querySelectorAll('[data-edit-rule]').forEach((btn) => btn.addEventListener('click', () => openRuleModal(rulesCache.find((r) => r._id === btn.dataset.editRule))));
+    tbody.querySelectorAll('[data-delete-rule]').forEach((btn) =>
+      btn.addEventListener('click', async () => {
+        if (!confirm('Delete this rule?')) return;
+        try { await apiDelete(`/commissions/admin/rules/${btn.dataset.deleteRule}`); showToast('Rule deleted'); loadRules(); } catch (err) { showToast(err.message, 'error'); }
+      })
+    );
+    tbody.querySelectorAll('[data-toggle-rule]').forEach((toggle) =>
+      toggle.addEventListener('change', async () => {
+        try { await apiPatch(`/commissions/admin/rules/${toggle.dataset.toggleRule}`, { isActive: toggle.checked }); showToast('Rule updated'); } catch (err) { showToast(err.message, 'error'); toggle.checked = !toggle.checked; }
+      })
+    );
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="dash-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>${err.message}</p></div></td></tr>`;
+  }
+}
+
+function openRuleModal(rule) {
+  const modal = document.getElementById('ruleModal');
+  modal.dataset.ruleId = rule?._id || '';
+  document.getElementById('ruleModalTitle').textContent = rule ? 'Edit Rule' : 'Add Commission Rule';
+  document.getElementById('ruleName').value = rule?.name || '';
+  document.getElementById('ruleAudience').value = rule?.audience || 'buyer_referral';
+  document.getElementById('ruleCommissionRate').value = rule?.commissionRate ?? '';
+  document.getElementById('rulePriority').value = rule?.priority ?? 0;
+  document.getElementById('ruleActive').checked = rule ? rule.isActive : true;
+
+  const badgeSelect = document.getElementById('ruleBadge');
+  badgeSelect.innerHTML = `<option value="">Any badge</option>` + badgesCache.map((b) => `<option value="${b._id}" ${rule?.badge?._id === b._id ? 'selected' : ''}>${escapeHtml(b.name)}</option>`).join('');
+
+  openModal('ruleModal');
+}
+
+async function submitRuleForm(e) {
+  e.preventDefault();
+  const modal = document.getElementById('ruleModal');
+  const id = modal.dataset.ruleId;
+  const payload = {
+    name: document.getElementById('ruleName').value.trim(),
+    audience: document.getElementById('ruleAudience').value,
+    badge: document.getElementById('ruleBadge').value || null,
+    commissionRate: Number(document.getElementById('ruleCommissionRate').value),
+    priority: Number(document.getElementById('rulePriority').value) || 0,
+    isActive: document.getElementById('ruleActive').checked,
+  };
+
+  try {
+    if (id) {
+      await apiPatch(`/commissions/admin/rules/${id}`, payload);
+      showToast('Rule updated');
+    } else {
+      await apiPost('/commissions/admin/rules', payload);
+      showToast('Rule created');
+    }
+    closeModal('ruleModal');
+    loadRules();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+// ---------- Adjustments ----------
+async function loadAdjustments() {
+  const tbody = document.getElementById('adjustmentsBody');
+  tbody.innerHTML = `<tr><td colspan="5"><div class="spinner"></div></td></tr>`;
+  try {
+    const { adjustments } = await apiGet('/commissions/admin/adjustments');
+    adjustmentsCache = adjustments;
+
+    if (!adjustments.length) {
+      tbody.innerHTML = `<tr><td colspan="5"><div class="dash-empty"><i class="fa-solid fa-sack-dollar"></i><p>No manual adjustments yet.</p></div></td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = adjustments.map((a) => `
+      <tr>
+        <td><strong>${escapeHtml(a.agent?.name || '-')}</strong><div class="text-muted">${escapeHtml(a.agent?.code || '')}</div></td>
+        <td style="color:${a.amount >= 0 ? 'var(--teal-deep)' : 'var(--brick)'}; font-weight:700;">${a.amount >= 0 ? '+' : ''}KES ${a.amount.toLocaleString()}</td>
+        <td class="wrap-cell">${escapeHtml(a.reason)}</td>
+        <td class="text-muted">${escapeHtml(a.addedBy?.name || '-')}</td>
+        <td class="text-muted">${new Date(a.createdAt).toLocaleDateString()}</td>
+      </tr>`).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="5"><div class="dash-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>${err.message}</p></div></td></tr>`;
+  }
+}
+
+function openAdjustmentModal() {
+  document.getElementById('adjustmentForm').reset();
+  const sel = document.getElementById('adjustmentAgent');
+  sel.innerHTML = agentsCache.map((a) => `<option value="${a._id}">${escapeHtml(a.name)} (${escapeHtml(a.code)})</option>`).join('');
+  openModal('adjustmentModal');
+}
+
+async function submitAdjustmentForm(e) {
+  e.preventDefault();
+  const payload = {
+    agentId: document.getElementById('adjustmentAgent').value,
+    amount: Number(document.getElementById('adjustmentAmount').value),
+    reason: document.getElementById('adjustmentReason').value.trim(),
+  };
+  try {
+    await apiPost('/commissions/admin/adjustments', payload);
+    showToast('Adjustment applied');
+    closeModal('adjustmentModal');
+    loadAdjustments();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+
+
+
+
+
+
+
+// ===================================================================
+// AGENT LEADS (oversight across all agents)
+// ===================================================================
+async function loadAgentLeads() {
+  const tbody = document.getElementById('agentLeadsBody');
+  tbody.innerHTML = `<tr><td colspan="7"><div class="spinner"></div></td></tr>`;
+  try {
+    const params = new URLSearchParams();
+    if (alFilters.type) params.set('type', alFilters.type);
+    if (alFilters.status) params.set('status', alFilters.status);
+    const { leads } = await apiGet(`/recruitment/admin/leads?${params.toString()}`);
+    agentLeadsCache = leads;
+
+    if (!leads.length) {
+      tbody.innerHTML = `<tr><td colspan="7"><div class="dash-empty"><i class="fa-solid fa-address-book"></i><p>No leads match these filters.</p></div></td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = leads.map((l) => `
+      <tr>
+        <td><strong>${escapeHtml(l.name)}</strong>${l.businessName ? `<div class="text-muted">${escapeHtml(l.businessName)}</div>` : ''}</td>
+        <td><span class="pill pill-${l.leadType}">${l.leadType}</span></td>
+        <td>${escapeHtml(l.agent?.name || '-')} <span class="agent-code">${escapeHtml(l.agent?.code || '')}</span></td>
+        <td class="text-muted">${escapeHtml(l.phone || l.email || '—')}</td>
+        <td class="text-muted">${escapeHtml(l.source)}</td>
+        <td><span class="pill">${l.status.replace(/_/g, ' ')}</span></td>
+        <td class="text-muted">${l.lastContactAt ? new Date(l.lastContactAt).toLocaleDateString() : '—'}</td>
+      </tr>`).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="dash-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>${err.message}</p></div></td></tr>`;
+  }
+}
+
+
+
+
+
+
+
+// ===================================================================
+// FRAUD & AUDIT
+// ===================================================================
+function wireFraudSubtabs() {
+  document.querySelectorAll('#fraudSubtabBar button').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#fraudSubtabBar button').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      fraudSubtab = btn.dataset.fraudSubtab;
+      document.getElementById('fraudPanelEvents').style.display = fraudSubtab === 'events' ? 'block' : 'none';
+      document.getElementById('fraudPanelAudit').style.display = fraudSubtab === 'audit' ? 'block' : 'none';
+      if (fraudSubtab === 'audit') loadAuditLogs();
+    });
+  });
+}
+
+function loadFraudTab() {
+  if (fraudSubtab === 'events') loadFraudEvents();
+  else loadAuditLogs();
+}
+
+async function loadFraudEvents() {
+  const tbody = document.getElementById('fraudEventsBody');
+  tbody.innerHTML = `<tr><td colspan="7"><div class="spinner"></div></td></tr>`;
+  try {
+    const params = new URLSearchParams();
+    if (fraudFilters.status) params.set('status', fraudFilters.status);
+    if (fraudFilters.severity) params.set('severity', fraudFilters.severity);
+    const { events } = await apiGet(`/fraud/events?${params.toString()}`);
+
+    if (!events.length) {
+      tbody.innerHTML = `<tr><td colspan="7"><div class="dash-empty"><i class="fa-solid fa-shield-halved"></i><p>No fraud events match these filters.</p></div></td></tr>`;
+      return;
+    }
+
+    const severityPill = { low: 'pill-draft', medium: 'pill-pending_review', high: 'pill-rejected' };
+    tbody.innerHTML = events.map((ev) => `
+      <tr>
+        <td>${escapeHtml(ev.agent?.name || '-')} <span class="agent-code">${escapeHtml(ev.agent?.code || '')}</span></td>
+        <td class="text-muted">${ev.type.replace(/_/g, ' ')}</td>
+        <td><span class="pill ${severityPill[ev.severity] || ''}">${ev.severity}</span></td>
+        <td class="wrap-cell">${escapeHtml(ev.description)}</td>
+        <td><span class="pill pill-${ev.status === 'open' ? 'pending_review' : ev.status === 'dismissed' ? 'draft' : 'active'}">${ev.status}</span></td>
+        <td class="text-muted">${new Date(ev.createdAt).toLocaleDateString()}</td>
+        <td>${ev.status === 'open' ? `<button class="act-edit" data-review-fraud="${ev._id}">Review</button>` : ''}</td>
+      </tr>`).join('');
+
+    tbody.querySelectorAll('[data-review-fraud]').forEach((btn) =>
+      btn.addEventListener('click', () => {
+        const ev = events.find((e) => e._id === btn.dataset.reviewFraud);
+        document.getElementById('fraudReviewModal').dataset.fraudId = ev._id;
+        document.getElementById('fraudReviewDescription').textContent = ev.description;
+        openModal('fraudReviewModal');
+      })
+    );
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="dash-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>${err.message}</p></div></td></tr>`;
+  }
+}
+
+async function reviewFraudEvent(decision) {
+  const id = document.getElementById('fraudReviewModal').dataset.fraudId;
+  try {
+    await apiPatch(`/fraud/events/${id}/review`, { decision });
+    showToast(`Marked as ${decision}`);
+    closeModal('fraudReviewModal');
+    loadFraudEvents();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function loadAuditLogs() {
+  const tbody = document.getElementById('auditLogsBody');
+  tbody.innerHTML = `<tr><td colspan="5"><div class="spinner"></div></td></tr>`;
+  try {
+    const params = new URLSearchParams();
+    if (auditFilters.search) params.set('action', auditFilters.search);
+    params.set('page', auditFilters.page);
+    params.set('limit', 20);
+    const { logs, page, pages } = await apiGet(`/fraud/audit-logs?${params.toString()}`);
+    auditLogsCache = logs;
+
+    if (!logs.length) {
+      tbody.innerHTML = `<tr><td colspan="5"><div class="dash-empty"><i class="fa-solid fa-clipboard-list"></i><p>No matching audit entries.</p></div></td></tr>`;
+      document.getElementById('auditPagination').innerHTML = '';
+      return;
+    }
+
+    tbody.innerHTML = logs.map((l) => `
+      <tr>
+        <td>${escapeHtml(l.actor?.name || 'System')}</td>
+        <td><span class="agent-code">${escapeHtml(l.action)}</span></td>
+        <td class="text-muted">${escapeHtml(l.targetType || '-')}</td>
+        <td class="wrap-cell text-muted">${escapeHtml(l.description || '')}</td>
+        <td class="text-muted">${new Date(l.createdAt).toLocaleString()}</td>
+      </tr>`).join('');
+
+    renderAuditPagination(page, pages);
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="5"><div class="dash-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>${err.message}</p></div></td></tr>`;
+  }
+}
+
+function renderAuditPagination(page, pages) {
+  const el = document.getElementById('auditPagination');
+  if (pages <= 1) { el.innerHTML = ''; return; }
+  let html = '';
+  for (let i = 1; i <= pages; i++) html += `<button class="${i === page ? 'active' : ''}" data-page="${i}">${i}</button>`;
+  el.innerHTML = html;
+  el.querySelectorAll('button').forEach((btn) => btn.addEventListener('click', () => { auditFilters.page = Number(btn.dataset.page); loadAuditLogs(); }));
+}
+
+
+
+
+
+
+
+
+
+
 
 // ===================================================================
 // TRANSACTION FEE TIERS (NEW — seller-side payment-processing fee ladder)

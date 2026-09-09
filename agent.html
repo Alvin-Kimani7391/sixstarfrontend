@@ -42,7 +42,14 @@
       <button data-tab="profile"><i class="fa-solid fa-user-gear"></i> Profile</button>
     </nav>
     <div class="agent-sidebar__foot">
-      Logged in as <strong id="agentNameLabel" style="color:#fff;">-</strong>
+      <div class="agent-sidebar__id">
+        <img id="sidebarAvatarImg" class="agent-avatar agent-avatar--sm" src="" alt="" style="display:none;">
+        <div class="agent-avatar agent-avatar--sm agent-avatar--fallback" id="sidebarAvatarFallback"><i class="fa-solid fa-user"></i></div>
+        <div>
+          Logged in as<br>
+          <strong id="agentNameLabel" style="color:#fff;">-</strong>
+        </div>
+      </div>
       <button id="logoutBtn">Log Out</button>
     </div>
   </aside>
@@ -166,7 +173,11 @@
             </div>
             <button class="btn btn-primary" id="genMsgBtn" style="width:fit-content;">Generate Message</button>
             <div id="msgResultBox" style="display:none;">
-              <div class="link-box" style="margin-bottom:8px;"><input type="text" id="msgResultLink" readonly><button class="act-btn act-outline" data-copy="msgResultLink">Copy Link</button></div>
+              <div class="link-box" style="margin-bottom:8px;">
+                <input type="text" id="msgResultLink" readonly>
+                <button class="act-btn act-outline" data-copy="msgResultLink">Copy Link</button>
+                <button class="act-btn act-primary" data-native-share="msgResultLink" data-native-share-text="msgResultText" title="Share"><i class="fa-solid fa-share-nodes"></i></button>
+              </div>
               <textarea id="msgResultText" rows="6" readonly style="width:100%; padding:12px; border:1.5px solid var(--line); border-radius:8px; font-size:13px;"></textarea>
               <button class="act-btn act-outline" data-copy="msgResultText" style="margin-top:8px;">Copy Message</button>
             </div>
@@ -345,14 +356,64 @@
         <div class="dash-card">
           <div class="dash-card__head"><h3>Profile</h3></div>
           <form id="profileForm" class="form-grid" style="padding:18px;">
+            <div class="avatar-upload-row">
+              <img id="profileAvatarPreview" class="agent-avatar agent-avatar--lg" src="" alt="" style="display:none;">
+              <div class="agent-avatar agent-avatar--lg agent-avatar--fallback" id="profileAvatarFallback"><i class="fa-solid fa-user"></i></div>
+              <div class="avatar-upload-row__controls">
+                <label for="profAvatarInput" class="btn btn-outline btn-sm" style="width:fit-content; cursor:pointer;">Change Photo</label>
+                <input type="file" id="profAvatarInput" accept="image/*" style="display:none;">
+                <span class="form-hint">JPG or PNG, square photos look best.</span>
+              </div>
+            </div>
             <div class="form-row-2">
               <div class="form-field"><label>Name</label><input type="text" id="profName" required></div>
               <div class="form-field"><label>Phone</label><input type="text" id="profPhone"></div>
             </div>
             <div class="form-field"><label>Location</label><input type="text" id="profLocation"></div>
             <div class="form-field"><label>Bio</label><textarea id="profBio" maxlength="500"></textarea></div>
-            <div class="form-field"><label>Avatar</label><input type="file" id="profAvatarInput" accept="image/*"></div>
             <button type="submit" class="btn btn-primary" style="width:fit-content;">Save Profile</button>
+          </form>
+        </div>
+
+        <!-- ===== PAYOUT DETAILS (NEW) ===== -->
+        <div class="dash-card">
+          <div class="dash-card__head"><h3><i class="fa-solid fa-money-bill-transfer"></i> Payout Details</h3></div>
+          <p class="text-muted" style="padding:0 18px;">Where we send your commission. The account name/M-Pesa name must match the ID number below — payouts to mismatched names may be delayed.</p>
+          <form id="payoutForm" class="form-grid" style="padding:18px;">
+            <div class="form-field">
+              <label>Payout Method</label>
+              <div class="chip-row" id="payoutMethodChips">
+                <label class="channel-chip" data-method="mpesa">
+                  <input type="radio" name="payoutMethod" value="mpesa" checked> <i class="fa-solid fa-mobile-screen-button"></i> M-Pesa
+                </label>
+                <label class="channel-chip" data-method="bank">
+                  <input type="radio" name="payoutMethod" value="bank"> <i class="fa-solid fa-building-columns"></i> Bank Transfer
+                </label>
+              </div>
+            </div>
+
+            <div class="form-field">
+              <label>ID Number (registered owner of the account below)</label>
+              <input type="text" id="payoutIdNumber" placeholder="e.g. 12345678">
+            </div>
+
+            <div id="payoutMpesaFields" class="form-row-2">
+              <div class="form-field"><label>M-Pesa Number</label><input type="text" id="payoutMpesaNumber" placeholder="07XXXXXXXX"></div>
+              <div class="form-field"><label>M-Pesa Registered Name</label><input type="text" id="payoutMpesaName"></div>
+            </div>
+
+            <div id="payoutBankFields" style="display:none;">
+              <div class="form-row-2">
+                <div class="form-field"><label>Bank Name</label><input type="text" id="payoutBankName"></div>
+                <div class="form-field"><label>Branch</label><input type="text" id="payoutBranchName"></div>
+              </div>
+              <div class="form-row-2">
+                <div class="form-field"><label>Account Name</label><input type="text" id="payoutAccountName"></div>
+                <div class="form-field"><label>Account Number</label><input type="text" id="payoutAccountNumber"></div>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width:fit-content;">Save Payout Details</button>
           </form>
         </div>
 

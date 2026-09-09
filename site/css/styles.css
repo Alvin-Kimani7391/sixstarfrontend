@@ -1631,3 +1631,41 @@ table.dtable img.thumb{ width:38px; height:38px; border-radius:6px; object-fit:c
   font-weight: 700;
   color: var(--navy-deep);
 }
+
+
+
+
+
+
+
+/* ===================================================================
+   AGENT / MARKETING SYSTEM — admin additions
+   =================================================================== */
+
+/* asset grid (admin) */
+.asset-admin-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:14px; padding:18px; }
+.asset-admin-card{ border:1px solid var(--line); border-radius:var(--radius-m); overflow:hidden; background:var(--white); box-shadow:var(--shadow-card); display:flex; flex-direction:column; }
+.asset-admin-card__thumb{ aspect-ratio:16/10; background:var(--paper-dim); display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative; }
+.asset-admin-card__thumb img{ width:100%; height:100%; object-fit:cover; }
+.asset-admin-card__thumb i{ font-size:28px; color:var(--ink-soft); }
+.asset-admin-card__featured{ position:absolute; top:8px; left:8px; background:var(--brick); color:#fff; font-size:9.5px; font-weight:800; padding:3px 9px; border-radius:20px; }
+.asset-admin-card__body{ padding:12px 14px; display:flex; flex-direction:column; gap:6px; flex:1; }
+.asset-admin-card__title{ font-size:.86rem; font-weight:700; color:var(--navy-deep); }
+.asset-admin-card__meta{ font-size:.72rem; color:var(--ink-soft); display:flex; gap:8px; flex-wrap:wrap; }
+.asset-admin-card__row{ display:flex; gap:6px; flex-wrap:wrap; margin-top:auto; }
+.asset-admin-card__row select{ flex:1; padding:6px 8px; font-size:.72rem; border:1px solid var(--line); border-radius:var(--radius-s); }
+.asset-admin-card__row button{ padding:6px 9px; font-size:.68rem; }
+
+/* commission ledger stat cards reuse .stat-grid/.stat-card already defined */
+
+.form-row-2{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+@media(max-width:480px){ .form-row-2{ grid-template-columns:1fr; } }
+
+.chip-row label.chip{ cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+.chip-row label.chip input{ accent-color:var(--teal); }
+
+.badge-color-dot{ width:12px; height:12px; border-radius:50%; display:inline-block; margin-right:6px; vertical-align:middle; }
+
+@media(max-width:480px){
+  .asset-admin-grid{ grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); padding:12px; gap:10px; }
+}

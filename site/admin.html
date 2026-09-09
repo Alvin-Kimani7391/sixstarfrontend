@@ -140,6 +140,42 @@
   border-radius:8px; width:34px; height:34px; flex-shrink:0; cursor:pointer;
 }
 .btn-rm:hover { background: var(--brick, #b8442e); color: #fff; }
+
+
+
+
+
+/* ===================================================================
+   AGENT / MARKETING SYSTEM — admin additions
+   =================================================================== */
+
+/* asset grid (admin) */
+.asset-admin-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:14px; padding:18px; }
+.asset-admin-card{ border:1px solid var(--line); border-radius:var(--radius-m); overflow:hidden; background:var(--white); box-shadow:var(--shadow-card); display:flex; flex-direction:column; }
+.asset-admin-card__thumb{ aspect-ratio:16/10; background:var(--paper-dim); display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative; }
+.asset-admin-card__thumb img{ width:100%; height:100%; object-fit:cover; }
+.asset-admin-card__thumb i{ font-size:28px; color:var(--ink-soft); }
+.asset-admin-card__featured{ position:absolute; top:8px; left:8px; background:var(--brick); color:#fff; font-size:9.5px; font-weight:800; padding:3px 9px; border-radius:20px; }
+.asset-admin-card__body{ padding:12px 14px; display:flex; flex-direction:column; gap:6px; flex:1; }
+.asset-admin-card__title{ font-size:.86rem; font-weight:700; color:var(--navy-deep); }
+.asset-admin-card__meta{ font-size:.72rem; color:var(--ink-soft); display:flex; gap:8px; flex-wrap:wrap; }
+.asset-admin-card__row{ display:flex; gap:6px; flex-wrap:wrap; margin-top:auto; }
+.asset-admin-card__row select{ flex:1; padding:6px 8px; font-size:.72rem; border:1px solid var(--line); border-radius:var(--radius-s); }
+.asset-admin-card__row button{ padding:6px 9px; font-size:.68rem; }
+
+/* commission ledger stat cards reuse .stat-grid/.stat-card already defined */
+
+.form-row-2{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+@media(max-width:480px){ .form-row-2{ grid-template-columns:1fr; } }
+
+.chip-row label.chip{ cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+.chip-row label.chip input{ accent-color:var(--teal); }
+
+.badge-color-dot{ width:12px; height:12px; border-radius:50%; display:inline-block; margin-right:6px; vertical-align:middle; }
+
+@media(max-width:480px){
+  .asset-admin-grid{ grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); padding:12px; gap:10px; }
+}
 </style>
 </head>
 <body class="admin-body">
@@ -190,6 +226,13 @@
 <button data-tab="earnings"><i class="fa-solid fa-sack-dollar"></i> Earnings</button>
       <button data-tab="users"><i class="fa-solid fa-users"></i> Users</button>
       <button data-tab="agents"><i class="fa-solid fa-user-tie"></i> Agents</button>
+
+            <button data-tab="marketing"><i class="fa-solid fa-photo-film"></i> Marketing Center</button>
+      <button data-tab="campaigns"><i class="fa-solid fa-bullhorn"></i> Campaigns</button>
+      <button data-tab="commissions"><i class="fa-solid fa-sack-dollar"></i> Agent Commissions</button>
+      <button data-tab="agentleads"><i class="fa-solid fa-address-book"></i> Agent Leads</button>
+      <button data-tab="fraud"><i class="fa-solid fa-shield-halved"></i> Fraud &amp; Audit</button>
+
       <button data-tab="rfq"><i class="fa-solid fa-comments"></i> Live Quotes</button>
     </nav>
     <div class="admin-sidebar__foot">
@@ -678,21 +721,278 @@
 
 
 
-      <!-- ===== AGENTS ===== -->
+           <!-- ===== AGENTS ===== -->
       <div class="tab-panel" id="panel-agents">
-        <div class="dash-card">
+        <div class="tabbar order-subtab" id="agentsSubtabBar">
+          <button class="active" data-agents-subtab="list">Agents</button>
+          <button data-agents-subtab="badges">Badges</button>
+        </div>
+
+        <div id="agentsPanelList" class="dash-card">
           <div class="dash-card__head">
             <h3>Agents</h3>
-            <button class="btn btn-dark btn-sm" id="addAgentBtn"><i class="fa-solid fa-plus"></i> Add Agent</button>
+            <div class="dash-toolbar">
+              <input type="text" id="agentSearchInput" placeholder="Search by name/email/code...">
+              <select id="agentStatusSelect">
+                <option value="">All statuses</option>
+                <option value="pending">Pending</option>
+                <option value="under_review">Under review</option>
+                <option value="active">Active</option>
+                <option value="suspended">Suspended</option>
+                <option value="rejected">Rejected</option>
+              </select>
+              <button class="btn btn-dark btn-sm" id="addAgentBtn"><i class="fa-solid fa-plus"></i> Add Agent</button>
+            </div>
           </div>
-          <p class="text-muted" style="padding:0 18px;">Click a row to see every order placed with that agent's code.</p>
+          <p class="text-muted" style="padding:0 18px;">Click a row to see every order placed with that agent's code and their referral click log. Pending applications need to be approved before the agent can access their dashboard.</p>
           <div class="table-scroll">
             <table class="dtable">
               <thead>
-                <tr><th></th><th>Agent</th><th>Code</th><th>Contact</th><th>Commission</th><th>Orders</th><th>Earned</th><th>Active</th><th>Actions</th></tr>
+                <tr><th></th><th>Agent</th><th>Code</th><th>Contact</th><th>Badge</th><th>Status</th><th>Orders</th><th>Earned</th><th>Actions</th></tr>
               </thead>
               <tbody id="agentsBody"></tbody>
             </table>
+          </div>
+        </div>
+
+        <div id="agentsPanelBadges" class="dash-card" style="display:none;">
+          <div class="dash-card__head">
+            <h3>Agent Badges</h3>
+            <button class="btn btn-dark btn-sm" id="addBadgeBtn"><i class="fa-solid fa-plus"></i> Add Badge</button>
+          </div>
+          <p class="text-muted" style="padding:0 18px;">Commission tiers. Deleting a badge un-assigns it from any agents on it — they fall back to their flat commission rate. Only one badge can be the default (auto-assigned to newly approved agents).</p>
+          <div class="table-scroll">
+            <table class="dtable">
+              <thead><tr><th>Badge</th><th>Commission</th><th>Requirements</th><th>Default</th><th>Active</th><th>Actions</th></tr></thead>
+              <tbody id="badgesBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== MARKETING CENTER ===== -->
+      <div class="tab-panel" id="panel-marketing">
+        <div class="tabbar order-subtab" id="marketingSubtabBar">
+          <button class="active" data-marketing-subtab="assets">Assets</button>
+          <button data-marketing-subtab="brandkit">Brand Kit</button>
+        </div>
+
+        <div id="marketingPanelAssets" class="dash-card">
+          <div class="dash-card__head">
+            <h3>Marketing Assets</h3>
+            <div class="dash-toolbar">
+              <input type="text" id="assetSearchInput" placeholder="Search assets...">
+              <select id="assetStatusSelect">
+                <option value="">All statuses</option>
+                <option value="draft">Draft</option>
+                <option value="pending_review">Pending review</option>
+                <option value="approved">Approved</option>
+                <option value="published">Published</option>
+                <option value="archived">Archived</option>
+                <option value="expired">Expired</option>
+              </select>
+              <select id="assetAudienceSelect">
+                <option value="">All audiences</option>
+                <option value="buyer">Buyer</option>
+                <option value="seller">Seller</option>
+                <option value="agent">Agent</option>
+                <option value="everyone">Everyone</option>
+              </select>
+              <button class="btn btn-dark btn-sm" id="addAssetBtn"><i class="fa-solid fa-plus"></i> Upload Asset</button>
+            </div>
+          </div>
+          <p class="text-muted" style="padding:0 18px;">Banners, videos, flyers and images agents can browse, download and share from their Marketing Center. An asset only appears to agents once its status is Approved or Published.</p>
+          <div class="asset-admin-grid" id="assetsGrid"></div>
+        </div>
+
+        <div id="marketingPanelBrandKit" class="dash-card" style="display:none;">
+          <div class="dash-card__head"><h3>Brand Kit</h3></div>
+          <p class="text-muted" style="padding:0 18px;">The central branding agents pull from when personalizing materials.</p>
+          <form id="brandKitForm" class="form-grid" style="padding:18px;">
+            <div class="form-row-2">
+              <div class="form-field"><label>Site Name</label><input type="text" id="bkSiteName"></div>
+              <div class="form-field"><label>Site URL</label><input type="text" id="bkSiteUrl"></div>
+            </div>
+            <div class="form-row-2">
+              <div class="form-field"><label>Contact Email</label><input type="email" id="bkContactEmail"></div>
+              <div class="form-field"><label>Contact Phone</label><input type="text" id="bkContactPhone"></div>
+            </div>
+            <div class="form-row-2">
+              <div class="form-field"><label>Primary Color</label><input type="color" id="bkPrimaryColor"></div>
+              <div class="form-field"><label>Secondary Color</label><input type="color" id="bkSecondaryColor"></div>
+            </div>
+            <div class="form-field"><label>Default CTA</label><input type="text" id="bkDefaultCta"></div>
+            <div class="form-field"><label>Legal Text (footer disclaimer)</label><textarea id="bkLegalText"></textarea></div>
+            <div class="form-row-2">
+              <div class="form-field"><label>Logo</label><input type="file" id="bkLogoInput" accept="image/*"><div class="image-preview-row" id="bkLogoPreview"></div></div>
+              <div class="form-field"><label>Alt Logo</label><input type="file" id="bkAltLogoInput" accept="image/*"><div class="image-preview-row" id="bkAltLogoPreview"></div></div>
+            </div>
+            <h4 style="font-size:.9rem; margin:6px 0 0;">Social Accounts</h4>
+            <div class="form-row-2">
+              <div class="form-field"><label>Facebook</label><input type="text" id="bkFacebook"></div>
+              <div class="form-field"><label>Instagram</label><input type="text" id="bkInstagram"></div>
+            </div>
+            <div class="form-row-2">
+              <div class="form-field"><label>TikTok</label><input type="text" id="bkTiktok"></div>
+              <div class="form-field"><label>X</label><input type="text" id="bkX"></div>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:fit-content;">Save Brand Kit</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- ===== CAMPAIGNS ===== -->
+      <div class="tab-panel" id="panel-campaigns">
+        <div class="dash-card">
+          <div class="dash-card__head">
+            <h3>Campaigns</h3>
+            <button class="btn btn-dark btn-sm" id="addCampaignBtn"><i class="fa-solid fa-plus"></i> Add Campaign</button>
+          </div>
+          <div class="table-scroll">
+            <table class="dtable">
+              <thead><tr><th>Name</th><th>Audience</th><th>Window</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody id="campaignsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== AGENT COMMISSIONS ===== -->
+      <div class="tab-panel" id="panel-commissions">
+        <div class="tabbar order-subtab" id="commissionsSubtabBar">
+          <button class="active" data-commissions-subtab="ledger">Ledger</button>
+          <button data-commissions-subtab="rules">Rules</button>
+          <button data-commissions-subtab="adjustments">Adjustments</button>
+        </div>
+
+        <div id="commissionsPanelLedger">
+          <div class="stat-grid" id="commissionLedgerStats"></div>
+          <div class="dash-card">
+            <div class="dash-card__head">
+              <h3>Commission Ledger</h3>
+              <div class="dash-toolbar">
+                <select id="commLedgerStatusSelect">
+                  <option value="">All statuses</option>
+                  <option value="pending">Pending</option><option value="processing">Processing</option>
+                  <option value="eligible">Eligible</option><option value="confirmed">Confirmed</option>
+                  <option value="cancelled">Cancelled</option><option value="reversed">Reversed</option>
+                </select>
+                <select id="commLedgerTypeSelect">
+                  <option value="">All types</option>
+                  <option value="buyer_referral">Buyer referral</option>
+                  <option value="seller_referral">Seller referral</option>
+                </select>
+              </div>
+            </div>
+            <div class="table-scroll">
+              <table class="dtable">
+                <thead><tr><th>Agent</th><th>Order</th><th>Type</th><th>Profit</th><th>Rate</th><th>Commission</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+                <tbody id="commLedgerBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="commissionsPanelRules" style="display:none;">
+          <div class="dash-card">
+            <div class="dash-card__head">
+              <h3>Commission Rules</h3>
+              <button class="btn btn-dark btn-sm" id="addRuleBtn"><i class="fa-solid fa-plus"></i> Add Rule</button>
+            </div>
+            <p class="text-muted" style="padding:0 18px;">Highest priority matching rule wins. A rule with no badge selected applies to any badge without a more specific rule. If no rule matches, the agent's own flat commissionRate is used.</p>
+            <div class="table-scroll">
+              <table class="dtable">
+                <thead><tr><th>Name</th><th>Audience</th><th>Badge</th><th>Rate</th><th>Priority</th><th>Active</th><th>Actions</th></tr></thead>
+                <tbody id="rulesBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="commissionsPanelAdjustments" style="display:none;">
+          <div class="dash-card">
+            <div class="dash-card__head">
+              <h3>Manual Adjustments</h3>
+              <button class="btn btn-dark btn-sm" id="addAdjustmentBtn"><i class="fa-solid fa-plus"></i> Add Adjustment</button>
+            </div>
+            <p class="text-muted" style="padding:0 18px;">Bonuses (positive amount) or corrections (negative amount) applied directly to an agent's total commission.</p>
+            <div class="table-scroll">
+              <table class="dtable">
+                <thead><tr><th>Agent</th><th>Amount</th><th>Reason</th><th>Added By</th><th>Date</th></tr></thead>
+                <tbody id="adjustmentsBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== AGENT LEADS (CRM oversight) ===== -->
+      <div class="tab-panel" id="panel-agentleads">
+        <div class="dash-card">
+          <div class="dash-card__head">
+            <h3>Agent Leads</h3>
+            <div class="dash-toolbar">
+              <select id="alTypeSelect"><option value="">All types</option><option value="buyer">Buyer</option><option value="seller">Seller</option></select>
+              <select id="alStatusSelect">
+                <option value="">All statuses</option>
+                <option value="lead">Lead</option><option value="invited">Invited</option><option value="registered">Registered</option>
+                <option value="application_submitted">Application submitted</option><option value="documents_submitted">Documents submitted</option>
+                <option value="under_review">Under review</option><option value="approved">Approved</option><option value="active">Active</option>
+                <option value="product_listed">Product listed</option><option value="first_sale">First sale</option>
+                <option value="converted">Converted</option><option value="lost">Lost</option>
+              </select>
+            </div>
+          </div>
+          <p class="text-muted" style="padding:0 18px;">Every lead every agent has logged in their CRM, across the whole marketplace.</p>
+          <div class="table-scroll">
+            <table class="dtable">
+              <thead><tr><th>Lead</th><th>Type</th><th>Agent</th><th>Contact</th><th>Source</th><th>Status</th><th>Last Contact</th></tr></thead>
+              <tbody id="agentLeadsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== FRAUD & AUDIT ===== -->
+      <div class="tab-panel" id="panel-fraud">
+        <div class="tabbar order-subtab" id="fraudSubtabBar">
+          <button class="active" data-fraud-subtab="events">Fraud Events</button>
+          <button data-fraud-subtab="audit">Audit Logs</button>
+        </div>
+
+        <div id="fraudPanelEvents">
+          <div class="dash-card">
+            <div class="dash-card__head">
+              <h3>Fraud Events</h3>
+              <div class="dash-toolbar">
+                <select id="fraudStatusSelect"><option value="">All statuses</option><option value="open">Open</option><option value="reviewed">Reviewed</option><option value="dismissed">Dismissed</option></select>
+                <select id="fraudSeveritySelect"><option value="">All severities</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select>
+              </div>
+            </div>
+            <div class="table-scroll">
+              <table class="dtable">
+                <thead><tr><th>Agent</th><th>Type</th><th>Severity</th><th>Description</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+                <tbody id="fraudEventsBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="fraudPanelAudit" style="display:none;">
+          <div class="dash-card">
+            <div class="dash-card__head">
+              <h3>Audit Logs</h3>
+              <div class="dash-toolbar">
+                <input type="text" id="auditActionSearch" placeholder="Filter by action, e.g. commission.adjusted">
+              </div>
+            </div>
+            <div class="table-scroll">
+              <table class="dtable">
+                <thead><tr><th>Actor</th><th>Action</th><th>Target</th><th>Description</th><th>Date</th></tr></thead>
+                <tbody id="auditLogsBody"></tbody>
+              </table>
+            </div>
+            <div class="pagination" id="auditPagination"></div>
           </div>
         </div>
       </div>
@@ -1555,6 +1855,193 @@
 </div>
 
 
+
+
+<!-- Badge modal -->
+<div class="modal-overlay" id="badgeModal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="badgeModalTitle">Add Badge</h3><button class="modal-close" data-close-modal="badgeModal">&times;</button></div>
+    <form id="badgeForm" class="form-grid">
+      <div class="form-row-2">
+        <div class="form-field"><label>Name</label><input type="text" id="badgeName" required placeholder="e.g. Gold"></div>
+        <div class="form-field"><label>Slug</label><input type="text" id="badgeSlug" required placeholder="e.g. gold"></div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-field"><label>Color</label><input type="color" id="badgeColor" value="#c9791f"></div>
+        <div class="form-field"><label>Commission Rate %</label><input type="number" id="badgeCommissionRate" min="0" max="100" step="0.5" required></div>
+      </div>
+      <div class="form-field"><label>Sort Order (higher = higher tier)</label><input type="number" id="badgeSortOrder" value="0"></div>
+      <h4 style="font-size:.85rem; margin:4px 0 0;">Requirements for automatic upgrade</h4>
+      <div class="form-row-2">
+        <div class="form-field"><label>Min Buyer Referrals</label><input type="number" id="badgeMinBuyers" value="0"></div>
+        <div class="form-field"><label>Min Seller Referrals</label><input type="number" id="badgeMinSellers" value="0"></div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-field"><label>Min Approved Sellers</label><input type="number" id="badgeMinApprovedSellers" value="0"></div>
+        <div class="form-field"><label>Min Confirmed Commission (KES)</label><input type="number" id="badgeMinCommission" value="0"></div>
+      </div>
+      <div class="form-field"><label>Min Marketplace Profit (KES)</label><input type="number" id="badgeMinProfit" value="0"></div>
+      <div class="form-field" style="flex-direction:row; align-items:center; gap:10px;">
+        <label class="switch"><input type="checkbox" id="badgeIsDefault"><span class="track"></span></label>
+        <label style="margin:0;">Default badge (auto-assigned on approval)</label>
+      </div>
+      <div class="form-field" style="flex-direction:row; align-items:center; gap:10px;">
+        <label class="switch"><input type="checkbox" id="badgeActive" checked><span class="track"></span></label>
+        <label style="margin:0;">Active</label>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Save Badge</button>
+    </form>
+  </div>
+</div>
+
+<!-- Marketing Asset upload/edit modal -->
+<div class="modal-overlay" id="assetModal">
+  <div class="modal modal-lg">
+    <div class="modal-head"><h3 id="assetModalTitle">Upload Asset</h3><button class="modal-close" data-close-modal="assetModal">&times;</button></div>
+    <form id="assetForm" class="form-grid">
+      <div class="form-field"><label>Title</label><input type="text" id="assetTitle" required></div>
+      <div class="form-field"><label>Description</label><textarea id="assetDescription"></textarea></div>
+      <div class="form-row-2">
+        <div class="form-field"><label>Asset Type</label>
+          <select id="assetType" required>
+            <option value="image">Image</option><option value="banner">Banner</option>
+            <option value="video">Video</option><option value="flyer">Flyer</option><option value="document">Document</option>
+          </select>
+        </div>
+        <div class="form-field"><label>Audience</label>
+          <select id="assetAudience">
+            <option value="everyone">Everyone</option><option value="buyer">Buyer</option>
+            <option value="seller">Seller</option><option value="agent">Agent</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-field"><label>Campaign (optional)</label><select id="assetCampaign"><option value="">None</option></select></div>
+        <div class="form-field"><label>CTA</label><input type="text" id="assetCta" value="Shop Now"></div>
+      </div>
+      <div class="form-field">
+        <label>Channels</label>
+        <div class="chip-row" id="assetChannelsRow">
+          ${''}
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-field"><label>Publish At (optional)</label><input type="datetime-local" id="assetPublishAt"></div>
+        <div class="form-field"><label>Expiry At (optional)</label><input type="datetime-local" id="assetExpiryAt"></div>
+      </div>
+      <div class="form-field" style="flex-direction:row; align-items:center; gap:10px;">
+        <label class="switch"><input type="checkbox" id="assetIsAcademy"><span class="track"></span></label>
+        <label style="margin:0;">Academy content (training material)</label>
+      </div>
+      <div class="form-row-2">
+        <div class="form-field"><label>File <span id="assetFileRequired" style="color:var(--brick);">(required)</span></label><input type="file" id="assetFileInput"></div>
+        <div class="form-field"><label>Thumbnail (optional)</label><input type="file" id="assetThumbInput" accept="image/*"></div>
+      </div>
+      <div class="form-hint" id="assetCurrentFileHint"></div>
+      <button type="submit" class="btn btn-primary btn-block">Save Asset</button>
+    </form>
+  </div>
+</div>
+
+<!-- Replace asset file modal -->
+<div class="modal-overlay" id="assetReplaceModal">
+  <div class="modal">
+    <div class="modal-head"><h3>Replace File — New Version</h3><button class="modal-close" data-close-modal="assetReplaceModal">&times;</button></div>
+    <form id="assetReplaceForm" class="form-grid">
+      <div class="form-field"><label>New File</label><input type="file" id="assetReplaceFileInput" required></div>
+      <div class="form-field"><label>New Thumbnail (optional)</label><input type="file" id="assetReplaceThumbInput" accept="image/*"></div>
+      <div class="form-hint">The current version will be archived; agents will only see the new one.</div>
+      <button type="submit" class="btn btn-primary btn-block">Replace &amp; Create New Version</button>
+    </form>
+  </div>
+</div>
+
+<!-- Asset analytics modal -->
+<div class="modal-overlay" id="assetAnalyticsModal">
+  <div class="modal">
+    <div class="modal-head"><h3>Asset Analytics — <span id="assetAnalyticsTitle"></span></h3><button class="modal-close" data-close-modal="assetAnalyticsModal">&times;</button></div>
+    <div class="stat-grid" id="assetAnalyticsStats" style="margin-bottom:16px;"></div>
+    <h4 style="font-size:.85rem; margin-bottom:8px;">Shares by Channel</h4>
+    <div class="table-scroll">
+      <table class="dtable"><thead><tr><th>Channel</th><th>Shares</th></tr></thead><tbody id="assetAnalyticsChannelsBody"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- Campaign modal -->
+<div class="modal-overlay" id="campaignModal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="campaignModalTitle">Add Campaign</h3><button class="modal-close" data-close-modal="campaignModal">&times;</button></div>
+    <form id="campaignForm" class="form-grid">
+      <div class="form-field"><label>Name</label><input type="text" id="campaignName" required></div>
+      <div class="form-field"><label>Description</label><textarea id="campaignDescription"></textarea></div>
+      <div class="form-row-2">
+        <div class="form-field"><label>Start Date</label><input type="date" id="campaignStartDate" required></div>
+        <div class="form-field"><label>End Date</label><input type="date" id="campaignEndDate" required></div>
+      </div>
+      <div class="form-field"><label>Target Audience</label>
+        <select id="campaignAudience">
+          <option value="everyone">Everyone</option><option value="buyer">Buyer</option>
+          <option value="seller">Seller</option><option value="agent">Agent</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Save Campaign</button>
+    </form>
+  </div>
+</div>
+
+<!-- Commission Rule modal -->
+<div class="modal-overlay" id="ruleModal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="ruleModalTitle">Add Commission Rule</h3><button class="modal-close" data-close-modal="ruleModal">&times;</button></div>
+    <form id="ruleForm" class="form-grid">
+      <div class="form-field"><label>Rule Name</label><input type="text" id="ruleName" required placeholder="e.g. Gold buyer referral"></div>
+      <div class="form-row-2">
+        <div class="form-field"><label>Audience</label>
+          <select id="ruleAudience" required>
+            <option value="buyer_referral">Buyer referral</option>
+            <option value="seller_referral">Seller referral</option>
+          </select>
+        </div>
+        <div class="form-field"><label>Badge (leave blank = any badge)</label><select id="ruleBadge"><option value="">Any badge</option></select></div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-field"><label>Commission Rate %</label><input type="number" id="ruleCommissionRate" min="0" max="100" step="0.5" required></div>
+        <div class="form-field"><label>Priority (higher wins)</label><input type="number" id="rulePriority" value="0"></div>
+      </div>
+      <div class="form-field" style="flex-direction:row; align-items:center; gap:10px;">
+        <label class="switch"><input type="checkbox" id="ruleActive" checked><span class="track"></span></label>
+        <label style="margin:0;">Active</label>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Save Rule</button>
+    </form>
+  </div>
+</div>
+
+<!-- Manual Adjustment modal -->
+<div class="modal-overlay" id="adjustmentModal">
+  <div class="modal">
+    <div class="modal-head"><h3>Add Manual Adjustment</h3><button class="modal-close" data-close-modal="adjustmentModal">&times;</button></div>
+    <form id="adjustmentForm" class="form-grid">
+      <div class="form-field"><label>Agent</label><select id="adjustmentAgent" required></select></div>
+      <div class="form-field"><label>Amount (KES) — negative to deduct</label><input type="number" id="adjustmentAmount" required></div>
+      <div class="form-field"><label>Reason</label><textarea id="adjustmentReason" required placeholder="e.g. Approved promotional bonus"></textarea></div>
+      <button type="submit" class="btn btn-primary btn-block">Save Adjustment</button>
+    </form>
+  </div>
+</div>
+
+<!-- Fraud review modal -->
+<div class="modal-overlay" id="fraudReviewModal">
+  <div class="modal">
+    <div class="modal-head"><h3>Review Fraud Event</h3><button class="modal-close" data-close-modal="fraudReviewModal">&times;</button></div>
+    <p class="text-muted mb-16" id="fraudReviewDescription"></p>
+    <div class="shop-modal-actions">
+      <button type="button" class="btn btn-primary act-approve" id="fraudMarkReviewedBtn">Mark Reviewed</button>
+      <button type="button" class="btn btn-dark act-reject" id="fraudDismissBtn">Dismiss</button>
+    </div>
+  </div>
+</div>
 
 
 <div id="toast"></div>
