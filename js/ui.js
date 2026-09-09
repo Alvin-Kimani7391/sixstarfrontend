@@ -706,7 +706,7 @@ function ssRenderFooter() {
       <div>
         <h4>About Us</h4>
         <a href="/about.html#our-story">Our Story</a>
-        <a href="/Agent.html">Referral Program</a>
+        <a href="/agent.html">Referral Program</a>
         <a href="/product.html">Our Products</a>
       </div>
       <div>
