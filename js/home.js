@@ -38,25 +38,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Hero ad carousel just under the header — was interval:5000 (felt slow),
   // now a brisker but still comfortable ~3.6s per slide.
-  // Awaited (unlike every other rail below) purely so we know exactly
-  // when to hide the small spinner sitting in that slot (#heroLoader) —
-  // it stays up while the ad is fetching and disappears the instant
-  // it's ready (ssRenderAdSlot hides the whole slot itself if there
-  // turn out to be no ads at all, so the loader coming off either way
-  // is correct).
-  //
-  // Wrapped in try/finally so a failed/odd hero-ad response can never
-  // leave #heroLoader stuck on screen, and can never block everything
-  // that runs after it (banner ad, Hot Deals, New Arrivals, Wholesale,
-  // Top Selling, Catalog) from loading.
-  const heroLoaderEl = document.getElementById("heroLoader");
-  try {
-    await ssRenderAdSlot("heroAd", "homepage_hero", { interval: 3600, aspect: "21/9" });
-  } catch (_) {
-    // swallow — we still want the rest of the homepage to render
-  } finally {
-    if (heroLoaderEl) heroLoaderEl.classList.add("hide");
-  }
+  ssRenderAdSlot("heroAd", "homepage_hero", { interval: 3600, aspect: "21/9" });
   ssRenderAdSlot("bannerAd", "homepage_banner", { interval: 6000, aspect: "5/1" });
 
   // Real, backend-driven Flash Sale rail — live countdown to midnight when
@@ -186,12 +168,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   if (catalogLoadMoreBtn) {
   catalogLoadMoreBtn.addEventListener("click", () => {
-    // Only the full-screen orange/purple arc spinner (ssShowLoadingOverlay)
-    // should show here. Previously this also added ".is-loading", which
-    // swaps in the button's OWN two-bar spinner — that meant two different
-    // loaders were visible on screen at the same time. Keeping the button
-    // simply disabled (no spinner of its own) makes the arc overlay the
-    // single, consistent loading indicator across the site.
+    catalogLoadMoreBtn.classList.add("is-loading");
     catalogLoadMoreBtn.disabled = true;
     ssShowLoadingOverlay();
     // tiny delay purely so the spinner is perceptible before the

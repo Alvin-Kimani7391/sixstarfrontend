@@ -1125,21 +1125,12 @@ async function ssRenderDrawerCategories(targetId) {
   });
 }
 
-/* ============================================================
-   GENERIC ROTATING AD SLOT
+/* ---------- generic rotating ad slot ----------
    Fetches ALL active ads for a placement and renders them as a
    rotating carousel: fade transition, prev/next arrows, dots,
    click tracking, pause-on-hover, and swipe on mobile. Ad order
    is shuffled on every load so the first slide isn't always the
    same ad.
-
-   NEW: shows a small reload-style spinner (the same one used by
-   ssShowLoadingOverlay()) the INSTANT the fetch starts, so the ad
-   slot right under the header never sits blank while its network
-   request is in flight. The spinner is cleared the moment we know
-   what to do — real ads render over it, or the slot hides itself
-   (no ads / fetch failed) exactly as before.
-
    Usage: ssRenderAdSlot("heroAd", "homepage_hero", { interval: 5000, aspect: "21/9" });
 ------------------------------------------------- */
 async function ssRenderAdSlot(targetId, placement, opts = {}) {
@@ -1149,37 +1140,25 @@ async function ssRenderAdSlot(targetId, placement, opts = {}) {
   const interval = opts.interval || 5000;
   const aspect = opts.aspect || null;
 
-  // ---- loading state: small dual-arc spinner, shown immediately ----
-  el.style.display = "block";
-  el.classList.add("ad-slot", "ad-slot--loading");
-  if (aspect) el.style.setProperty("--ad-aspect", aspect);
-  el.innerHTML = `
-    <div class="ad-slot__loading">
-      <div class="ss-spinner" role="status" aria-label="Loading">
-        <span class="ss-spinner__arc ss-spinner__arc--outer"></span>
-        <span class="ss-spinner__arc ss-spinner__arc--inner"></span>
-      </div>
-    </div>`;
-
   let ads = [];
   try {
     const data = await SS_API.getAds(placement);
     ads = Array.isArray(data) ? data : (data.ads || []);
   } catch (_) {
-    el.classList.remove("ad-slot--loading");
     el.style.display = "none";
     return;
   }
 
   if (!ads.length) {
-    el.classList.remove("ad-slot--loading");
     el.style.display = "none";
     return;
   }
 
-  el.classList.remove("ad-slot--loading");
-
   ads = ssShuffle(ads);
+
+  el.style.display = "block";
+  el.classList.add("ad-slot");
+  if (aspect) el.style.setProperty("--ad-aspect", aspect);
 
   const multi = ads.length > 1;
 
