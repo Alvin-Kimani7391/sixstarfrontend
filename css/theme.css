@@ -239,8 +239,30 @@ img{ max-width:100%; display:block; }
 .mega-menu__empty{ display:flex; align-items:center; justify-content:center; height:100%; padding:30px; }
 
 /* ---- hero banner slot (center) ---- */
-.hero-banner-wrap{ min-height:260px; }
+.hero-banner-wrap{ min-height:260px; position:relative; }
 .hero-banner-wrap .ad-slot{ height:100%; min-height:260px; }
+
+/* small inline loader shown inside the hero-ad slot while the ad content
+   is being fetched — sits on top of the (empty) #heroAd container and is
+   removed the instant home.js knows the ad slot is ready (see the
+   heroLoader.classList.add("hide") call in home.js right after
+   ssRenderAdSlot("heroAd", ...) resolves). Purely visual: it never
+   blocks or delays the ad itself. */
+.hero-loader{
+  position:absolute;
+  inset:0;
+  z-index:5;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:var(--surface);
+  border-radius:var(--radius-lg);
+  transition:opacity .25s ease, visibility .25s ease;
+}
+.hero-loader.hide{ opacity:0; visibility:hidden; pointer-events:none; }
+@media(max-width:599px){
+  .hero-loader{ border-radius:var(--radius-md); }
+}
 
 /* ---- promo tile column (right) ---- */
 .promo-stack{ display:none; flex-direction:column; gap:12px; }
@@ -391,8 +413,25 @@ img{ max-width:100%; display:block; }
 .p-card__add{ width:30px; height:30px; border-radius:50%; border:1.5px solid var(--line); cursor:pointer; flex-shrink:0; background:var(--surface); color:var(--ink); display:flex; align-items:center; justify-content:center; transition:.2s ease; }
 .p-card__add:hover{ background:var(--brand); border-color:var(--brand); color:#fff; transform:scale(1.08); }
 
-/* skeleton loading */
-.skel, .skeleton-card{ height:236px; flex:0 0 168px; background:linear-gradient(100deg, var(--line-soft) 30%, #fff 50%, var(--line-soft) 70%); background-size:200% 100%; animation:ssShimmer 1.3s ease-in-out infinite; }
+/* skeleton loading — sized to match the REAL element each skeleton class
+   stands in for, so nothing overflows its slot at any breakpoint.
+   .skel is used nowhere in the current markup/JS but is kept aligned
+   with .skeleton-card in case something references it later.
+   .skeleton-card is used ONLY by ssRenderSubcategoryGrid()'s loading
+   state (js/ui.js) for the "Top selling Categories" tile grid, where it
+   sits inside a real .cat-item/.cat-thumb slot — so it now follows
+   .cat-thumb's own sizing (100% width, 1:1 aspect ratio) instead of a
+   fixed height:236px/flex:0 0 168px that was written for the much wider
+   product-rail cards. That mismatch was what made these skeletons look
+   oversized on narrower phones. */
+.skel, .skeleton-card{
+  width:100%;
+  aspect-ratio:1/1;
+  border-radius:var(--radius-md);
+  background:linear-gradient(100deg, var(--line-soft) 30%, #fff 50%, var(--line-soft) 70%);
+  background-size:200% 100%;
+  animation:ssShimmer 1.3s ease-in-out infinite;
+}
 @keyframes ssShimmer{ 0%{ background-position:150% 0; } 100%{ background-position:-50% 0; } }
 
 .form-hint{ color:var(--ink-faint); font-size:13px; padding:20px 16px; }
@@ -2209,17 +2248,14 @@ img{ max-width:100%; display:block; }
 .btn-loadmore:disabled{ cursor:not-allowed; pointer-events:none; }
 
 .btn-loadmore__label{ display:inline-flex; align-items:center; }
-.btn-loadmore__label::after{
-  content:"\f078";
-  font-family:"Font Awesome 6 Free";
-  font-weight:900;
-  font-size:11px;
-  margin-left:9px;
-  transition:transform .25s ease, opacity .2s ease;
-}
-.btn-loadmore.is-loading .btn-loadmore__label::after{ opacity:0; }
 
-/* the two small counter-rotating bars, sized down to sit inline in the button */
+/* the two small counter-rotating bars, sized down to sit inline in the button.
+   NOTE: this button-level spinner is intentionally never activated anymore
+   (home.js no longer adds ".is-loading" on click) — the catalog's "Browse
+   All Products" button now shows only the full-screen orange/purple arc
+   spinner (ssShowLoadingOverlay), so the two loaders don't appear together.
+   The rule is kept, unused, for any OTHER load-more button on the site
+   that still wants its own inline spinner. */
 .btn-loadmore__spinner{
   display:none;
   position:relative;
@@ -2335,7 +2371,12 @@ img{ max-width:100%; display:block; }
 
 /* ============================================================
    SS SPINNER — two curved arcs (reload-icon style), nested,
-   spinning opposite directions. Small, fast, no bulk.
+   spinning opposite directions. Small, fast, no bulk. This is
+   the SINGLE loading indicator used for: the full-screen overlay
+   (catalog "Browse All Products", product.html infinite scroll)
+   AND the small hero-ad-slot loader on index.html (.hero-loader),
+   so the same visual language shows up everywhere the site is
+   waiting on something.
    ============================================================ */
 .ss-spinner{
   position:relative;
@@ -2710,6 +2751,11 @@ html, body{ transition:background-color .3s ease, color .3s ease; }
   background:#131418;
   border-color:var(--line-soft);
 }
+
+/* ---- Hero-ad small loader: keep it on the surface color, and make
+   sure the arc colors stay visible against a dark surface too (they
+   already use --brand/--pop which don't change with theme, so this
+   is just here for clarity/documentation — no override needed). ---- */
 
 /* ============================================================
    DARK-MODE TOGGLE — the switch row appended to the end of the
