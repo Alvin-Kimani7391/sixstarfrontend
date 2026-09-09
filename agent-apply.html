@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Become an Agent — Six Star Suppliers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/agent.css">
+</head>
+<body>
+
+<div class="agent-auth-page">
+  <div class="agent-auth-shell agent-auth-shell--wide">
+    <div class="agent-brand-row">
+      <img src="images/logo.jpg" alt="Six Star Suppliers">
+      <div>Six Star <span style="color:var(--brand);">Agents</span></div>
+    </div>
+
+    <h1>Become an Agent</h1>
+    <p class="sub">Earn commission by promoting the marketplace — recruit buyers, recruit sellers, and share marketing materials we provide.</p>
+
+    <div id="applyError" class="alert alert-error"></div>
+
+    <form id="applyForm" class="form-grid">
+      <div class="form-field form-row-2">
+        <div class="form-field">
+          <label for="name">Full name</label>
+          <input type="text" id="name" required>
+        </div>
+        <div class="form-field">
+          <label for="phone">Phone number</label>
+          <input type="tel" id="phone" placeholder="07xx xxx xxx" required>
+        </div>
+      </div>
+
+      <div class="form-field form-row-2">
+        <div class="form-field">
+          <label for="email">Email address</label>
+          <input type="email" id="email" required>
+        </div>
+        <div class="form-field">
+          <label for="password">Password</label>
+          <input type="password" id="password" minlength="6" required autocomplete="new-password">
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label for="location">Location / County</label>
+        <input type="text" id="location" placeholder="e.g. Nairobi">
+      </div>
+
+      <div class="form-field">
+        <label for="bio">Short bio (optional — shown on your public agent page)</label>
+        <textarea id="bio" maxlength="500" placeholder="Tell buyers and sellers a little about yourself"></textarea>
+      </div>
+
+      <div class="form-field">
+        <label>Preferred contact channel</label>
+        <div class="role-card-row" id="channelPicker">
+          <label class="channel-chip active" data-channel="whatsapp"><input type="radio" name="channel" value="whatsapp" checked hidden><i class="fa-brands fa-whatsapp"></i> WhatsApp</label>
+          <label class="channel-chip" data-channel="email"><input type="radio" name="channel" value="email" hidden><i class="fa-solid fa-envelope"></i> Email</label>
+          <label class="channel-chip" data-channel="call"><input type="radio" name="channel" value="call" hidden><i class="fa-solid fa-phone"></i> Call</label>
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label for="avatarInput">Profile photo (optional)</label>
+        <input type="file" id="avatarInput" accept="image/*">
+      </div>
+
+      <div class="form-field" style="flex-direction:row; align-items:flex-start; gap:10px;">
+        <input type="checkbox" id="termsCheck" required style="margin-top:3px;">
+        <label for="termsCheck" style="font-weight:500; font-size:12.5px;">I agree to the <a href="about.html#terms-of-service" target="_blank" style="color:var(--brand); font-weight:700;">Terms of Service</a>.</label>
+      </div>
+      <div class="form-field" style="flex-direction:row; align-items:flex-start; gap:10px;">
+        <input type="checkbox" id="marketingPolicyCheck" required style="margin-top:3px;">
+        <label for="marketingPolicyCheck" style="font-weight:500; font-size:12.5px;">I agree to the Agent Marketing Policy (fair, honest promotion only).</label>
+      </div>
+
+      <button type="submit" id="applyBtn" class="btn btn-primary btn-block">Submit Application</button>
+    </form>
+
+    <p class="agent-auth-switch">Already an agent? <a href="agent-login.html">Log in</a></p>
+  </div>
+</div>
+
+<div id="toast"><i class="fa-solid fa-circle-check"></i><span></span></div>
+
+<script src="js/config.js"></script>
+<script src="js/toast.js"></script>
+<script src="js/agent-auth.js"></script>
+<script src="js/agent-api.js"></script>
+<script src="js/agent-apply.js"></script>
+</body>
+</html>

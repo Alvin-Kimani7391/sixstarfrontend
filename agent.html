@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Agent Dashboard | Six Star Suppliers</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/agent.css">
+</head>
+<body>
+
+<!-- Loading placeholder while auth resolves -->
+<div id="agentLoading" style="min-height:100vh; display:flex; align-items:center; justify-content:center;">
+  <div class="spinner"></div>
+</div>
+
+<div id="agentShell" class="agent-shell">
+  <div class="agent-overlay" id="agentOverlay"></div>
+
+  <aside class="agent-sidebar" id="agentSidebar">
+    <div class="agent-sidebar__brand">
+      <div class="brand-mark">S</div>
+      <div>Six Star<span>Agent Portal</span></div>
+    </div>
+    <nav class="agent-nav">
+      <button data-tab="overview" class="active"><i class="fa-solid fa-gauge"></i> Dashboard</button>
+      <button data-tab="marketing"><i class="fa-solid fa-photo-film"></i> Marketing Center</button>
+      <button data-tab="campaigns"><i class="fa-solid fa-bullhorn"></i> Campaigns</button>
+      <button data-tab="sharing"><i class="fa-solid fa-share-nodes"></i> Sharing &amp; QR</button>
+      <button data-tab="recruit"><i class="fa-solid fa-user-plus"></i> Recruit</button>
+      <button data-tab="leads"><i class="fa-solid fa-address-book"></i> My Leads</button>
+      <button data-tab="commissions"><i class="fa-solid fa-sack-dollar"></i> Commissions</button>
+      <button data-tab="analytics"><i class="fa-solid fa-chart-line"></i> Analytics</button>
+      <button data-tab="leaderboard"><i class="fa-solid fa-ranking-star"></i> Leaderboard</button>
+      <button data-tab="achievements"><i class="fa-solid fa-trophy"></i> Achievements</button>
+      <button data-tab="academy"><i class="fa-solid fa-graduation-cap"></i> Academy</button>
+      <button data-tab="notifications"><i class="fa-solid fa-bell"></i> Notifications <span class="agent-nav__badge" id="notifBadge" style="display:none;">0</span></button>
+      <button data-tab="profile"><i class="fa-solid fa-user-gear"></i> Profile</button>
+    </nav>
+    <div class="agent-sidebar__foot">
+      Logged in as <strong id="agentNameLabel" style="color:#fff;">-</strong>
+      <button id="logoutBtn">Log Out</button>
+    </div>
+  </aside>
+
+  <main class="agent-main">
+    <div class="agent-topbar">
+      <button class="iconbtn agent-menu-toggle" id="sidebarToggle"><i class="fa-solid fa-bars"></i></button>
+      <h1 id="topbarTitle">Dashboard</h1>
+    </div>
+
+    <div class="agent-body-inner">
+
+      <!-- ===== OVERVIEW ===== -->
+      <div class="tab-panel active" id="panel-overview">
+        <div class="stat-grid" id="overviewStats"></div>
+
+        <div class="dash-card">
+          <div class="dash-card__head"><h3>Your Referral Links</h3></div>
+          <div class="link-grid" id="referralLinksGrid" style="padding:18px;"></div>
+        </div>
+
+        <div class="dash-card">
+          <div class="dash-card__head"><h3>Recent Notifications</h3><button class="act-btn act-outline" id="overviewSeeAllNotif">See all</button></div>
+          <div id="overviewNotifList"></div>
+        </div>
+      </div>
+
+      <!-- ===== MARKETING CENTER ===== -->
+      <div class="tab-panel" id="panel-marketing">
+        <div class="dash-card">
+          <div class="dash-card__head">
+            <h3>Marketing Center</h3>
+            <div class="dash-toolbar">
+              <input type="text" id="assetSearch" placeholder="Search assets...">
+              <select id="assetTypeFilter">
+                <option value="">All types</option>
+                <option value="image">Images</option>
+                <option value="banner">Banners</option>
+                <option value="video">Videos</option>
+                <option value="flyer">Flyers</option>
+                <option value="document">Documents</option>
+              </select>
+              <select id="assetAudienceFilter">
+                <option value="">All audiences</option>
+                <option value="buyer">Buyer</option>
+                <option value="seller">Seller</option>
+                <option value="agent">Agent</option>
+              </select>
+              <select id="assetSort">
+                <option value="">Featured first</option>
+                <option value="newest">Newest</option>
+                <option value="popular">Most downloaded</option>
+              </select>
+            </div>
+          </div>
+          <div id="assetGrid" class="asset-grid"></div>
+        </div>
+
+        <div class="dash-card">
+          <div class="dash-card__head"><h3>My Marketing — Favorites &amp; Recent Activity</h3></div>
+          <div id="myMarketingWrap" style="padding:18px;"></div>
+        </div>
+      </div>
+
+      <!-- ===== CAMPAIGNS ===== -->
+      <div class="tab-panel" id="panel-campaigns">
+        <div class="dash-card">
+          <div class="dash-card__head"><h3>Active Campaigns</h3></div>
+          <div id="campaignsGrid" class="asset-grid"></div>
+        </div>
+      </div>
+
+      <!-- ===== SHARING & QR ===== -->
+      <div class="tab-panel" id="panel-sharing">
+        <div class="dash-card">
+          <div class="dash-card__head"><h3>Generate a QR Code</h3></div>
+          <div style="padding:18px; display:grid; gap:14px; grid-template-columns:1fr 1fr;">
+            <div class="form-field">
+              <label for="qrType">Link type</label>
+              <select id="qrType">
+                <option value="general">General marketplace</option>
+                <option value="buyer">Buyer referral</option>
+                <option value="seller">Seller recruitment</option>
+                <option value="agent">Agent recruitment</option>
+              </select>
+            </div>
+            <div class="form-field" style="justify-content:flex-end;">
+              <button class="btn btn-primary" id="genQrBtn">Generate QR</button>
+            </div>
+          </div>
+          <div class="qr-box" id="qrResultBox" style="display:none;"></div>
+        </div>
+
+        <div class="dash-card">
+          <div class="dash-card__head"><h3>Ready-Made Share Message</h3></div>
+          <div style="padding:18px; display:grid; gap:14px;">
+            <div class="form-row-2">
+              <div class="form-field">
+                <label for="msgType">Message type</label>
+                <select id="msgType">
+                  <option value="general">General</option>
+                  <option value="buyer">Buyer recruitment</option>
+                  <option value="seller">Seller recruitment</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label for="msgChannel">Channel</label>
+                <select id="msgChannel">
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="email">Email</option>
+                  <option value="facebook">Facebook</option>
+                  <option value="instagram">Instagram</option>
+                  <option value="x">X</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-field">
+              <label for="msgLeadName">Lead name (optional)</label>
+              <input type="text" id="msgLeadName" placeholder="e.g. Sarah">
+            </div>
+            <button class="btn btn-primary" id="genMsgBtn" style="width:fit-content;">Generate Message</button>
+            <div id="msgResultBox" style="display:none;">
+              <div class="link-box" style="margin-bottom:8px;"><input type="text" id="msgResultLink" readonly><button class="act-btn act-outline" data-copy="msgResultLink">Copy Link</button></div>
+              <textarea id="msgResultText" rows="6" readonly style="width:100%; padding:12px; border:1.5px solid var(--line); border-radius:8px; font-size:13px;"></textarea>
+              <button class="act-btn act-outline" data-copy="msgResultText" style="margin-top:8px;">Copy Message</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== RECRUIT ===== -->
+      <div class="tab-panel" id="panel-recruit">
+        <div class="dash-card">
+          <div class="dash-card__head"><h3><i class="fa-solid fa-cart-shopping"></i> Recruit a Buyer</h3></div>
+          <form id="recruitBuyerForm" class="form-grid" style="padding:18px;">
+            <div class="form-row-2">
+              <div class="form-field"><label>Name (optional)</label><input type="text" id="rbName"></div>
+              <div class="form-field"><label>Phone (optional)</label><input type="text" id="rbPhone"></div>
+            </div>
+            <div class="form-row-2">
+              <div class="form-field"><label>Email (optional)</label><input type="email" id="rbEmail"></div>
+              <div class="form-field"><label>Channel</label>
+                <select id="rbChannel"><option value="whatsapp">WhatsApp</option><option value="email">Email</option><option value="facebook">Facebook</option><option value="other">Other</option></select>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:fit-content;">Generate Recruitment Content</button>
+          </form>
+          <div id="rbResult" style="display:none; padding:0 18px 18px;"></div>
+        </div>
+
+        <div class="dash-card">
+          <div class="dash-card__head"><h3><i class="fa-solid fa-store"></i> Recruit a Seller</h3></div>
+          <form id="recruitSellerForm" class="form-grid" style="padding:18px;">
+            <div class="form-row-2">
+              <div class="form-field"><label>Name</label><input type="text" id="rsName" required></div>
+              <div class="form-field"><label>Phone</label><input type="text" id="rsPhone"></div>
+            </div>
+            <div class="form-row-2">
+              <div class="form-field"><label>Email</label><input type="email" id="rsEmail"></div>
+              <div class="form-field"><label>Business name</label><input type="text" id="rsBusinessName"></div>
+            </div>
+            <div class="form-row-2">
+              <div class="form-field"><label>Location</label><input type="text" id="rsLocation"></div>
+              <div class="form-field"><label>Channel</label>
+                <select id="rsChannel"><option value="whatsapp">WhatsApp</option><option value="email">Email</option><option value="facebook">Facebook</option><option value="other">Other</option></select>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:fit-content;">Generate Recruitment Content</button>
+          </form>
+          <div id="rsResult" style="display:none; padding:0 18px 18px;"></div>
+        </div>
+      </div>
+
+      <!-- ===== MY LEADS (CRM) ===== -->
+      <div class="tab-panel" id="panel-leads">
+        <div class="dash-card">
+          <div class="dash-card__head">
+            <h3>Follow-Ups Due</h3>
+          </div>
+          <div id="followupsList" style="padding:0 18px;"></div>
+        </div>
+
+        <div class="dash-card">
+          <div class="dash-card__head">
+            <h3>My Leads</h3>
+            <div class="dash-toolbar">
+              <select id="leadTypeFilter"><option value="">All types</option><option value="buyer">Buyer</option><option value="seller">Seller</option></select>
+              <select id="leadStatusFilter">
+                <option value="">All statuses</option>
+                <option value="lead">Lead</option><option value="invited">Invited</option><option value="registered">Registered</option>
+                <option value="application_submitted">Application submitted</option><option value="documents_submitted">Documents submitted</option>
+                <option value="under_review">Under review</option><option value="approved">Approved</option><option value="active">Active</option>
+                <option value="product_listed">Product listed</option><option value="first_sale">First sale</option>
+                <option value="converted">Converted</option><option value="lost">Lost</option>
+              </select>
+              <button class="btn btn-dark btn-sm" id="addLeadBtn"><i class="fa-solid fa-plus"></i> Add Lead</button>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table class="dtable">
+              <thead><tr><th>Name</th><th>Type</th><th>Contact</th><th>Source</th><th>Status</th><th>Last Contact</th><th>Actions</th></tr></thead>
+              <tbody id="leadsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== COMMISSIONS ===== -->
+      <div class="tab-panel" id="panel-commissions">
+        <div class="stat-grid" id="commissionStats"></div>
+        <div class="dash-card">
+          <div class="dash-card__head">
+            <h3>Commission Ledger</h3>
+            <div class="dash-toolbar">
+              <select id="commissionStatusFilter">
+                <option value="">All statuses</option>
+                <option value="pending">Pending</option><option value="processing">Processing</option>
+                <option value="eligible">Eligible</option><option value="confirmed">Confirmed</option>
+                <option value="cancelled">Cancelled</option><option value="reversed">Reversed</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table class="dtable">
+              <thead><tr><th>Order</th><th>Type</th><th>Marketplace Profit</th><th>Rate</th><th>Commission</th><th>Status</th><th>Date</th></tr></thead>
+              <tbody id="commissionsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== ANALYTICS ===== -->
+      <div class="tab-panel" id="panel-analytics">
+        <div class="dash-card">
+          <div class="dash-card__head"><h3>Marketing Performance</h3></div>
+          <div class="stat-grid" id="analyticsMarketingStats" style="padding:18px;"></div>
+        </div>
+        <div class="dash-card">
+          <div class="dash-card__head"><h3>Commission Breakdown</h3></div>
+          <div class="stat-grid" id="analyticsCommissionStats" style="padding:18px;"></div>
+        </div>
+        <div class="dash-card">
+          <div class="dash-card__head"><h3>Channel Performance</h3></div>
+          <div class="table-scroll">
+            <table class="dtable">
+              <thead><tr><th>Channel</th><th>Clicks</th></tr></thead>
+              <tbody id="channelAnalyticsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== LEADERBOARD ===== -->
+      <div class="tab-panel" id="panel-leaderboard">
+        <div class="dash-card">
+          <div class="dash-card__head">
+            <h3>Agent Leaderboard</h3>
+            <select id="leaderboardMetric">
+              <option value="totalCommission">Confirmed Commission</option>
+              <option value="buyersReferred">Buyers Referred</option>
+              <option value="sellersReferred">Sellers Referred</option>
+              <option value="approvedSellersReferred">Approved Sellers</option>
+              <option value="lifetimeMarketplaceProfit">Marketplace Profit</option>
+            </select>
+          </div>
+          <div id="leaderboardList"></div>
+        </div>
+      </div>
+
+      <!-- ===== ACHIEVEMENTS ===== -->
+      <div class="tab-panel" id="panel-achievements">
+        <div class="dash-card">
+          <div class="dash-card__head"><h3>Your Achievements</h3></div>
+          <div class="achv-grid" id="achievementsGrid"></div>
+        </div>
+      </div>
+
+      <!-- ===== ACADEMY ===== -->
+      <div class="tab-panel" id="panel-academy">
+        <div class="dash-card">
+          <div class="dash-card__head"><h3>Agent Academy</h3></div>
+          <div class="asset-grid" id="academyGrid"></div>
+        </div>
+      </div>
+
+      <!-- ===== NOTIFICATIONS ===== -->
+      <div class="tab-panel" id="panel-notifications">
+        <div class="dash-card">
+          <div class="dash-card__head">
+            <h3>Notifications</h3>
+            <button class="act-btn act-outline" id="markAllReadBtn">Mark all as read</button>
+          </div>
+          <div id="notifFullList"></div>
+        </div>
+      </div>
+
+      <!-- ===== PROFILE ===== -->
+      <div class="tab-panel" id="panel-profile">
+        <div class="dash-card">
+          <div class="dash-card__head"><h3>Profile</h3></div>
+          <form id="profileForm" class="form-grid" style="padding:18px;">
+            <div class="form-row-2">
+              <div class="form-field"><label>Name</label><input type="text" id="profName" required></div>
+              <div class="form-field"><label>Phone</label><input type="text" id="profPhone"></div>
+            </div>
+            <div class="form-field"><label>Location</label><input type="text" id="profLocation"></div>
+            <div class="form-field"><label>Bio</label><textarea id="profBio" maxlength="500"></textarea></div>
+            <div class="form-field"><label>Avatar</label><input type="file" id="profAvatarInput" accept="image/*"></div>
+            <button type="submit" class="btn btn-primary" style="width:fit-content;">Save Profile</button>
+          </form>
+        </div>
+
+        <div class="dash-card">
+          <div class="dash-card__head"><h3>Change Password</h3></div>
+          <form id="passwordForm" class="form-grid" style="padding:18px;">
+            <div class="form-field"><label>Current password</label><input type="password" id="curPassword" required></div>
+            <div class="form-field"><label>New password</label><input type="password" id="newPassword" minlength="6" required></div>
+            <button type="submit" class="btn btn-dark" style="width:fit-content;">Update Password</button>
+          </form>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- ===== Add Lead modal ===== -->
+<div class="modal-overlay" id="addLeadModal">
+  <div class="modal">
+    <div class="modal-head"><h3>Add Lead</h3><button class="modal-close" data-close-modal="addLeadModal">&times;</button></div>
+    <form id="addLeadForm" class="form-grid">
+      <div class="form-field"><label>Name</label><input type="text" id="leadName" required></div>
+      <div class="form-row-2">
+        <div class="form-field"><label>Phone</label><input type="text" id="leadPhone"></div>
+        <div class="form-field"><label>Email</label><input type="email" id="leadEmail"></div>
+      </div>
+      <div class="form-field"><label>Type</label>
+        <select id="leadType" required><option value="buyer">Buyer</option><option value="seller">Seller</option></select>
+      </div>
+      <div class="form-field" id="leadBusinessNameField"><label>Business name</label><input type="text" id="leadBusinessName"></div>
+      <div class="form-field"><label>Location</label><input type="text" id="leadLocation"></div>
+      <button type="submit" class="btn btn-primary btn-block">Add Lead</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===== Lead detail modal ===== -->
+<div class="modal-overlay" id="leadDetailModal">
+  <div class="modal modal-lg">
+    <div class="modal-head"><h3 id="leadDetailName">Lead</h3><button class="modal-close" data-close-modal="leadDetailModal">&times;</button></div>
+    <div class="form-row-2" style="margin-bottom:16px;">
+      <div class="form-field"><label>Status</label>
+        <select id="leadDetailStatus">
+          <option value="lead">Lead</option><option value="invited">Invited</option><option value="registered">Registered</option>
+          <option value="application_submitted">Application submitted</option><option value="documents_submitted">Documents submitted</option>
+          <option value="under_review">Under review</option><option value="approved">Approved</option><option value="active">Active</option>
+          <option value="product_listed">Product listed</option><option value="first_sale">First sale</option>
+          <option value="converted">Converted</option><option value="lost">Lost</option>
+        </select>
+      </div>
+      <div class="form-field"><label>Follow-up date</label><input type="date" id="leadDetailFollowUp"></div>
+    </div>
+    <button class="btn btn-dark btn-sm" id="saveLeadDetailBtn" style="margin-bottom:18px;">Save Changes</button>
+
+    <h4 style="font-size:13px; font-weight:800; margin-bottom:8px;">Notes</h4>
+    <div class="lead-notes" id="leadNotesList"></div>
+    <div style="display:flex; gap:8px;">
+      <input type="text" id="leadNewNote" placeholder="Add a note..." style="flex:1; padding:10px; border:1.5px solid var(--line); border-radius:8px;">
+      <button class="btn btn-primary btn-sm" id="addLeadNoteBtn">Add</button>
+    </div>
+
+    <div style="margin-top:20px; text-align:right;">
+      <button class="act-btn act-danger" id="deleteLeadBtn">Delete Lead</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Asset detail / share modal ===== -->
+<div class="modal-overlay" id="assetShareModal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="assetShareTitle">Share</h3><button class="modal-close" data-close-modal="assetShareModal">&times;</button></div>
+    <div class="form-field"><label>Channel</label>
+      <select id="assetShareChannel">
+        <option value="whatsapp">WhatsApp</option><option value="email">Email</option>
+        <option value="facebook">Facebook</option><option value="instagram">Instagram</option>
+        <option value="tiktok">TikTok</option><option value="x">X</option><option value="other">Other</option>
+      </select>
+    </div>
+    <button class="btn btn-primary btn-block" id="confirmShareBtn" style="margin-top:12px;">Get Share Link &amp; Caption</button>
+    <div id="assetShareResult" style="display:none; margin-top:14px;"></div>
+  </div>
+</div>
+
+<div id="toast"><i class="fa-solid fa-circle-check"></i><span></span></div>
+
+<script src="js/config.js"></script>
+<script src="js/toast.js"></script>
+<script src="js/agent-auth.js"></script>
+<script src="js/agent-api.js"></script>
+<script src="js/agent.js"></script>
+</body>
+</html>
