@@ -344,9 +344,9 @@ getShopBySlug(slug) {
     // ============================================================
     // AGENTS
     // ============================================================
-    getAgents() {
-      return request("/agents", { requiresAuth: false });
-    },
+    getAgents(params = {}) {
+  return request("/agents", { query: { limit: 500, ...params }, requiresAuth: false });
+},
 
     // ============================================================
     // CATEGORIES

@@ -134,6 +134,18 @@ function switchTab(tab) {
 // ===================================================================
 function wireOverview() {
   document.getElementById("overviewSeeAllNotif").addEventListener("click", () => switchTab("notifications"));
+  document.getElementById("shareProductQuickBtn")?.addEventListener("click", () => {
+    switchTab("sharing");
+    setTimeout(() => document.getElementById("productShareInput")?.focus(), 150);
+  });
+}
+
+function refreshQuickActionLinks() {
+  const visitBtn = document.getElementById("visitStoreBtn");
+  if (visitBtn && currentAgent) {
+    const base = SS_SITE_URL.replace(/\/$/, "");
+    visitBtn.href = `${base}/index.html?ref=${currentAgent.code}`;
+  }
 }
 
 async function loadOverview() {
@@ -189,6 +201,7 @@ function renderReferralLinks() {
     </div>`).join("");
   wireCopyButtons(grid);
   wireNativeShareButtons(grid);
+  refreshQuickActionLinks();   // <-- add this line
 }
 
 async function loadOverviewNotifications() {
@@ -402,6 +415,28 @@ function wireSharing() {
       document.getElementById("msgResultText").value = res.message;
     } catch (err) { ssToast(err.message, "fa-triangle-exclamation"); }
   });
+
+  document.getElementById("genProductShareBtn").addEventListener("click", () => {
+  const raw = document.getElementById("productShareInput").value.trim();
+  if (!raw) { ssToast("Paste a product link or ID first", "fa-triangle-exclamation"); return; }
+
+  let productId = raw;
+  try {
+    const maybeUrl = new URL(raw, SS_SITE_URL);
+    productId = maybeUrl.searchParams.get("id") || maybeUrl.searchParams.get("productId") || raw;
+  } catch (_) { /* plain ID was pasted, not a URL */ }
+
+  const base = SS_SITE_URL.replace(/\/$/, "");
+  const link = `${base}/product-detail.html?id=${encodeURIComponent(productId)}&ref=${currentAgent.code}`;
+
+  const box = document.getElementById("productShareResultBox");
+  box.style.display = "block";
+  document.getElementById("productShareResultLink").value = link;
+  wireCopyButtons(box);
+  wireNativeShareButtons(box);
+  ssToast("Product link ready — copy and share it", "fa-link");
+});
+
 }
 
 // ===================================================================

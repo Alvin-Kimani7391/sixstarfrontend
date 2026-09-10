@@ -66,6 +66,18 @@
       <div class="tab-panel active" id="panel-overview">
         <div class="stat-grid" id="overviewStats"></div>
 
+<div class="dash-card">
+  <div class="dash-card__head"><h3>Quick Actions</h3></div>
+  <div style="padding:18px; display:flex; gap:12px; flex-wrap:wrap;">
+    <a href="#" id="visitStoreBtn" target="_blank" rel="noopener" class="btn btn-primary" style="width:fit-content;">
+      <i class="fa-solid fa-shop"></i> Visit My Store
+    </a>
+    <button type="button" class="btn btn-outline" id="shareProductQuickBtn" style="width:fit-content;">
+      <i class="fa-solid fa-link"></i> Share a Product
+    </button>
+  </div>
+</div>
+
         <div class="dash-card">
           <div class="dash-card__head"><h3>Your Referral Links</h3></div>
           <div class="link-grid" id="referralLinksGrid" style="padding:18px;"></div>
@@ -183,6 +195,28 @@
             </div>
           </div>
         </div>
+
+
+        <div class="dash-card">
+  <div class="dash-card__head"><h3>Share a Specific Product</h3></div>
+  <div style="padding:18px; display:grid; gap:14px;">
+    <p class="text-muted" style="margin:0;">Paste a link to any product on the site (or just its product ID) — your referral code is attached automatically, so any sale from it is credited to you.</p>
+    <div class="form-field">
+      <label for="productShareInput">Product URL or ID</label>
+      <input type="text" id="productShareInput" placeholder="https://www.sixstarsuppliers.com/product-detail.html?id=... or just the ID">
+    </div>
+    <button class="btn btn-primary" id="genProductShareBtn" style="width:fit-content;">Generate My Link</button>
+    <div id="productShareResultBox" style="display:none;">
+      <div class="link-box">
+        <input type="text" id="productShareResultLink" readonly>
+        <button class="act-btn act-outline" data-copy="productShareResultLink">Copy Link</button>
+        <button class="act-btn act-primary" data-native-share="productShareResultLink" title="Share"><i class="fa-solid fa-share-nodes"></i></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
       </div>
 
       <!-- ===== RECRUIT ===== -->

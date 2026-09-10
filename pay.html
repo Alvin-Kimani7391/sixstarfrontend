@@ -654,6 +654,7 @@ button.main:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-s
 <script src="js/cart.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/referral-tracker.js"></script>
 <script>
 function showPageError(message) {
   const banner = document.getElementById("pageErrorBanner");
@@ -1401,29 +1402,39 @@ async function loadAgentsDropdown() {
     });
   } catch (e) {
     console.error("Agents load error", e);
-    // Non-fatal — agent selection is optional, checkout should still work.
   }
+  applyReferralAgentPrefill(select);
 }
 
-/* ============================================================
-   PROFILE AUTOFILL — Name, M-Pesa Number, Delivery Address.
-   Fields stay fully editable. Takes an already-fetched profileUser
-   instead of calling SS_API.getProfile() itself — the fetch now
-   happens once, up front, and is shared with the email-verification
-   gate below (see resolveProfileAndVerification).
-   ============================================================ */
-function applyAutofill(fieldId, noteId, value) {
-  if (!value) return false;
-  const el = document.getElementById(fieldId);
-  if (el && !el.value) {
-    el.value = value;
-    if (noteId) {
-      const note = document.getElementById(noteId);
-      if (note) note.style.display = "flex";
-    }
-    return true;
+// Reads the ref code saved by referral-tracker.js (cookie/localStorage,
+// 30-day window) and pre-selects it. If the agent isn't in the dropdown
+// yet (e.g. very recently approved, or getAgents() hasn't caught up),
+// we still inject it so attribution is never silently dropped. The buyer
+// can always override via the dropdown.
+function applyReferralAgentPrefill(select) {
+  if (!window.SS_REFERRAL) return;
+  const code = SS_REFERRAL.getCode();
+  if (!code) return;
+
+  let matched = Array.from(select.options).find(o => o.value.toUpperCase() === code.toUpperCase());
+  if (!matched) {
+    matched = document.createElement("option");
+    matched.value = code;
+    matched.textContent = `Agent ${code} (from your referral link)`;
+    select.appendChild(matched);
   }
-  return false;
+  select.value = matched.value;
+
+  const wrap = select.closest(".input-group");
+  let hint = document.getElementById("agentReferralHint");
+  if (!hint && wrap) {
+    hint = document.createElement("p");
+    hint.id = "agentReferralHint";
+    hint.className = "form-hint";
+    hint.style.color = "var(--price)";
+    wrap.appendChild(hint);
+  }
+  if (hint) hint.innerHTML = `<i class="fa-solid fa-circle-check"></i> Referred by agent <strong>${code}</strong> — change the dropdown above if this isn't right.`;
 }
 
 // Different endpoints/backends return the user object in different shapes:

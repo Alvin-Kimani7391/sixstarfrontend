@@ -226,13 +226,14 @@
 
   // Canonical, shareable link for THIS product (drops any other query params
   // the page might have picked up, keeps just ?id=).
-  function buildShareData(p) {
-    const link = `${location.origin}${location.pathname}?id=${p.id}`;
-    const price = ssFmtPrice(basePrice(p));
-    const message = `Check out this product on Six Star Suppliers\n\n${p.name}\n${price}\n${link}`;
-    const images = Array.isArray(p.images) && p.images.length ? p.images : [ssImg(p)];
-    return { link, price, message, image: mainImgUrl(images[0]) };
-  }
+function buildShareData(p) {
+  const refCode = (window.SS_REFERRAL && SS_REFERRAL.getCode()) || "";
+  const link = `${location.origin}${location.pathname}?id=${p.id}${refCode ? `&ref=${encodeURIComponent(refCode)}` : ""}`;
+  const price = ssFmtPrice(basePrice(p));
+  const message = `Check out this product on Six Star Suppliers\n\n${p.name}\n${price}\n${link}`;
+  const images = Array.isArray(p.images) && p.images.length ? p.images : [ssImg(p)];
+  return { link, price, message, image: mainImgUrl(images[0]) };
+}
 
   /* ---------------- main render ---------------- */
 

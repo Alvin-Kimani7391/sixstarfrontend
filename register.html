@@ -310,20 +310,22 @@
   // Referral attribution: ?ref=CODE&intent=buyer|seller
   // ---------------------------------------------------------------
   const urlParams = new URLSearchParams(location.search);
-  const refCode = urlParams.get("ref");
-  const intent = urlParams.get("intent");
+let refCode = urlParams.get("ref");
+const intent = urlParams.get("intent");
 
-  if (refCode) {
-    document.getElementById("referralCodeInput").value = refCode;
-    fetch(`${SS_CONFIG.API_BASE}/agents/track/${encodeURIComponent(refCode)}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type: intent === "seller" ? "seller" : intent === "buyer" ? "buyer" : "general",
-        channel: "direct",
-      }),
-    }).catch(() => {});
-  }
+// Falls back to a code saved from an earlier page/visit (see
+// referral-tracker.js) so "clicked agent link yesterday, registers today
+// from a bare register.html" still gets attributed.
+if (!refCode && window.SS_REFERRAL) refCode = SS_REFERRAL.getCode();
+
+if (refCode) {
+  document.getElementById("referralCodeInput").value = refCode;
+  fetch(`${SS_CONFIG.API_BASE}/agents/track/${encodeURIComponent(refCode)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type: intent === "seller" ? "seller" : intent === "buyer" ? "buyer" : "general", channel: "direct" }),
+  }).catch(() => {});
+}
 
   // ---------------------------------------------------------------
   // Account type (Buy / Sell) + Seller sub-type (Retail / Wholesale)
