@@ -5,11 +5,18 @@ window.SS_CONFIG = {
   // TODO: replace with your real Render backend URL (no trailing slash)
   API_BASE: "https://api.sixstarsuppliers.com/api",
 
-  // NEW — the actual storefront/frontend domain. This is what referral
-  // links, agent recruitment links, and share messages are built from.
-  // Must NOT be the API subdomain — that was the bug causing
-  // https://api.sixstarsuppliers.com/?ref=... links to not work.
+  // The real storefront domain — referral links, agent recruitment links,
+  // and share messages are built from THIS, never from API_BASE (API_BASE
+  // is the backend host — using it for referral links is what caused
+  // https://api.sixstarsuppliers.com/?ref=PF113 links to not work).
   FRONTEND_URL: "https://www.sixstarsuppliers.com",
+
+  // NEW — same value as FRONTEND_URL, kept as a separate key because
+  // js/agent.js reads SS_CONFIG.SITE_URL specifically. Previously this key
+  // didn't exist at all, so agent.js was silently falling back to its own
+  // hardcoded default (which happened to match) — fixing this properly
+  // instead of relying on a lucky fallback.
+  SITE_URL: "https://www.sixstarsuppliers.com",
 
   // From Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client ID.
   // Safe to expose publicly — it identifies your app, it isn't a secret.

@@ -61,8 +61,14 @@
 
 <!--SSR_PRODUCT_DATA-->
 <!--/SSR_PRODUCT_DATA-->
-<script src="/js/referral-tracker.js"></script>
+
+<!-- FIXED — config.js MUST load before referral-tracker.js. When the order
+     was reversed, referral-tracker.js's IIFE ran before window.SS_CONFIG
+     existed, so its `base` variable resolved to "" and the click-tracking
+     fetch to /agents/track/:code was silently skipped every single time —
+     this is why referral clicks weren't counting. -->
 <script src="/js/config.js"></script>
+<script src="/js/referral-tracker.js"></script>
 <script src="/js/api.js"></script>
 <script src="/js/cart.js"></script>
 <script src="/js/auth.js"></script>
@@ -70,6 +76,12 @@
 <script src="/js/product-detail.js"></script>
 
 <script>
+  // FIXED — was calling SS_AUTH.getUserId(), which didn't exist, throwing
+  // "SS_AUTH.getUserId is not a function" and aborting this whole block.
+  // js/auth.js now exports getUserId(); this also no longer hard-requires
+  // login, since trackProductView is meaningless for guests anyway (the
+  // backend's trackProductView no-ops for non-buyer/non-logged-in users
+  // regardless, but skipping the call entirely avoids the console error).
   (function() {
     const urlParams = new URLSearchParams(window.location.search);
     const productId = urlParams.get('id');
@@ -79,7 +91,7 @@
     }
 
     const userId = SS_AUTH.getUserId();
-    if (!userId) return; // user not logged in
+    if (!userId) return; // user not logged in — nothing to record
 
     SS_API.trackProductView(productId).catch(() => {});
   })();

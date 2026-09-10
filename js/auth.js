@@ -28,6 +28,15 @@ const SS_AUTH = (() => {
     return !!get(); 
   }
 
+  // NEW — fixes "SS_AUTH.getUserId is not a function" thrown by
+  // product-detail.html's view-tracking script. Returns the cached
+  // user's _id (or null if logged out / never cached). Non-authoritative,
+  // same caveat as the rest of this module — it's UI convenience only.
+  function getUserId() {
+    const user = get();
+    return user ? (user._id || user.id || null) : null;
+  }
+
   function requireRole(roles = []) {
     const user = get();
 
@@ -49,6 +58,7 @@ const SS_AUTH = (() => {
     set, 
     clear, 
     isLoggedIn,
+    getUserId,
     requireRole
   };
 })();
