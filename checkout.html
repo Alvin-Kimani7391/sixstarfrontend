@@ -1458,6 +1458,30 @@ function firstDefined(...vals) {
   return "";
 }
 
+
+// Fills a checkout field from the buyer's saved profile data, only if the
+// field is currently empty (never overwrites something the buyer already
+// typed) and only if a non-empty value was actually found. Shows the
+// "From your profile" note next to the field when it fills something in.
+// Returns true if it filled the field, false otherwise — used by
+// prefillContactFromProfile() to decide whether to warn in the console.
+function applyAutofill(inputId, noteId, value) {
+  const input = document.getElementById(inputId);
+  const note = document.getElementById(noteId);
+  if (!input) return false;
+
+  const trimmedValue = (value || "").toString().trim();
+  if (!trimmedValue) return false;
+
+  // Don't clobber something the buyer already typed (e.g. re-running this
+  // after a failed submit shouldn't wipe out their edits).
+  if (input.value && input.value.trim()) return false;
+
+  input.value = trimmedValue;
+  if (note) note.style.display = "flex";
+  return true;
+}
+
 function prefillContactFromProfile(meUser, profileUser) {
   const name = firstDefined(profileUser?.name, profileUser?.fullName, meUser?.name, meUser?.fullName);
   const phone = firstDefined(profileUser?.phone, profileUser?.phoneNumber, profileUser?.mpesaNumber, profileUser?.mobile, meUser?.phone, meUser?.phoneNumber, meUser?.mpesaNumber, meUser?.mobile);
@@ -1467,10 +1491,10 @@ function prefillContactFromProfile(meUser, profileUser) {
 
   const filledName = applyAutofill("name", "nameAutofillNote", name);
   const filledPhone = applyAutofill("phone", "phoneAutofillNote", phone);
-  applyAutofill("deliveryAddress", "deliveryAddressAutofillNote", address);
+  const filledAddress = applyAutofill("deliveryAddress", "deliveryAddressAutofillNote", address);
 
-  if (!filledName && !filledPhone) {
-    console.warn("[checkout] No saved name/phone found on either /auth/me or /users/profile responses — check the raw response shapes logged above.");
+  if (!filledName && !filledPhone && !filledAddress) {
+    console.warn("[checkout] No saved name/phone/address found on either /auth/me or /users/profile responses — check the raw response shapes logged above.");
   }
 }
 
