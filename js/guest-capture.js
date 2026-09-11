@@ -14,13 +14,13 @@
      <script src="js/home.js"></script>
 
    FIX (this version): the recently-viewed products in the search
-   dropdown now render as compact 2-up cards (thumbnail + name +
-   price + green discount pill), matching the "trending products"
-   suggestion style seen on modern e-commerce search bars, and the
-   "Recent searches" / "Recently viewed" section labels reuse
-   ui.js's own .sug-header-bar styling (uppercase, gray, letter-
-   spaced) so it matches "TRENDING SEARCHES"-style labels already
-   established elsewhere in the UI.
+   dropdown are now a horizontally-scrolling snap carousel of
+   image-forward tiles — floating discount ribbon over the image,
+   an edge fade so the rail visually signals there's more to swipe,
+   and a tiny "N items" pill in the header when the list overflows
+   — instead of the earlier static 2-up grid. "Recent searches"
+   below it stays as a chip row, styled with ui.js's own
+   .sug-header-bar label treatment.
    ============================================================ */
 (function () {
   const GUEST_ID_COOKIE = "ss_guest_id";
@@ -181,11 +181,11 @@
     return "KSh " + (Number(n) || 0).toLocaleString("en-KE");
   }
 
-  // Renders recently-viewed products as compact 2-up cards (thumbnail +
-  // name + price + green discount pill) — matching the "trending
-  // products" suggestion style — followed by recent search terms as
-  // chips under a "RECENT SEARCHES" label styled like ui.js's own
-  // .sug-header-bar ("X results" / "TRENDING SEARCHES"-style label).
+  // Renders recently-viewed products as a horizontally-scrolling, snap-
+  // aligned carousel of image-forward tiles (floating discount ribbon,
+  // bold mono price) — reads as a live product rail rather than a static
+  // grid — followed by recent search terms as chips under a header styled
+  // like ui.js's own .sug-header-bar ("TRENDING SEARCHES"-style label).
   function renderRecentSearchesBox(box, input, activity) {
     const searches = (activity && activity.searches) || [];
     const viewed = (activity && activity.viewedProducts) || [];
@@ -194,16 +194,17 @@
       return;
     }
 
-    const productCards = viewed.slice(0, 4).map((p) => `
-      <div class="ssgc-pcard" data-id="${p.id}">
-        <img class="ssgc-pcard__img" src="${p.image || "https://placehold.co/120x120/F3F4F8/15161A?text=%20"}" alt="" loading="lazy" onerror="this.style.opacity='0'">
-        <div class="ssgc-pcard__info">
-          <p class="ssgc-pcard__name">${escapeHtml(p.name)}</p>
-          <div class="ssgc-pcard__meta">
-            <span class="ssgc-pcard__price">${fmtPrice(p.price)}</span>
-            ${p.discountPercent ? `<span class="ssgc-pcard__discount">${p.discountPercent}%</span>` : ""}
-          </div>
+    const viewedSlice = viewed.slice(0, 10);
+    const overflow = viewedSlice.length > 3;
+
+    const productTiles = viewedSlice.map((p) => `
+      <div class="ssgc-tile" data-id="${p.id}">
+        <div class="ssgc-tile__imgwrap">
+          <img class="ssgc-tile__img" src="${p.image || "https://placehold.co/160x160/F3F4F8/15161A?text=%20"}" alt="" loading="lazy" onerror="this.style.opacity='0'">
+          ${p.discountPercent ? `<span class="ssgc-tile__ribbon">-${p.discountPercent}%</span>` : ""}
         </div>
+        <p class="ssgc-tile__name">${escapeHtml(p.name)}</p>
+        <span class="ssgc-tile__price">${fmtPrice(p.price)}</span>
       </div>`).join("");
 
     const searchChips = searches
@@ -212,16 +213,21 @@
 
     box.innerHTML = `
       ${viewed.length ? `
-        <div class="sug-header-bar"><span>Recently viewed</span></div>
-        <div class="ssgc-pcard-grid">${productCards}</div>` : ""}
+        <div class="sug-header-bar ssgc-rail-header">
+          <span>Recently viewed</span>
+          ${overflow ? `<span class="ssgc-rail-count">${viewedSlice.length}</span>` : ""}
+        </div>
+        <div class="ssgc-rail-wrap">
+          <div class="ssgc-rail">${productTiles}</div>
+        </div>` : ""}
       ${searches.length ? `
         <div class="sug-header-bar" ${viewed.length ? 'style="border-top:1px solid var(--line-soft);"' : ""}><span>Recent searches</span></div>
         <div class="ssgc-chip-row">${searchChips}</div>` : ""}`;
     box.style.display = "block";
 
-    box.querySelectorAll(".ssgc-pcard").forEach((card) => {
-      card.addEventListener("click", () => {
-        window.location.href = `/product-detail.html?id=${card.dataset.id}`;
+    box.querySelectorAll(".ssgc-tile").forEach((tile) => {
+      tile.addEventListener("click", () => {
+        window.location.href = `/product-detail.html?id=${tile.dataset.id}`;
       });
     });
     box.querySelectorAll(".ssgc-chip").forEach((chip) => {
@@ -293,48 +299,72 @@
     const style = document.createElement("style");
     style.id = "ssgcStyles";
     style.textContent = `
-      /* ---- recently-viewed product grid, matching the screenshot's
-         2-up compact card layout: thumb + name + price + green pill ---- */
-      .ssgc-pcard-grid{
-        display:grid;
-        grid-template-columns:1fr 1fr;
-        gap:10px;
-        padding:10px 16px 14px;
-      }
-      .ssgc-pcard{
-        display:flex;
-        align-items:center;
-        gap:9px;
-        padding:7px;
-        border-radius:var(--radius-s, 9px);
-        background:var(--paper-dim, #FDF1E2);
-        cursor:pointer;
-        transition:background .15s ease;
-        min-width:0;
-      }
-      .ssgc-pcard:hover{ background:var(--line-soft, #F6EEDF); }
-      .ssgc-pcard__img{
-        width:48px; height:48px; flex-shrink:0;
-        object-fit:cover; border-radius:8px;
-        background:var(--surface, #fff);
-        border:1px solid var(--line, #F0E4D2);
-      }
-      .ssgc-pcard__info{ min-width:0; flex:1; }
-      .ssgc-pcard__name{
-        font-size:11.5px; font-weight:600; color:var(--ink, #17181C);
-        white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-        margin-bottom:4px; line-height:1.3;
-      }
-      .ssgc-pcard__meta{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
-      .ssgc-pcard__price{
+      /* ---- recently-viewed rail header: label + small overflow count pill ---- */
+      .ssgc-rail-header{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+      .ssgc-rail-count{
         font-family:var(--font-mono, monospace);
-        font-size:12px; font-weight:800; color:var(--ink, #17181C);
+        font-size:10.5px; font-weight:800; letter-spacing:0;
+        color:var(--brand, #FF5A1F);
+        background:rgba(255,90,31,.1);
+        padding:2px 7px; border-radius:999px;
+        margin-right:16px;
       }
-      .ssgc-pcard__discount{
+
+      /* ---- horizontal snap-scroll product rail ----
+         Cards are image-forward tiles with a floating discount ribbon —
+         built to read as a live carousel, not a static grid. Edge fade
+         (mask-image) signals there's more without needing arrow buttons. */
+      .ssgc-rail-wrap{
+        position:relative;
+        -webkit-mask-image: linear-gradient(to right, transparent 0, #000 20px, #000 calc(100% - 28px), transparent 100%);
+        mask-image: linear-gradient(to right, transparent 0, #000 20px, #000 calc(100% - 28px), transparent 100%);
+      }
+      .ssgc-rail{
+        display:flex;
+        gap:12px;
+        overflow-x:auto;
+        scroll-snap-type:x proximity;
+        padding:10px 20px 16px;
+        scrollbar-width:none;
+      }
+      .ssgc-rail::-webkit-scrollbar{ display:none; }
+      .ssgc-tile{
+        flex:0 0 auto;
+        width:112px;
+        scroll-snap-align:start;
+        cursor:pointer;
+        transition:transform .18s cubic-bezier(.2,.7,.3,1);
+      }
+      .ssgc-tile:active{ transform:scale(.96); }
+      .ssgc-tile__imgwrap{
+        position:relative;
+        width:112px; height:112px;
+        border-radius:var(--radius-s, 12px);
+        overflow:hidden;
+        background:var(--paper-dim, #FDF1E2);
+        border:1px solid var(--line, #F0E4D2);
+        margin-bottom:7px;
+      }
+      .ssgc-tile__img{ width:100%; height:100%; object-fit:cover; display:block; }
+      .ssgc-tile__ribbon{
+        position:absolute; top:6px; left:6px;
         font-size:10px; font-weight:800; color:#fff;
         background:var(--price, #12A150);
-        padding:2px 8px; border-radius:999px; line-height:1.4;
-        flex-shrink:0;
+        padding:3px 7px; border-radius:7px;
+        line-height:1.2;
+        box-shadow:0 2px 6px rgba(18,161,80,.35);
+      }
+      .ssgc-tile__name{
+        font-size:11.5px; font-weight:600; color:var(--ink, #17181C);
+        line-height:1.3;
+        display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+        overflow:hidden;
+        margin-bottom:3px;
+        min-height:29px;
+      }
+      .ssgc-tile__price{
+        font-family:var(--font-mono, monospace);
+        font-size:12.5px; font-weight:800; color:var(--ink, #17181C);
       }
 
       /* ---- recent search term chips: reuse the theme's existing
@@ -347,10 +377,11 @@
       }
 
       @media (max-width:420px){
-        .ssgc-pcard-grid{ padding:8px 12px 12px; gap:8px; }
-        .ssgc-pcard__img{ width:42px; height:42px; }
-        .ssgc-pcard__name{ font-size:11px; }
-        .ssgc-pcard__price{ font-size:11.5px; }
+        .ssgc-rail{ padding:8px 16px 14px; gap:10px; }
+        .ssgc-tile, .ssgc-tile__imgwrap{ width:98px; }
+        .ssgc-tile__imgwrap{ height:98px; }
+        .ssgc-tile__name{ font-size:11px; min-height:27px; }
+        .ssgc-tile__price{ font-size:12px; }
         .ssgc-chip-row{ padding:8px 12px 12px; gap:6px; }
       }
 
