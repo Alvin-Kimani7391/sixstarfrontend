@@ -540,6 +540,11 @@ function ssRenderHeader(active = "") {
   ssSyncThemeToggleUI();
 
   SS_CART.updateBadge();
+
+  // Tell any script that needs live header DOM (e.g. guest-capture.js's
+  // recent-searches wiring) that #headerSearchForm/#headerSearchInput/
+  // #headerSuggestions now actually exist in the document.
+  document.dispatchEvent(new CustomEvent("ss:header-rendered"));
 }
 
 /* ---------- search suggestions dropdown ----------
