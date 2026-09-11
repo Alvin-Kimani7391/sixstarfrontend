@@ -370,7 +370,15 @@
       /* ---- recent search term chips: reuse the theme's existing
          .chip class so these match product-filter chips elsewhere ---- */
       .ssgc-chip-row{ display:flex; flex-wrap:wrap; gap:8px; padding:10px 16px 14px; }
-      .ssgc-chip{ cursor:pointer; }
+      .ssgc-chip{
+        cursor:pointer;
+        flex:0 0 auto;        /* stop flexbox shrinking the button below its text */
+        white-space:nowrap;   /* stop text wrapping inside the button, which is what
+                                  was squashing them into near-square "circles" */
+        max-width:100%;       /* still allow it to fit inside a very narrow phone screen */
+        overflow:hidden;
+        text-overflow:ellipsis;
+      }
       .ssgc-chip:hover{
         background:var(--grad-brand-deep, linear-gradient(135deg,#FF5A1F,#da5521));
         border-color:transparent; color:#fff;
