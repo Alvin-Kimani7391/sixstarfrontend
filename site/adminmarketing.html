@@ -1,0 +1,301 @@
+<!-- ============================================================
+     EMAIL MARKETING & CRM — ADMIN PLUG-IN
+     ============================================================
+     WHERE TO PASTE EACH PIECE (admin.html):
+
+     1) SIDEBAR BUTTON — paste inside <nav class="admin-nav"> ...</nav>,
+        anywhere after the "Agents" button (order doesn't matter — the
+        existing wireSidebar()/switchTab() code in admin.js already wires
+        ANY button with a [data-tab] attribute generically, so this button
+        works for free with zero admin.js edits).
+
+        <button data-tab="emailmarketing"><i class="fa-solid fa-envelope-open-text"></i> Email Marketing &amp; CRM</button>
+
+     2) TAB PANEL — paste the <div class="tab-panel" id="panel-emailmarketing">
+        block below anywhere inside <div class="admin-body-inner"> ... </div>,
+        e.g. right after the closing </div> of #panel-agents.
+
+     3) MODALS — paste the <div class="modal-overlay" id="...">...</div>
+        blocks (at the bottom of this file) anywhere inside the existing
+        "MODALS" section of admin.html, alongside the other modal-overlay
+        blocks.
+
+     4) SCRIPT TAG — add this line just before </body>, after the existing
+        <script type="module" src="js/admin.js"></script> tag:
+
+        <script type="module" src="js/adminmarketing.js"></script>
+
+     Nothing here overwrites or renames anything that already exists.
+     ============================================================ -->
+
+<style>
+  /* Scoped, additive styles only — nothing here redefines existing classes. */
+  .emk-stat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:14px; padding:18px; }
+  .emk-segment-box { border:1px solid var(--line, rgba(0,0,0,.08)); border-radius:10px; padding:14px; background:rgba(0,0,0,.015); margin-top:8px; }
+  .emk-recipient-count { font-size:12.5px; font-weight:700; color:var(--teal-deep,#0b5851); margin-top:6px; }
+  .emk-placeholder-row { display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 12px; }
+  .emk-placeholder-chip { font-family:monospace; font-size:11.5px; background:rgba(0,0,0,.06); border-radius:6px; padding:4px 8px; cursor:pointer; border:none; }
+  .emk-placeholder-chip:hover { background:rgba(0,0,0,.12); }
+  .emk-progress-bar { width:100%; text-align:center; }
+  .emk-search-chip-row { display:flex; gap:6px; flex-wrap:wrap; padding:0 18px 14px; }
+  .emk-search-chip { font-size:11.5px; padding:5px 11px; border-radius:999px; background:rgba(18,114,107,.10); color:var(--teal-deep,#0b5851); cursor:pointer; border:none; font-weight:600; }
+  .emk-search-chip:hover { background:rgba(18,114,107,.20); }
+  .emk-wa-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; padding:18px; }
+  .emk-wa-card { border:1px solid var(--line, rgba(0,0,0,.08)); border-radius:12px; overflow:hidden; background:#fff; }
+  .emk-wa-card__img { width:100%; aspect-ratio:1/1; object-fit:cover; background:#f2ede1; }
+  .emk-wa-card__body { padding:12px 14px; }
+  .emk-caption-box { background:rgba(0,0,0,.03); border-radius:8px; padding:10px; font-size:12.5px; white-space:pre-wrap; margin-bottom:8px; line-height:1.5; }
+  .emk-caption-actions { display:flex; gap:6px; margin-bottom:10px; }
+  .emk-schedule-row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:6px; }
+  .emk-detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width:640px){ .emk-detail-grid{ grid-template-columns:1fr; } }
+</style>
+
+<!-- ===== 2) TAB PANEL ===== -->
+<div class="tab-panel" id="panel-emailmarketing">
+
+  <div class="tabbar order-subtab" id="emkSubtabBar">
+    <button class="active" data-emk-subtab="campaigns">Campaigns</button>
+    <button data-emk-subtab="subscribers">Subscribers &amp; CRM</button>
+    <button data-emk-subtab="whatsapp">WhatsApp Promos</button>
+  </div>
+
+  <!-- ---------- CAMPAIGNS ---------- -->
+  <div id="emkPanelCampaigns">
+    <div class="stat-grid emk-stat-grid" id="emkCampaignStats"></div>
+
+    <div class="dash-card">
+      <div class="dash-card__head">
+        <h3>Email Campaigns</h3>
+        <div class="dash-toolbar">
+          <select id="emkCampaignStatusFilter">
+            <option value="">All statuses</option>
+            <option value="draft">Draft</option>
+            <option value="scheduled">Scheduled</option>
+            <option value="sending">Sending</option>
+            <option value="sent">Sent</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="failed">Failed</option>
+          </select>
+          <button class="btn btn-dark btn-sm" id="emkNewCampaignBtn"><i class="fa-solid fa-plus"></i> New Campaign</button>
+        </div>
+      </div>
+      <p class="text-muted" style="padding:0 18px;">Send a one-off or scheduled bulk promotional email to any audience — registered buyers/sellers, guests who left an email while browsing, or a pasted list. Enable "Recommended for you" to auto-attach products based on each person's own searches and recently viewed items.</p>
+      <div class="table-scroll">
+        <table class="dtable">
+          <thead><tr><th>Campaign</th><th>Segment</th><th>Status</th><th>When</th><th>Recipients</th><th>Opens</th><th>Clicks</th><th>Actions</th></tr></thead>
+          <tbody id="emkCampaignsBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ---------- SUBSCRIBERS / CRM ---------- -->
+  <div id="emkPanelSubscribers" style="display:none;">
+    <div class="stat-grid emk-stat-grid" id="emkSubscriberStats"></div>
+
+    <div class="dash-card">
+      <div class="dash-card__head"><h3>Top Searched Terms</h3></div>
+      <p class="text-muted" style="padding:0 18px;">Click a term to instantly start a campaign targeting everyone who searched it.</p>
+      <div class="emk-search-chip-row" id="emkTopSearchesRow"></div>
+    </div>
+
+    <div class="dash-card">
+      <div class="dash-card__head">
+        <h3>Subscribers</h3>
+        <div class="dash-toolbar">
+          <input type="text" id="emkSubscriberSearch" placeholder="Search by email or name...">
+          <select id="emkSubscriberStatusFilter">
+            <option value="">All statuses</option>
+            <option value="subscribed">Subscribed</option>
+            <option value="unsubscribed">Unsubscribed</option>
+          </select>
+          <select id="emkSubscriberRoleFilter">
+            <option value="">All types</option>
+            <option value="guest">Guest</option>
+            <option value="buyer">Buyer</option>
+            <option value="wholesaler">Wholesaler</option>
+            <option value="retailer">Retailer</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-scroll">
+        <table class="dtable">
+          <thead><tr><th>Email</th><th>Name</th><th>Type</th><th>Source</th><th>Status</th><th>Searches</th><th>Views</th><th>Joined</th><th>Actions</th></tr></thead>
+          <tbody id="emkSubscribersBody"></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="emkSubscribersPagination"></div>
+    </div>
+  </div>
+
+  <!-- ---------- WHATSAPP PROMOS ---------- -->
+  <div id="emkPanelWhatsapp" style="display:none;">
+    <div class="dash-card">
+      <div class="dash-card__head"><h3>Generate a WhatsApp Status / Group Promo</h3></div>
+      <p class="text-muted" style="padding:0 18px;">Pick a product (or write your own message) to instantly get a ready-to-post image + several caption variants. WhatsApp doesn't allow apps to post to Status/groups directly — copy the caption and download the image, then post them yourself in a few taps.</p>
+      <form id="emkWaForm" class="form-grid" style="padding:18px;">
+        <div class="form-field">
+          <label for="emkWaProductSearch">Product (optional — search by name)</label>
+          <input type="text" id="emkWaProductSearch" placeholder="Start typing a product name...">
+          <div id="emkWaProductResults" style="margin-top:6px;"></div>
+          <input type="hidden" id="emkWaProductId">
+        </div>
+        <div class="form-field">
+          <label for="emkWaCustomMessage">Custom message (used if no product selected, or added as an extra variant)</label>
+          <textarea id="emkWaCustomMessage" placeholder="e.g. Flash weekend sale — everything at unbeatable prices!"></textarea>
+        </div>
+        <div class="form-field">
+          <label for="emkWaImageUrl">Override image URL (optional — defaults to the product's first photo)</label>
+          <input type="text" id="emkWaImageUrl" placeholder="https://...">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:fit-content;">Generate Promo</button>
+      </form>
+    </div>
+
+    <div class="dash-card">
+      <div class="dash-card__head"><h3>Recent Promos</h3></div>
+      <div class="emk-wa-grid" id="emkWaGrid"></div>
+    </div>
+  </div>
+
+</div>
+
+
+<!-- ===== 3) MODALS ===== -->
+
+<!-- Campaign builder modal (create/edit) -->
+<div class="modal-overlay" id="emkCampaignModal">
+  <div class="modal modal-lg">
+    <div class="modal-head">
+      <h3 id="emkCampaignModalTitle">New Campaign</h3>
+      <button class="modal-close" data-close-modal="emkCampaignModal">&times;</button>
+    </div>
+    <form id="emkCampaignForm" class="form-grid">
+      <div class="form-row-2">
+        <div class="form-field"><label>Internal name</label><input type="text" id="emkName" required placeholder="e.g. October Electronics Blast"></div>
+        <div class="form-field"><label>From name</label><input type="text" id="emkFromName" placeholder="Six Star Suppliers"></div>
+      </div>
+      <div class="form-field"><label>Subject line</label><input type="text" id="emkSubject" required placeholder="e.g. 🔥 Deals picked just for you"></div>
+      <div class="form-field"><label>Preview text (shown next to subject in the inbox)</label><input type="text" id="emkPreviewText" placeholder="e.g. Save up to 30% this week only"></div>
+
+      <div class="form-field">
+        <label>Content type</label>
+        <div class="chip-row">
+          <label class="chip active" data-emk-content-chip="custom"><input type="radio" name="emkContentType" value="custom" checked style="display:none;"> Custom message</label>
+          <label class="chip" data-emk-content-chip="auto_recommendation"><input type="radio" name="emkContentType" value="auto_recommendation" style="display:none;"> Auto "Recommended for you"</label>
+        </div>
+        <div class="form-hint">Auto mode builds a personalized product grid per recipient from their own searches/recently viewed. You can also drop <code>{{recommended_products}}</code> into your own message below to place that grid exactly where you want it in Custom mode.</div>
+      </div>
+
+      <div class="form-field">
+        <label>Message body</label>
+        <div class="emk-placeholder-row">
+          <button type="button" class="emk-placeholder-chip" data-insert="{{name}}">Insert {{name}}</button>
+          <button type="button" class="emk-placeholder-chip" data-insert="{{recommended_products}}">Insert product grid here</button>
+        </div>
+        <textarea id="emkBodyHtml" rows="7" placeholder="Hi {{name}}, we've picked a few things we think you'll love..."></textarea>
+      </div>
+
+      <div class="form-row-2">
+        <div class="form-field"><label>Hero image URL (optional)</label><input type="text" id="emkHeroImage" placeholder="https://..."></div>
+        <div class="form-field"><label># of recommended products</label><input type="number" id="emkRecCount" min="0" max="8" value="4"></div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-field"><label>Button text</label><input type="text" id="emkCtaText" value="Shop Now"></div>
+        <div class="form-field"><label>Button link (optional)</label><input type="text" id="emkCtaUrl" placeholder="https://www.sixstarsuppliers.com/product.html"></div>
+      </div>
+
+      <div class="form-field">
+        <label>Audience (segment)</label>
+        <select id="emkSegmentType">
+          <option value="all_subscribers">Everyone subscribed (guests + captured + imported)</option>
+          <option value="buyers">All registered buyers</option>
+          <option value="sellers">All sellers (wholesalers &amp; retailers)</option>
+          <option value="guests">Guests only (no account)</option>
+          <option value="searched_term">People who searched a specific term</option>
+          <option value="viewed_category">People who viewed a specific category</option>
+          <option value="custom_emails">Paste a custom list of emails</option>
+        </select>
+
+        <div class="emk-segment-box" id="emkSegmentTermBox" style="display:none;">
+          <label class="form-hint" style="display:block; margin-bottom:6px;">Search term</label>
+          <input type="text" id="emkSegmentTermInput" placeholder="e.g. iphone">
+        </div>
+        <div class="emk-segment-box" id="emkSegmentCategoryBox" style="display:none;">
+          <label class="form-hint" style="display:block; margin-bottom:6px;">Category</label>
+          <select id="emkSegmentCategorySelect"></select>
+        </div>
+        <div class="emk-segment-box" id="emkSegmentEmailsBox" style="display:none;">
+          <label class="form-hint" style="display:block; margin-bottom:6px;">One email per line, or comma-separated</label>
+          <textarea id="emkSegmentEmailsInput" rows="4" placeholder="jane@example.com&#10;john@example.com"></textarea>
+        </div>
+
+        <div class="emk-recipient-count" id="emkRecipientCount">Estimated recipients: —</div>
+      </div>
+
+      <div class="emk-schedule-row">
+        <label style="display:flex; align-items:center; gap:6px; font-weight:600; font-size:13px;">
+          <input type="radio" name="emkWhen" value="now" checked id="emkWhenNow"> Save as draft / Send now
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; font-weight:600; font-size:13px;">
+          <input type="radio" name="emkWhen" value="later" id="emkWhenLater"> Schedule for later
+        </label>
+        <input type="datetime-local" id="emkScheduleAt" style="display:none;">
+      </div>
+
+      <div class="shop-modal-actions" style="margin-top:10px;">
+        <button type="button" class="btn btn-outline" id="emkSaveDraftBtn">Save Draft</button>
+        <button type="button" class="btn btn-outline" id="emkPreviewBtn"><i class="fa-solid fa-eye"></i> Preview</button>
+        <button type="submit" class="btn btn-primary" id="emkSendOrScheduleBtn">Send Now</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Subscriber detail modal -->
+<div class="modal-overlay" id="emkSubscriberModal">
+  <div class="modal modal-lg">
+    <div class="modal-head">
+      <h3 id="emkSubModalEmail">Subscriber</h3>
+      <button class="modal-close" data-close-modal="emkSubscriberModal">&times;</button>
+    </div>
+    <div class="verif-summary-grid" style="margin-bottom:18px;">
+      <div><div class="text-muted">Status</div><span id="emkSubModalStatus" class="pill"></span></div>
+      <div><div class="text-muted">Type</div><div id="emkSubModalRole"></div></div>
+      <div><div class="text-muted">Source</div><div id="emkSubModalSource"></div></div>
+      <div><div class="text-muted">Joined</div><div id="emkSubModalJoined"></div></div>
+      <div><div class="text-muted">Emails Sent</div><div id="emkSubModalSent"></div></div>
+      <div><div class="text-muted">Opens / Clicks</div><div id="emkSubModalEngagement"></div></div>
+    </div>
+
+    <div class="emk-detail-grid">
+      <div class="verif-section">
+        <h4><i class="fa-solid fa-magnifying-glass"></i> Recent Searches</h4>
+        <div class="emk-search-chip-row" id="emkSubModalSearches" style="padding:0;"></div>
+      </div>
+      <div class="verif-section">
+        <h4><i class="fa-solid fa-eye"></i> Recently Viewed Products</h4>
+        <div id="emkSubModalViewed"></div>
+      </div>
+    </div>
+
+    <div class="shop-modal-actions" id="emkSubModalActions" style="margin-top:18px;"></div>
+  </div>
+</div>
+
+<!-- Campaign send-log modal -->
+<div class="modal-overlay" id="emkLogsModal">
+  <div class="modal modal-lg">
+    <div class="modal-head">
+      <h3>Send Log — <span id="emkLogsCampaignName"></span></h3>
+      <button class="modal-close" data-close-modal="emkLogsModal">&times;</button>
+    </div>
+    <div class="table-scroll">
+      <table class="dtable">
+        <thead><tr><th>Email</th><th>Status</th><th>Sent</th><th>Opened</th><th>Clicked</th></tr></thead>
+        <tbody id="emkLogsBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
