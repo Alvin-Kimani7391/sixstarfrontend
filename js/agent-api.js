@@ -173,6 +173,22 @@ const SS_AGENT_API = (() => {
       return request(`/sharing/products/${productId}/promote`, { method: "POST" });
     },
 
+        // ============================================================
+    // WHATSAPP PRODUCT PROMO (NEW — mirrors the admin generator,
+    // scoped to this agent's own referral code)
+    // ============================================================
+    searchShareProducts(q) {
+      return request("/sharing/products/search", { query: { q } });
+    },
+    generateWhatsappPromo(payload) {
+      return request("/sharing/whatsapp-promo/generate", { method: "POST", body: payload });
+    },
+    getWhatsappPromos() {
+      return request("/sharing/whatsapp-promo");
+    },
+    deleteWhatsappPromo(id) {
+      return request(`/sharing/whatsapp-promo/${id}`, { method: "DELETE" });
+    },
     // ============================================================
     // RECRUITMENT CRM (leads)
     // ============================================================

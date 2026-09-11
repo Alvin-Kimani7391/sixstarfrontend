@@ -297,7 +297,7 @@ function wireAssetCardEvents() {
     btn.addEventListener("click", async () => {
       try {
         const res = await SS_AGENT_API.downloadAsset(btn.dataset.download);
-        window.open(res.fileUrl, "_blank");
+        await triggerFileDownload(res.fileUrl, res.fileName);
         ssToast("Download started", "fa-download");
       } catch (err) { ssToast(err.message, "fa-triangle-exclamation"); }
     })
@@ -321,6 +321,7 @@ function wireAssetCardEvents() {
     })
   );
 }
+
 
 async function loadMyMarketing() {
   const wrap = document.getElementById("myMarketingWrap");
@@ -366,12 +367,14 @@ async function loadCampaigns() {
     document.querySelectorAll("[data-view-campaign]").forEach((btn) =>
       btn.addEventListener("click", () => { switchTab("marketing"); document.getElementById("assetSearch").value = ""; loadAssets(); })
     );
-    document.querySelectorAll("[data-download-pack]").forEach((btn) =>
+         document.querySelectorAll("[data-download-pack]").forEach((btn) =>
       btn.addEventListener("click", async () => {
         try {
           const res = await SS_AGENT_API.downloadCampaignPack(btn.dataset.downloadPack);
-          res.files.forEach((f) => window.open(f.fileUrl, "_blank"));
-          ssToast(`Opened ${res.files.length} file(s)`, "fa-download");
+          for (const f of res.files) {
+            await triggerFileDownload(f.fileUrl, f.fileName);
+          }
+          ssToast(`Downloaded ${res.files.length} file(s)`, "fa-download");
         } catch (err) { ssToast(err.message, "fa-triangle-exclamation"); }
       })
     );
@@ -416,27 +419,118 @@ function wireSharing() {
     } catch (err) { ssToast(err.message, "fa-triangle-exclamation"); }
   });
 
-  document.getElementById("genProductShareBtn").addEventListener("click", () => {
-  const raw = document.getElementById("productShareInput").value.trim();
-  if (!raw) { ssToast("Paste a product link or ID first", "fa-triangle-exclamation"); return; }
+  wireProductSharePromo();
+}
 
-  let productId = raw;
+// ===================================================================
+// WHATSAPP PRODUCT PROMO (NEW — mirrors the admin Marketing Center's
+// WhatsApp promo generator, scoped to this agent's own referral code)
+// ===================================================================
+function wireProductSharePromo() {
+  const searchInput = document.getElementById("productShareSearch");
+  const resultsEl = document.getElementById("productShareResults");
+  const hiddenId = document.getElementById("productShareProductId");
+
+  searchInput.addEventListener("input", debounce(async () => {
+    const q = searchInput.value.trim();
+    hiddenId.value = ""; // typing again clears any previous pick
+    if (!q) { resultsEl.innerHTML = ""; return; }
+    try {
+      const { products } = await SS_AGENT_API.searchShareProducts(q);
+      resultsEl.innerHTML = products.length
+        ? products.map((p) => `
+          <div class="wa-product-pick" data-pick-product="${p._id}" data-pick-name="${escapeHtml(p.name)}">
+            <span>${escapeHtml(p.name)}</span>
+            <span class="text-muted">KSh ${(p.finalPrice || p.sellerPrice || 0).toLocaleString()}</span>
+          </div>`).join("")
+        : `<div class="text-muted" style="padding:6px 0;">No products found.</div>`;
+
+      resultsEl.querySelectorAll("[data-pick-product]").forEach((row) =>
+        row.addEventListener("click", () => {
+          hiddenId.value = row.dataset.pickProduct;
+          searchInput.value = row.dataset.pickName;
+          resultsEl.innerHTML = "";
+        })
+      );
+    } catch (err) {
+      resultsEl.innerHTML = `<div class="text-muted">${err.message}</div>`;
+    }
+  }, 350));
+
+  document.getElementById("productShareForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const payload = {
+      productId: hiddenId.value || undefined,
+      customMessage: document.getElementById("productShareCustomMessage").value.trim(),
+      imageUrl: document.getElementById("productShareImageUrl").value.trim(),
+    };
+    if (!payload.productId && !payload.customMessage) {
+      ssToast("Pick a product or write a custom message first", "fa-triangle-exclamation");
+      return;
+    }
+    try {
+      await SS_AGENT_API.generateWhatsappPromo(payload);
+      ssToast("Promo generated", "fa-brands fa-whatsapp");
+      document.getElementById("productShareForm").reset();
+      hiddenId.value = "";
+      resultsEl.innerHTML = "";
+      loadProductSharePromos();
+    } catch (err) { ssToast(err.message, "fa-triangle-exclamation"); }
+  });
+
+  loadProductSharePromos();
+}
+
+async function loadProductSharePromos() {
+  const grid = document.getElementById("productShareGrid");
+  if (!grid) return;
+  grid.innerHTML = `<div class="spinner"></div>`;
   try {
-    const maybeUrl = new URL(raw, SS_SITE_URL);
-    productId = maybeUrl.searchParams.get("id") || maybeUrl.searchParams.get("productId") || raw;
-  } catch (_) { /* plain ID was pasted, not a URL */ }
+    const { promos } = await SS_AGENT_API.getWhatsappPromos();
+    if (!promos.length) {
+      grid.innerHTML = `<div class="dash-empty"><i class="fa-brands fa-whatsapp"></i><p>No promos generated yet.</p></div>`;
+      return;
+    }
 
-  const base = SS_SITE_URL.replace(/\/$/, "");
-  const link = `${base}/product-detail.html?id=${encodeURIComponent(productId)}&ref=${currentAgent.code}`;
+    grid.innerHTML = promos.map((p) => `
+      <div class="wa-card" data-promo-id="${p._id}">
+        ${p.imageUrl ? `<img class="wa-card__img" src="${p.imageUrl}" alt="">` : ""}
+        <div class="wa-card__body">
+          <div style="font-weight:700; font-size:.85rem; margin-bottom:8px;">${escapeHtml(p.title)}</div>
+          ${(p.captions || []).map((cap) => `
+            <div class="wa-caption-box">${escapeHtml(cap)}</div>
+            <div class="wa-caption-actions">
+              <button type="button" class="act-btn act-outline" data-copy-caption="${encodeURIComponent(cap)}">Copy</button>
+              <a class="act-btn act-primary" style="text-decoration:none;" href="https://wa.me/?text=${encodeURIComponent(cap)}" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i> Share</a>
+            </div>`).join("")}
+          ${p.imageUrl ? `<button type="button" class="act-btn act-outline" data-download-promo-image="${p.imageUrl}" style="width:100%; margin-bottom:8px;">Download Image</button>` : ""}
+          <button type="button" class="act-btn act-danger" data-delete-promo="${p._id}" style="width:100%;">Delete</button>
+        </div>
+      </div>`).join("");
 
-  const box = document.getElementById("productShareResultBox");
-  box.style.display = "block";
-  document.getElementById("productShareResultLink").value = link;
-  wireCopyButtons(box);
-  wireNativeShareButtons(box);
-  ssToast("Product link ready — copy and share it", "fa-link");
-});
-
+    grid.querySelectorAll("[data-copy-caption]").forEach((btn) =>
+      btn.addEventListener("click", () => {
+        navigator.clipboard.writeText(decodeURIComponent(btn.dataset.copyCaption))
+          .then(() => ssToast("Caption copied", "fa-copy"))
+          .catch(() => ssToast("Could not copy — select and copy manually", "fa-triangle-exclamation"));
+      })
+    );
+    grid.querySelectorAll("[data-download-promo-image]").forEach((btn) =>
+      btn.addEventListener("click", () => triggerFileDownload(btn.dataset.downloadPromoImage))
+    );
+    grid.querySelectorAll("[data-delete-promo]").forEach((btn) =>
+      btn.addEventListener("click", async () => {
+        if (!confirm("Delete this promo?")) return;
+        try {
+          await SS_AGENT_API.deleteWhatsappPromo(btn.dataset.deletePromo);
+          ssToast("Promo deleted");
+          loadProductSharePromos();
+        } catch (err) { ssToast(err.message, "fa-triangle-exclamation"); }
+      })
+    );
+  } catch (err) {
+    grid.innerHTML = `<div class="dash-empty"><p>${err.message}</p></div>`;
+  }
 }
 
 // ===================================================================
@@ -950,6 +1044,35 @@ function loadProfileForm() {
   document.getElementById("profBio").value = currentAgent.bio || "";
   renderAvatar("profileAvatarPreview", "profileAvatarFallback", currentAgent.avatar);
   loadPayoutForm();
+}
+
+
+
+
+
+// NEW — forces an actual file download instead of opening the asset in a
+// new tab (which is what window.open(url, "_blank") does for images/PDFs,
+// and looks like "nothing happened"). Fetches the file as a blob and
+// triggers a real Save-As via a temporary <a download> link. Falls back to
+// opening the URL directly if the fetch fails (e.g. the storage host
+// doesn't send CORS headers) so the person can still get the file.
+async function triggerFileDownload(url, filename) {
+  if (!url) return;
+  try {
+    const resp = await fetch(url, { mode: "cors" });
+    if (!resp.ok) throw new Error("Download failed");
+    const blob = await resp.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = filename || decodeURIComponent(url.split("/").pop().split("?")[0]) || "download";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 4000);
+  } catch (err) {
+    window.open(url, "_blank");
+  }
 }
 
 // ===================================================================
