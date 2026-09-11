@@ -13,47 +13,19 @@
      <script src="js/ui.js"></script>
      <script src="js/home.js"></script>            <!-- or product-detail.js, etc -->
 
-   WHY THIS FILE EXISTS:
-   The admin Email Marketing & CRM panel personalizes promotional emails
-   using each person's real search terms and recently viewed products
-   (see EmailSubscriber on the backend). Nothing populates that data on
-   its own — this script is what actually calls the backend's
-   /api/guest/track-search and /api/guest/track-view endpoints, for BOTH
-   anonymous guests (via a persistent guestId) and logged-in buyers (by
-   also sending their email, so the history attaches to their real
-   account). Without this file included, the CRM will always look empty,
-   no matter how much backend logic exists behind it.
-
-   WHAT IT DOES, WITHOUT TOUCHING ui.js (other than one event dispatch
-   ui.js fires once the header DOM exists — see ss:header-rendered below):
-   - Generates/persists an anonymous guestId (localStorage + cookie).
-   - Hooks the EXISTING header search form (#headerSearchForm) and the
-     "see all results" link ui.js renders inside #headerSuggestions, via
-     event delegation — no edits to ui.js's own logic needed.
-   - Adds a focus listener to #headerSearchInput that shows the person's
-     own recent searches as clickable chips INSIDE the same
-     #headerSuggestions box ui.js already uses, whenever the box is empty.
-     ui.js's own listeners keep working exactly as before.
-   - Exposes window.SSGuestCapture.trackView(productId) for product-
-     detail.js to call.
-   - Shows a small, dismissible "get deals in your inbox" banner to
-     guests after a couple of searches/views, wired to
-     /api/guest/capture-email.
-   - After a Google One Tap / Google button sign-in, immediately links
-     the guest's existing browsing history to their new account.
-
-   WIRING NOTE (fixes a real bug): the header markup (#headerSearchForm
-   etc.) is injected by ui.js's ssRenderHeader(), which runs in ui.js's
-   own DOMContentLoaded handler — registered AFTER this file's handler
-   since this script loads before ui.js. That means an attempt to wire
-   the search box on THIS file's own DOMContentLoaded fires too early:
-   the form doesn't exist yet. So wiring here is driven by a
-   "ss:header-rendered" CustomEvent that ssRenderHeader() dispatches
-   once it has actually built the header DOM — with an immediate
-   best-effort attempt on DOMContentLoaded too, in case some future
-   page renders the header before this script's handler runs. Both
-   paths are safe to fire — wireHeaderSearch() guards against wiring
-   the same form twice.
+   FIX (this version): the "recent searches" dropdown now reuses the
+   SAME classes ui.js already defines in style.css for real search
+   suggestions (.sug-header-bar, .sug-item, .sug-thumb, .sug-info,
+   .sug-name, .sug-price, .sug-chevron) instead of a separate,
+   bespoke style. Previously the recent-searches state and the
+   typed-search-results state of the same dropdown looked like two
+   different UIs; now they're visually identical, matching the
+   pattern used by Amazon/Jumia-style search bars where "recent" and
+   "results" are just two states of one dropdown. Recent-search
+   terms get their own small pill styled off the site's existing
+   .chip class (already used by the product filters) so it's visually
+   consistent with the rest of the theme rather than introducing a
+   third, unrelated chip style.
    ============================================================ */
 (function () {
   const GUEST_ID_COOKIE = "ss_guest_id";
@@ -152,7 +124,7 @@
   }
 
   // Called right after a successful login/Google sign-in so this guest's
-  // pre-login browsing history merges onto their real account immediately,
+  // pre-login browsing history merges onto their new account immediately,
   // instead of waiting for their next search/view.
   function notifyLogin(email) {
     if (!email) return;
@@ -196,32 +168,19 @@
     if (!form || !input || !box) return; // header not rendered yet — a later
                                           // ss:header-rendered call will retry
 
-    // Guard against wiring the same form twice if this ever runs more than
-    // once (e.g. the immediate DOMContentLoaded attempt AND the
-    // ss:header-rendered event both succeed on some future page layout).
     if (form.dataset.ssgcWired === "1") return;
     form.dataset.ssgcWired = "1";
 
-    // Track the term the moment a real search is submitted (form submit
-    // fires alongside ui.js's own submit listener — this one just tracks,
-    // it doesn't preventDefault or navigate, so ui.js's navigation still
-    // happens exactly as before).
     form.addEventListener("submit", () => {
       trackSearch(input.value);
     });
 
-    // ui.js renders a "#sugSeeAll" link inside the suggestions box when
-    // there are search results — clicking it also counts as a real search.
     document.addEventListener("click", (e) => {
       if (e.target.closest && e.target.closest("#sugSeeAll")) {
         trackSearch(input.value);
       }
     });
 
-    // Recent-searches dropdown: only kicks in when the input is EMPTY and
-    // focused — ui.js's own focus handler already no-ops in that case, so
-    // there's no conflict. The moment the person types anything, ui.js's
-    // own "input" listener takes back over and replaces this box's content.
     input.addEventListener("focus", async () => {
       if (input.value.trim()) return;
       const activity = await getActivity();
@@ -234,6 +193,21 @@
     return String(str || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   }
 
+  // Formats a price the exact same way the rest of the site does, if
+  // ui.js's ssFmtPrice() is available (it will be, by the time a person
+  // actually focuses the search box) — falls back to a plain KSh string
+  // otherwise so this never breaks even if load order ever changes.
+  function fmtPrice(n) {
+    if (typeof window.ssFmtPrice === "function") return window.ssFmtPrice(n);
+    return "KSh " + (Number(n) || 0).toLocaleString("en-KE");
+  }
+
+  // Renders the recent-searches / recently-viewed state of the SAME
+  // dropdown ui.js uses for live search results, reusing its exact
+  // classes (.sug-header-bar, .sug-item, .sug-thumb, .sug-info,
+  // .sug-name, .sug-price, .sug-chevron — all defined in style.css) so
+  // this state is visually identical to the "typed a query" state,
+  // instead of looking like a bolted-on separate widget.
   function renderRecentSearchesBox(box, input, activity) {
     const searches = (activity && activity.searches) || [];
     const viewed = (activity && activity.viewedProducts) || [];
@@ -243,31 +217,32 @@
     }
 
     const searchChips = searches
-      .map((t) => `<button type="button" class="ssgc-chip" data-term="${escapeHtml(t)}"><i class="fa-solid fa-clock-rotate-left"></i> ${escapeHtml(t)}</button>`)
+      .map((t) => `<button type="button" class="chip ssgc-chip" data-term="${escapeHtml(t)}">${escapeHtml(t)}</button>`)
       .join("");
 
     const viewedItems = viewed.slice(0, 4).map((p) => `
-      <div class="ssgc-viewed-item" data-id="${p.id}">
-        <img src="${p.image || "https://placehold.co/60x60/F3F4F8/15161A?text=%20"}" alt="">
-        <div>
-          <div class="ssgc-viewed-name">${escapeHtml(p.name)}</div>
-          <div class="ssgc-viewed-price">KSh ${Number(p.price || 0).toLocaleString()}</div>
+      <div class="sug-item ssgc-sug-item" data-id="${p.id}">
+        <img class="sug-thumb" src="${p.image || "https://placehold.co/120x120/F3F4F8/15161A?text=%20"}" alt="" loading="lazy" onerror="this.style.opacity='0'">
+        <div class="sug-info">
+          <p class="sug-name">${escapeHtml(p.name)}</p>
+          <div class="sug-meta">
+            <span class="sug-price">${fmtPrice(p.price)}</span>
+          </div>
         </div>
+        <i class="fa-solid fa-chevron-right sug-chevron"></i>
       </div>`).join("");
 
     box.innerHTML = `
-      <div class="ssgc-recent-wrap">
-        ${searches.length ? `
-          <div class="ssgc-recent-headrow">
-            <span class="ssgc-recent-head"><i class="fa-solid fa-clock-rotate-left"></i> Your recent searches</span>
-          </div>
-          <div class="ssgc-chip-row">${searchChips}</div>` : ""}
-        ${viewed.length ? `
-          <div class="ssgc-recent-headrow" style="margin-top:12px;">
-            <span class="ssgc-recent-head"><i class="fa-regular fa-eye"></i> Recently viewed</span>
-          </div>
-          <div class="ssgc-viewed-list">${viewedItems}</div>` : ""}
-      </div>`;
+      ${searches.length ? `
+        <div class="sug-header-bar">
+          <span><i class="fa-solid fa-clock-rotate-left"></i> Recent searches</span>
+        </div>
+        <div class="ssgc-chip-row">${searchChips}</div>` : ""}
+      ${viewed.length ? `
+        <div class="sug-header-bar" ${searches.length ? 'style="border-top:1px solid var(--line-soft);"' : ""}>
+          <span><i class="fa-regular fa-eye"></i> Recently viewed</span>
+        </div>
+        ${viewedItems}` : ""}`;
     box.style.display = "block";
 
     box.querySelectorAll(".ssgc-chip").forEach((chip) => {
@@ -279,7 +254,7 @@
         window.location.href = `/product.html?search=${encodeURIComponent(term)}`;
       });
     });
-    box.querySelectorAll(".ssgc-viewed-item").forEach((item) => {
+    box.querySelectorAll(".ssgc-sug-item").forEach((item) => {
       item.addEventListener("click", () => {
         window.location.href = `/product-detail.html?id=${item.dataset.id}`;
       });
@@ -341,30 +316,24 @@
     });
   }
 
-  // Injected once, using the same design tokens defined in style.css
-  // (--paper-dim, --ink, --line, --brand, --radius-md, --shadow-card,
-  // --font-mono, etc.) so this box automatically matches light/dark mode
-  // and the rest of the theme instead of carrying its own fixed palette.
+  // Only the bits that AREN'T already covered by .chip/.sug-* in
+  // style.css: the chip-row layout wrapper, a hover state for the
+  // recent-search chips (matching .chip.active's brand-fill look on
+  // hover instead of only on "active"), a touch-up so the reused
+  // .sug-item rows sit flush inside this dropdown, and the email
+  // capture banner (unrelated widget, unchanged).
   function injectBannerStyles() {
     if (document.getElementById("ssgcStyles")) return;
     const style = document.createElement("style");
     style.id = "ssgcStyles";
     style.textContent = `
-      .ssgc-recent-wrap { padding: 12px 16px 14px; }
-      .ssgc-recent-headrow { display:flex; align-items:center; padding-bottom:8px; border-bottom:1px solid var(--line-soft, #F6EEDF); margin-bottom:10px; }
-      .ssgc-recent-head { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: var(--ink-faint, #9a9ba5); display:flex; align-items:center; gap:6px; }
-      .ssgc-recent-head i { color: var(--brand, #FF5A1F); font-size: 11px; }
-      .ssgc-chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
-      .ssgc-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight:600; padding: 7px 13px; border-radius: 999px; border: 1px solid var(--line, #F0E4D2); background: var(--paper-dim, #FDF1E2); cursor: pointer; color: var(--ink-soft, #6b6d78); transition: .15s ease; }
-      .ssgc-chip i { color: var(--ink-faint, #9a9ba5); font-size: 10.5px; }
-      .ssgc-chip:hover { background: var(--brand, #FF5A1F); border-color: var(--brand, #FF5A1F); color: #fff; }
-      .ssgc-chip:hover i { color: #fff; }
-      .ssgc-viewed-list { display: flex; flex-direction: column; gap: 6px; }
-      .ssgc-viewed-item { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 6px; border-radius: var(--radius-s, 9px); transition: background .15s ease; }
-      .ssgc-viewed-item:hover { background: var(--paper-dim, #FDF1E2); }
-      .ssgc-viewed-item img { width: 42px; height: 42px; object-fit: cover; border-radius: 8px; background: var(--paper-dim, #FDF1E2); flex-shrink: 0; border: 1px solid var(--line, #F0E4D2); }
-      .ssgc-viewed-name { font-size: 12.5px; font-weight: 600; color: var(--ink, #17181C); line-height: 1.35; }
-      .ssgc-viewed-price { font-size: 12px; color: var(--brand-dark, #da5521); font-weight: 800; font-family: var(--font-mono, monospace); margin-top:1px; }
+      .ssgc-chip-row { display:flex; flex-wrap:wrap; gap:8px; padding:10px 16px 14px; }
+      .ssgc-chip { cursor:pointer; }
+      .ssgc-chip:hover { background:var(--grad-brand-deep, linear-gradient(135deg,#FF5A1F,#da5521)); border-color:transparent; color:#fff; }
+
+      /* .sug-item already has its own border-bottom rule per row in
+         style.css; reused as-is here so recently-viewed rows look
+         pixel-identical to real search-result rows. */
 
       .ssgc-email-banner { position: fixed; left: 0; right: 0; bottom: -140px; z-index: 9999; transition: bottom .35s ease; display: flex; justify-content: center; padding: 0 12px; }
       .ssgc-email-banner.show { bottom: 16px; }
@@ -380,8 +349,7 @@
       @media (max-width: 480px) {
         .ssgc-email-banner__form { width: 100%; }
         .ssgc-email-banner__form input { flex: 1; width: auto; }
-        .ssgc-recent-wrap { padding: 10px 14px 12px; }
-        .ssgc-chip { font-size: 12px; padding: 6px 11px; }
+        .ssgc-chip-row { padding: 8px 14px 12px; gap:7px; }
       }
     `;
     document.head.appendChild(style);
@@ -392,7 +360,5 @@
     wireHeaderSearch(); // best-effort — a no-op if the header hasn't rendered yet
   });
 
-  // The real wiring path: ui.js's ssRenderHeader() dispatches this once the
-  // header DOM (form/input/suggestions box) actually exists.
   document.addEventListener("ss:header-rendered", wireHeaderSearch);
 })();
