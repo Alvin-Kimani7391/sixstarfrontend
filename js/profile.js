@@ -232,13 +232,16 @@
         <div class="detail-price-row total"><span>Total paid</span><span>${money(o.totalAmount)}</span></div>
       </div>
 
-      <div class="order-detail-section">
-        <h4><i class="fa-solid fa-truck"></i> Delivery details</h4>
-        <div class="detail-kv"><span>Recipient</span><span>${esc(addr.fullName || '—')}</span></div>
-        <div class="detail-kv"><span>Phone</span><span>${esc(addr.phone || '—')}</span></div>
-        <div class="detail-kv"><span>Town / Area</span><span>${esc(addr.city || '—')}</span></div>
-        <div class="detail-kv"><span>Address / Landmark</span><span>${esc(addr.address || addr.notes || '—')}</span></div>
-      </div>
+    <div class="order-detail-section">
+  <h4><i class="fa-solid fa-truck"></i> Delivery details</h4>
+  <div class="detail-kv"><span>Recipient</span><span>${esc(addr.fullName || '—')}</span></div>
+  <div class="detail-kv"><span>Phone</span><span>${esc(addr.phone || '—')}</span></div>
+  <div class="detail-kv"><span>Town / Area</span><span>${esc(addr.city || '—')}</span></div>
+  ${addr.hasPickupStation && addr.pickupStationAddress ? `
+    <div class="detail-kv"><span>Pickup Station</span><span>${esc(addr.pickupStationAddress)}</span></div>
+  ` : ''}
+  <div class="detail-kv"><span>Address / Landmark</span><span>${esc(addr.address || addr.notes || '—')}</span></div>
+</div>
 
       <div class="order-detail-section">
         <h4><i class="fa-solid fa-money-bill-wave"></i> Payment</h4>

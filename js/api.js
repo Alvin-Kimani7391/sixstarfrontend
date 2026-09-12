@@ -444,6 +444,27 @@ getShopBySlug(slug) {
       return request("/shipping/quote", { method: "POST", body: { lines }, requiresAuth: false });
     },
 
+
+        // ============================================================
+    // TOWN LOCATIONS (Nairobi manual fee + pickup stations)
+    // ============================================================
+    getTownLocations() {
+      return request("/town-locations", { requiresAuth: false });
+    },
+    getAdminTownLocations(params = {}) {
+      return request("/town-locations/admin/all", { query: params, requiresAuth: true });
+    },
+    createTownLocation(payload) {
+      return request("/town-locations/admin", { method: "POST", body: payload, requiresAuth: true });
+    },
+    updateTownLocation(id, payload) {
+      return request(`/town-locations/admin/${id}`, { method: "PATCH", body: payload, requiresAuth: true });
+    },
+    deleteTownLocation(id) {
+      return request(`/town-locations/admin/${id}`, { method: "DELETE", requiresAuth: true });
+    },
+
+
         // ============================================================
     // CONTACT
     // ============================================================

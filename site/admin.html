@@ -240,6 +240,7 @@
       <button data-tab="products"><i class="fa-solid fa-boxes-stacked"></i> All Products</button>
       <button data-tab="categories"><i class="fa-solid fa-tags"></i> Categories</button>
       <button data-tab="shipping"><i class="fa-solid fa-truck-fast"></i> Shipping</button>
+      <button data-tab="townlocations"><i class="fa-solid fa-map-pin"></i> Town &amp; Locations</button>
       <button data-tab="attributes"><i class="fa-solid fa-sliders"></i> Attributes</button>
       <button data-tab="shops"><i class="fa-solid fa-store"></i> Shops</button>
       <button data-tab="verification"><i class="fa-solid fa-id-card-clip"></i> Seller Verification</button>
@@ -391,6 +392,33 @@
   </div>
 </div>
 
+
+
+
+<!-- ===== TOWN LOCATIONS ===== -->
+<div class="tab-panel" id="panel-townlocations">
+  <div class="dash-card">
+    <div class="dash-card__head">
+      <h3>Town Locations</h3>
+      <div class="dash-toolbar">
+        <input type="text" id="townLocSearchInput" placeholder="Search by town...">
+        <select id="townLocCountySelect"><option value="">All counties</option></select>
+        <button class="btn btn-dark btn-sm" id="addTownLocBtn"><i class="fa-solid fa-plus"></i> Add Town</button>
+      </div>
+    </div>
+    <p class="text-muted" style="padding:0 18px;">
+      Nairobi towns use the flat "Manual Fee" you set here <strong>instead of</strong> the dynamic weight-tier shipping system.
+      Every other county <strong>always</strong> uses the normal dynamic shipping system, whether or not the town has a pickup station.
+      A pickup station never changes the fee outside Nairobi — it only adds pickup info to checkout, this admin view, and order emails.
+    </p>
+    <div class="table-scroll">
+      <table class="dtable">
+        <thead><tr><th>County</th><th>Town</th><th>Nairobi?</th><th>Manual Fee</th><th>Pickup Station</th><th>Delivery Days</th><th>Active</th><th>Actions</th></tr></thead>
+        <tbody id="townLocationsBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
 
       <!-- ===== SHOPS ===== -->
       <div class="tab-panel" id="panel-shops">
@@ -1891,6 +1919,48 @@
   </div>
 </div>
 
+
+
+<!-- Town Location modal (add/edit) -->
+<div class="modal-overlay" id="townLocationModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="townLocationModalTitle">Add Town</h3>
+      <button class="modal-close" data-close-modal="townLocationModal">&times;</button>
+    </div>
+    <form id="townLocationForm" class="form-grid">
+      <div class="form-row-2">
+        <div class="form-field"><label for="tlCounty">County/Region</label><input type="text" id="tlCounty" required placeholder="e.g. Nairobi"></div>
+        <div class="form-field"><label for="tlTown">Town</label><input type="text" id="tlTown" required placeholder="e.g. Westlands"></div>
+      </div>
+      <div class="form-field" style="flex-direction:row; align-items:center; gap:10px;">
+        <label class="switch"><input type="checkbox" id="tlIsNairobi"><span class="track"></span></label>
+        <label for="tlIsNairobi" style="margin:0;">This is a Nairobi town (uses the manual fee below instead of dynamic shipping)</label>
+      </div>
+      <div class="form-field" id="tlNairobiFeeField" style="display:none;">
+        <label for="tlNairobiFee">Manual Transport Fee (KSh)</label>
+        <input type="number" id="tlNairobiFee" min="0" step="1" value="0">
+      </div>
+      <div class="form-field">
+        <label for="tlDeliveryDays">Estimated Delivery Days</label>
+        <input type="number" id="tlDeliveryDays" min="1" value="2">
+      </div>
+      <div class="form-field" style="flex-direction:row; align-items:center; gap:10px;">
+        <label class="switch"><input type="checkbox" id="tlHasPickup"><span class="track"></span></label>
+        <label for="tlHasPickup" style="margin:0;">Has a pickup station</label>
+      </div>
+      <div class="form-field" id="tlPickupAddressField" style="display:none;">
+        <label for="tlPickupAddress">Pickup Station Address</label>
+        <textarea id="tlPickupAddress" placeholder="Full pickup station address / directions"></textarea>
+      </div>
+      <div class="form-field" style="flex-direction:row; align-items:center; gap:10px;">
+        <label class="switch"><input type="checkbox" id="tlActive" checked><span class="track"></span></label>
+        <label for="tlActive" style="margin:0;">Active (visible at checkout)</label>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Save Town</button>
+    </form>
+  </div>
+</div>
 
 <!-- Shipping Criteria modal (per-category) -->
 <div class="modal-overlay" id="shippingCriteriaModal">

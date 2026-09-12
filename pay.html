@@ -689,6 +689,15 @@ function showPageError(message) {
    product-detail.js) instead of a local inline duplicate, so a
    variant chosen on any page is read/written through the exact
    same module everywhere.
+
+   DELIVERY LOCATIONS — NEW: towns are no longer hardcoded. They are
+   loaded live from TownLocation (GET /town-locations) via
+   loadTownLocations(). Nairobi towns carry their own admin-set flat
+   transport fee (used INSTEAD of the dynamic shipping quote); every
+   other county always uses the dynamic weight-tier quote regardless
+   of whether the town has a pickup station. A pickup station is
+   purely informational (shown in the preview) and never changes the
+   fee outside Nairobi.
    ============================================================ */
 let enriched = []; // one entry per cart line, after enrichment against backend
 
@@ -729,18 +738,6 @@ async function loadShippingQuote() {
 let selectedPaymentMethod = "stk";
 let stkPollInterval = null;
 let stkContext = null; // { orderId, orderNumber, phone, grandTotal, itemCount }
-
-const DELIVERY_DATA = {
-  Nairobi: [{ town: "CBD", fee: 0, deliveryDays: 1 }, { town: "Westlands", fee: 50, deliveryDays: 1 }, { town: "Karen", fee: 50, deliveryDays: 1 }, { town: "Kasarani", fee: 80, deliveryDays: 1 }, { town: "Embakasi", fee: 80, deliveryDays: 1 }, { town: "Rongai", fee: 100, deliveryDays: 1 }],
-  Kiambu: [{ town: "Thika Road", fee: 100, deliveryDays: 1 }, { town: "Kiambu Town", fee: 50, deliveryDays: 1 }],
-  Kajiado: [{ town: "Kitengela", fee: 100, deliveryDays: 1 }, { town: "Isinya", fee: 150, deliveryDays: 2 }, { town: "Kajiado Town", fee: 200, deliveryDays: 2 }, { town: "Namanga", fee: 300, deliveryDays: 3 }, { town: "Loitoktok", fee: 300, deliveryDays: 3 }],
-  Bungoma: [{ town: "Bungoma Town", fee: 300, deliveryDays: 3 }, { town: "Kimilili", fee: 300, deliveryDays: 3 }, { town: "Webuye", fee: 300, deliveryDays: 3 }, { town: "Chwele", fee: 300, deliveryDays: 4 }],
-  Kisii: [{ town: "Kisii Town", fee: 300, deliveryDays: 3 }, { town: "Keroka", fee: 300, deliveryDays: 3 }, { town: "Ogembo", fee: 350, deliveryDays: 4 }],
-  Siaya: [{ town: "Siaya Town", fee: 300, deliveryDays: 3 }, { town: "Bondo", fee: 300, deliveryDays: 3 }, { town: "Ugunja", fee: 350, deliveryDays: 4 }],
-  Muranga: [{ town: "Muranga Town", fee: 200, deliveryDays: 2 }],
-  RiftValley: [{ town: "Naivasha", fee: 250, deliveryDays: 2 }, { town: "Nakuru", fee: 300, deliveryDays: 2 }],
-  Coast: [{ town: "Mombasa", fee: 300, deliveryDays: 4 }, { town: "Kilifi", fee: 350, deliveryDays: 4 }, { town: "Malindi", fee: 350, deliveryDays: 5 }]
-};
 
 // -------- delivery classification (single source of truth) --------
 function isWholesaleLine(e) { return e.isWholesale; }
@@ -1108,26 +1105,51 @@ function renderWholesaleDeliveryCard() {
   }).join("");
 }
 
-// -------- region & town — ALWAYS captured for buyer location, used to bill
-// the regional Transport fee only for standard-delivery lines --------
+// -------- region & town — NEW: sourced live from TownLocation, not a
+// hardcoded list. Nairobi towns carry their own admin-set flat transport
+// fee (used INSTEAD of the dynamic shipping quote); every other county
+// ALWAYS uses the live dynamic weight-tier quote, whether or not the town
+// has a pickup station. A pickup station never changes the fee — it only
+// adds an informational note wherever delivery details are shown. --------
 const regionSelect = document.getElementById("regionSelect");
 const townSelect = document.getElementById("townSelect");
-Object.keys(DELIVERY_DATA).forEach((region) => {
-  const opt = document.createElement("option");
-  opt.value = region; opt.textContent = region;
-  regionSelect.appendChild(opt);
-});
+let TOWN_REGIONS = {}; // { county: [ {_id, town, isNairobi, nairobiManualFee, deliveryDays, hasPickupStation, pickupStationAddress} ] }
+
+async function loadTownLocations() {
+  try {
+    const res = await SS_API.getTownLocations();
+    TOWN_REGIONS = res.regions || {};
+  } catch (e) {
+    console.error("Failed to load delivery locations:", e);
+    TOWN_REGIONS = {};
+  }
+
+  regionSelect.innerHTML = `<option value="">Select Region</option>`;
+  Object.keys(TOWN_REGIONS).sort().forEach((region) => {
+    const opt = document.createElement("option");
+    opt.value = region; opt.textContent = region;
+    regionSelect.appendChild(opt);
+  });
+}
+
 regionSelect.addEventListener("change", () => {
   townSelect.innerHTML = `<option value="">Select Town</option>`;
-  const towns = DELIVERY_DATA[regionSelect.value] || [];
+  const towns = TOWN_REGIONS[regionSelect.value] || [];
   towns.forEach((place) => {
     const opt = document.createElement("option");
-    // NEW — town no longer carries a fee. Shipping cost is now resolved
-    // dynamically from product weight/criteria (see loadShippingQuote()),
-    // not from the delivery destination. Town selection only fixes the
-    // destination and the estimated delivery window.
-    opt.value = place.town; opt.dataset.town = place.town; opt.dataset.days = place.deliveryDays;
-    opt.textContent = place.town;
+    // Town no longer carries a flat fee of its own (except Nairobi towns,
+    // which carry the admin-set nairobiManualFee). For every other county
+    // the shipping cost is resolved dynamically from product weight/criteria
+    // (see loadShippingQuote()) — town selection only fixes the destination,
+    // the estimated delivery window, and whether a pickup station applies.
+    opt.value = place.town;
+    opt.dataset.town = place.town;
+    opt.dataset.days = place.deliveryDays;
+    opt.dataset.isNairobi = place.isNairobi ? "1" : "0";
+    opt.dataset.nairobiFee = place.nairobiManualFee || 0;
+    opt.dataset.hasPickup = place.hasPickupStation ? "1" : "0";
+    opt.dataset.pickupAddress = place.pickupStationAddress || "";
+    opt.textContent = place.town + (place.hasPickupStation ? " (Pickup Station)" : "");
     townSelect.appendChild(opt);
   });
   updateTotal();
@@ -1182,12 +1204,19 @@ function updateTotal() {
   }
 
     const itemsTotal = live.reduce((sum, e) => sum + e.unitPrice * e.qty, 0);
-  // NEW — dynamic shipping fee (weight tiers for 'normal' categories, priced
-  // criteria for 'special' categories), resolved live from the backend
-  // instead of read off the selected town. Falls back to 0 while the quote
-  // is still loading, in which case the Proceed button stays enabled but the
-  // figure will correct itself the instant loadShippingQuote() resolves.
-  const transport = hasStandardItem ? (currentShippingQuote?.standardShippingFee || 0) : 0;
+
+  // NEW — Nairobi towns bill the admin-set flat fee for THIS town instead of
+  // the dynamic weight-tier quote. Every other county (pickup station or
+  // not) always uses the live dynamic shipping quote, exactly as before.
+  const selectedTownOpt = townSelect.options[townSelect.selectedIndex];
+  const selIsNairobi = !!(selectedTownOpt && selectedTownOpt.dataset.isNairobi === "1");
+  const selNairobiFee = selectedTownOpt ? Number(selectedTownOpt.dataset.nairobiFee || 0) : 0;
+  const selHasPickup = !!(selectedTownOpt && selectedTownOpt.dataset.hasPickup === "1");
+  const selPickupAddress = selectedTownOpt ? (selectedTownOpt.dataset.pickupAddress || "") : "";
+
+  const transport = hasStandardItem
+    ? (selIsNairobi ? selNairobiFee : (currentShippingQuote?.standardShippingFee || 0))
+    : 0;
 
   let wholesaleFee = 0;
   const terms = [];
@@ -1253,8 +1282,13 @@ function updateTotal() {
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
        <div style="font-size:13px;color:#FF5A1F;font-weight:800;"><i class="fa-solid fa-truck-fast"></i> SIX STAR EXPRESS</div>
       </div>
-            <div class="delivery-row"><strong>Destination</strong><span>${selected.dataset.town}</span></div>
+            <div class="delivery-row"><strong>Destination</strong><span>${selected.dataset.town}${selIsNairobi ? ' <span style="color:var(--marigold-deep);font-weight:700;">(Nairobi)</span>' : ''}</span></div>
       <div class="delivery-row"><strong>Transport Fee</strong>${hasStandardItem ? `<span>Ksh ${transport}</span>` : `<span class="muted">Not charged — wholesale delivery applies</span>`}</div>
+      ${selHasPickup ? `
+      <div class="delivery-row" style="border-top:1px solid var(--line);padding-top:8px;margin-top:8px;">
+        <strong><i class="fa-solid fa-box"></i> Pickup Station</strong>
+        <span style="color:var(--pop);font-weight:700;text-align:right;">${selPickupAddress}</span>
+      </div>` : ""}
       <div class="delivery-row"><strong>Expected Delivery</strong><span style="color:#FF5A1F;font-weight:700;">${formatDate(startDelivery)} - ${formatDate(endDelivery)}</span></div>
       ${hasHeavyWholesale && terms.length ? `
         <div class="delivery-row" style="border-top:1px solid var(--line);padding-top:8px;margin-top:8px;">
@@ -1458,6 +1492,25 @@ function firstDefined(...vals) {
   return "";
 }
 
+
+function applyAutofill(inputId, noteId, value) {
+  const input = document.getElementById(inputId);
+  const note = document.getElementById(noteId);
+  if (!input) return false;
+
+  const trimmedValue = (value || "").toString().trim();
+  if (!trimmedValue) return false;
+
+  // Don't clobber something the buyer already typed (e.g. re-running this
+  // after a failed submit shouldn't wipe out their edits).
+  if (input.value && input.value.trim()) return false;
+
+  input.value = trimmedValue;
+  if (note) note.style.display = "flex";
+  return true;
+}
+
+
 function prefillContactFromProfile(meUser, profileUser) {
   const name = firstDefined(profileUser?.name, profileUser?.fullName, meUser?.name, meUser?.fullName);
   const phone = firstDefined(profileUser?.phone, profileUser?.phoneNumber, profileUser?.mpesaNumber, profileUser?.mobile, meUser?.phone, meUser?.phoneNumber, meUser?.mpesaNumber, meUser?.mobile);
@@ -1606,17 +1659,23 @@ function showOrderSuccessOverlay({ orderRef, total, itemCount, paid }) {
 function collectCheckoutFields(msgEl) {
   const name = document.getElementById("name").value.trim();
   const phone = document.getElementById("phone").value.trim();
-  const locationText = townSelect.selectedIndex > 0 ? townSelect.options[townSelect.selectedIndex].text : "";
+  const selectedOpt = townSelect.options[townSelect.selectedIndex];
+  const locationText = townSelect.selectedIndex > 0 ? selectedOpt.text : "";
+  // NEW — the clean town name (no "(Pickup Station)" suffix), used for
+  // anything sent to the backend that needs to match TownLocation exactly.
+  const townValue = townSelect.selectedIndex > 0 ? (selectedOpt.dataset.town || selectedOpt.value || "") : "";
+  const selectedCounty = regionSelect.value;
   const agentCode = document.getElementById("agentSelect").value;
   const deliveryAddress = document.getElementById("deliveryAddress").value.trim();
 
-    const live = enriched.filter((e) => !e.error);
+  const live = enriched.filter((e) => !e.error);
   const hasStandardItem = live.some((e) => isStandardDelivery(e));
   const needsNegotiatedAddress = live.some((e) => isNegotiatedDelivery(e));
-  // NEW — this is now sent purely for the buyer-facing success-screen total;
-  // the backend recomputes and OVERRIDES this with its own authoritative
-  // calculateDynamicShippingFee() result and never trusts the client's number.
-  const transportFee = hasStandardItem ? (currentShippingQuote?.standardShippingFee || 0) : 0;
+  const isNairobiSelected = !!(selectedOpt && selectedOpt.dataset.isNairobi === "1");
+  const nairobiFeeSelected = selectedOpt ? Number(selectedOpt.dataset.nairobiFee || 0) : 0;
+  const transportFee = hasStandardItem
+    ? (isNairobiSelected ? nairobiFeeSelected : (currentShippingQuote?.standardShippingFee || 0))
+    : 0;
 
   if (!name || !phone) {
     msgEl.innerHTML = "<span style='color:#E23744'>Please fill in your name and phone number</span>";
@@ -1645,7 +1704,7 @@ function collectCheckoutFields(msgEl) {
   }
 
   const combinedAddress = [locationText, deliveryAddress].filter(Boolean).join(" — ");
-  return { name, phone, locationText, agentCode, deliveryAddress, live, transportFee, combinedAddress };
+  return { name, phone, locationText, townValue, agentCode, deliveryAddress, live, transportFee, combinedAddress, county: selectedCounty };
 }
 
 function buildOrderItems(live) {
@@ -1700,20 +1759,19 @@ async function submitManualOrder() {
 
   const fields = collectCheckoutFields(msg);
   if (!fields) { btn.disabled = false; return; }
-  const { name, phone, locationText, agentCode, deliveryAddress, live, transportFee, combinedAddress } = fields;
+  const { name, phone, locationText, townValue, agentCode, deliveryAddress, live, transportFee, combinedAddress, county } = fields;
 
   msg.innerHTML = "Processing your order... ⏳";
 
   const payload = {
-    items: buildOrderItems(live),
-    shippingAddress: { fullName: name, phone, address: combinedAddress || locationText || deliveryAddress || "", city: locationText, notes: deliveryAddress },
-    mpesaMessage,
-    paymentMethod: "manual",
-    agentCode: agentCode || undefined,
-    transportFee,
-    termsAccepted: true,
-  };
-
+  items: buildOrderItems(live),
+  shippingAddress: { fullName: name, phone, address: combinedAddress || locationText || deliveryAddress || "", city: townValue, county, notes: deliveryAddress },
+  mpesaMessage,
+  paymentMethod: "manual",
+  agentCode: agentCode || undefined,
+  transportFee,
+  termsAccepted: true,
+};
   try {
     const { order } = await SS_API.placeOrder(payload);
     SS_CART.clear();
@@ -1755,18 +1813,18 @@ async function submitStkOrder() {
 
   const fields = collectCheckoutFields(msg);
   if (!fields) { btn.disabled = false; return; }
-  const { name, phone, locationText, agentCode, deliveryAddress, live, transportFee, combinedAddress } = fields;
+  const { name, phone, locationText, townValue, agentCode, deliveryAddress, live, transportFee, combinedAddress, county } = fields;
 
   msg.innerHTML = "";
 
   const payload = {
-    items: buildOrderItems(live),
-    shippingAddress: { fullName: name, phone, address: combinedAddress || locationText || deliveryAddress || "", city: locationText, notes: deliveryAddress },
-    paymentMethod: "stk",
-    agentCode: agentCode || undefined,
-    transportFee,
-    termsAccepted: true,
-  };
+  items: buildOrderItems(live),
+  shippingAddress: { fullName: name, phone, address: combinedAddress || locationText || deliveryAddress || "", city: townValue, county, notes: deliveryAddress },
+  paymentMethod: "stk",
+  agentCode: agentCode || undefined,
+  transportFee,
+  termsAccepted: true,
+};
 
   const grandTotal = computeGrandTotal(live, transportFee);
   const itemCount = live.reduce((sum, e) => sum + e.qty, 0);
@@ -2024,6 +2082,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   try {
     prefillContactFromProfile(meUser, profileUser);
+    await loadTownLocations();
     await loadCheckout();
     loadAgentsDropdown();
 

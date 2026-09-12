@@ -26,6 +26,11 @@ let shipCritOptionRowSeq = 0;
 let shipCritEditingGroupId = null;
 
 
+let townLocationsCache = [];
+let townLocFilters = { search: '', county: '' };
+
+
+
 // caches backing the expandable rows
 let allOrdersCache = [];      // last fetched "all orders" list, keyed by lookup below
 let agentOrdersCache = {};    // agentId -> orders[] (lazy-loaded on first expand)
@@ -254,6 +259,7 @@ function switchTab(tab) {
   if (tab === 'categories') loadCategoriesTable();
   if (tab === 'attributes') loadAttributes();
   if (tab === 'shipping') loadWeightTiers();
+    if (tab === 'townlocations') loadTownLocations();
   if (tab === 'shops') loadShops();
   if (tab === 'verification') loadVerifications();
   if (tab === 'legal') loadLegalDocuments();
@@ -676,6 +682,29 @@ function wireStaticButtons() {
   document.getElementById('fraudMarkReviewedBtn').addEventListener('click', () => reviewFraudEvent('reviewed'));
   document.getElementById('fraudDismissBtn').addEventListener('click', () => reviewFraudEvent('dismissed'));
   document.getElementById('auditActionSearch').addEventListener('input', debounce(() => { auditFilters.search = document.getElementById('auditActionSearch').value.trim(); auditFilters.page = 1; loadAuditLogs(); }, 400));
+
+
+
+    document.getElementById('addTownLocBtn').addEventListener('click', () => openTownLocationModal(null));
+  document.getElementById('townLocationForm').addEventListener('submit', submitTownLocationForm);
+  document.getElementById('tlIsNairobi').addEventListener('change', (e) => {
+    document.getElementById('tlNairobiFeeField').style.display = e.target.checked ? 'block' : 'none';
+  });
+  document.getElementById('tlHasPickup').addEventListener('change', (e) => {
+    document.getElementById('tlPickupAddressField').style.display = e.target.checked ? 'block' : 'none';
+  });
+  document.getElementById('townLocSearchInput').addEventListener('input', debounce(() => {
+    townLocFilters.search = document.getElementById('townLocSearchInput').value.trim();
+    loadTownLocations();
+  }, 400));
+  document.getElementById('townLocCountySelect').addEventListener('change', (e) => {
+    townLocFilters.county = e.target.value;
+    loadTownLocations();
+  });
+
+
+
+
 }
 
 function openRejectModal(productId) {
@@ -1457,6 +1486,155 @@ async function deleteWeightTierRow(id) {
     showToast(err.message, 'error');
   }
 }
+
+
+
+
+
+// ===================================================================
+// TOWN LOCATIONS (NEW — Nairobi manual fee + pickup stations)
+// ===================================================================
+async function loadTownLocations() {
+  const tbody = document.getElementById('townLocationsBody');
+  tbody.innerHTML = `<tr><td colspan="8"><div class="spinner"></div></td></tr>`;
+  try {
+    const params = new URLSearchParams();
+    if (townLocFilters.search) params.set('search', townLocFilters.search);
+    if (townLocFilters.county) params.set('county', townLocFilters.county);
+    const { towns } = await apiGet(`/town-locations/admin/all?${params.toString()}`);
+    townLocationsCache = towns;
+    populateTownLocCountyFilter(towns);
+    renderTownLocationsTable();
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="dash-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>${err.message}</p></div></td></tr>`;
+  }
+}
+
+function populateTownLocCountyFilter(towns) {
+  const select = document.getElementById('townLocCountySelect');
+  const current = select.value;
+  const counties = [...new Set(towns.map((t) => t.county))].sort();
+  select.innerHTML = `<option value="">All counties</option>` +
+    counties.map((c) => `<option value="${c}" ${c === current ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('');
+}
+
+function renderTownLocationsTable() {
+  const tbody = document.getElementById('townLocationsBody');
+  if (!townLocationsCache.length) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="dash-empty"><i class="fa-solid fa-map-pin"></i><p>No towns yet. Add your first one.</p></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = townLocationsCache
+    .map(
+      (t) => `
+    <tr>
+      <td>${escapeHtml(t.county)}</td>
+      <td><strong>${escapeHtml(t.town)}</strong></td>
+      <td>${t.isNairobi ? '<span class="pill pill-active">Nairobi</span>' : '<span class="text-muted">—</span>'}</td>
+      <td>${t.isNairobi ? 'KSh ' + (t.nairobiManualFee || 0).toLocaleString() : '<span class="text-muted">Dynamic</span>'}</td>
+      <td>${t.hasPickupStation ? `<span class="pill pill-active" title="${escapeHtml(t.pickupStationAddress || '')}">Pickup Station</span>` : '<span class="text-muted">None</span>'}</td>
+      <td>${t.deliveryDays}d</td>
+      <td><label class="switch"><input type="checkbox" ${t.isActive ? 'checked' : ''} data-toggle-town="${t._id}"><span class="track"></span></label></td>
+      <td>
+        <div class="row-actions">
+          <button class="act-edit" data-edit-town="${t._id}">Edit</button>
+          <button class="act-reject" data-delete-town="${t._id}">Delete</button>
+        </div>
+      </td>
+    </tr>`
+    )
+    .join('');
+
+  tbody.querySelectorAll('[data-edit-town]').forEach((btn) =>
+    btn.addEventListener('click', () => openTownLocationModal(townLocationsCache.find((t) => t._id === btn.dataset.editTown)))
+  );
+  tbody.querySelectorAll('[data-delete-town]').forEach((btn) =>
+    btn.addEventListener('click', () => deleteTownLocationRow(btn.dataset.deleteTown))
+  );
+  tbody.querySelectorAll('[data-toggle-town]').forEach((toggle) =>
+    toggle.addEventListener('change', async () => {
+      try {
+        await apiPatch(`/town-locations/admin/${toggle.dataset.toggleTown}`, { isActive: toggle.checked });
+        showToast(`Town ${toggle.checked ? 'activated' : 'deactivated'}`);
+        loadTownLocations();
+      } catch (err) {
+        showToast(err.message, 'error');
+        toggle.checked = !toggle.checked;
+      }
+    })
+  );
+}
+
+function openTownLocationModal(town) {
+  const modal = document.getElementById('townLocationModal');
+  modal.dataset.townId = town?._id || '';
+  document.getElementById('townLocationModalTitle').textContent = town ? 'Edit Town' : 'Add Town';
+  document.getElementById('tlCounty').value = town?.county || '';
+  document.getElementById('tlTown').value = town?.town || '';
+  document.getElementById('tlIsNairobi').checked = !!town?.isNairobi;
+  document.getElementById('tlNairobiFee').value = town?.nairobiManualFee ?? 0;
+  document.getElementById('tlNairobiFeeField').style.display = town?.isNairobi ? 'block' : 'none';
+  document.getElementById('tlDeliveryDays').value = town?.deliveryDays ?? 2;
+  document.getElementById('tlHasPickup').checked = !!town?.hasPickupStation;
+  document.getElementById('tlPickupAddress').value = town?.pickupStationAddress || '';
+  document.getElementById('tlPickupAddressField').style.display = town?.hasPickupStation ? 'block' : 'none';
+  document.getElementById('tlActive').checked = town ? town.isActive : true;
+  openModal('townLocationModal');
+}
+
+async function submitTownLocationForm(e) {
+  e.preventDefault();
+  const modal = document.getElementById('townLocationModal');
+  const id = modal.dataset.townId;
+  const payload = {
+    county: document.getElementById('tlCounty').value.trim(),
+    town: document.getElementById('tlTown').value.trim(),
+    isNairobi: document.getElementById('tlIsNairobi').checked,
+    nairobiManualFee: Number(document.getElementById('tlNairobiFee').value) || 0,
+    deliveryDays: Number(document.getElementById('tlDeliveryDays').value) || 2,
+    hasPickupStation: document.getElementById('tlHasPickup').checked,
+    pickupStationAddress: document.getElementById('tlPickupAddress').value.trim(),
+    isActive: document.getElementById('tlActive').checked,
+  };
+
+  try {
+    if (id) {
+      await apiPatch(`/town-locations/admin/${id}`, payload);
+      showToast('Town updated');
+    } else {
+      await apiPost('/town-locations/admin', payload);
+      showToast('Town created');
+    }
+    closeModal('townLocationModal');
+    loadTownLocations();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function deleteTownLocationRow(id) {
+  if (!confirm('Delete this town permanently? It will disappear from checkout immediately.')) return;
+  try {
+    await apiDelete(`/town-locations/admin/${id}`);
+    showToast('Town deleted');
+    loadTownLocations();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 // ===================================================================
 // SHIPPING CRITERIA (NEW — per-category priced option groups for
@@ -3033,14 +3211,26 @@ function orderDetailHtml(o) {
       ${o.agent ? `<div class="od-stat"><span class="od-stat-label">Agent Commission</span><span class="od-stat-value">KSh ${(o.commissionAmount || 0).toLocaleString()}</span></div>` : ''}
     </div>`;
 
+    const sa = o.shippingAddress || {};
+  const deliveryBadge = sa.isNairobi
+    ? '<span class="pill pill-active">Nairobi</span>'
+    : '<span class="text-muted">Standard (dynamic shipping)</span>';
+  const pickupBadge = sa.hasPickupStation
+    ? `<span class="pill pill-active" title="${escapeHtml(sa.pickupStationAddress || '')}">Pickup Station</span>`
+    : '<span class="text-muted">No pickup station</span>';
+
   const contactCard = `
     <div class="od-card">
       <h5><i class="fa-solid fa-user"></i> Contact &amp; Shipping</h5>
       <div class="od-row"><span>Phone</span><span>${escapeHtml(o.buyer?.phone || '—')}</span></div>
       <div class="od-row"><span>Email</span><span>${escapeHtml(o.buyer?.email || '—')}</span></div>
-      <div class="od-row"><span>Recipient</span><span>${escapeHtml(o.shippingAddress?.fullName || '—')}</span></div>
-      <div class="od-row"><span>Address</span><span>${escapeHtml(o.shippingAddress?.address || '-')}${o.shippingAddress?.city ? ', ' + escapeHtml(o.shippingAddress.city) : ''}</span></div>
-      ${o.shippingAddress?.notes ? `<div class="od-note">${escapeHtml(o.shippingAddress.notes)}</div>` : ''}
+      <div class="od-row"><span>Recipient</span><span>${escapeHtml(sa.fullName || '—')}</span></div>
+      <div class="od-row"><span>County</span><span>${escapeHtml(sa.county || '—')}</span></div>
+      <div class="od-row"><span>Town</span><span>${escapeHtml(sa.city || '—')} ${deliveryBadge}</span></div>
+      <div class="od-row"><span>Pickup</span><span>${pickupBadge}</span></div>
+      ${sa.hasPickupStation && sa.pickupStationAddress ? `<div class="od-note">${escapeHtml(sa.pickupStationAddress)}</div>` : ''}
+      <div class="od-row"><span>Address</span><span>${escapeHtml(sa.address || '-')}${sa.city ? ', ' + escapeHtml(sa.city) : ''}</span></div>
+      ${sa.notes ? `<div class="od-note">${escapeHtml(sa.notes)}</div>` : ''}
     </div>`;
 
   const agentBlock = o.agent
