@@ -32,6 +32,7 @@ async function init() {
   wireLeads();
   wireProfile();
   wirePayout();
+  wireImageLightbox();   // <-- add this line
   await checkAuth();
 }
 
@@ -1047,7 +1048,34 @@ function loadProfileForm() {
 }
 
 
-
+// ===================================================================
+// IMAGE LIGHTBOX (NEW) — click any avatar with a real photo to view it
+// full-size. No-ops on the fallback icon (no src) so nothing breaks
+// when the agent hasn't uploaded a photo yet.
+// ===================================================================
+function openImageLightbox(src) {
+  if (!src) return;
+  document.getElementById("lightboxImage").src = src;
+  document.getElementById("imageLightboxModal").classList.add("show");
+}
+function closeImageLightbox() {
+  document.getElementById("imageLightboxModal").classList.remove("show");
+  document.getElementById("lightboxImage").src = ""; // stop loading/free memory
+}
+function wireImageLightbox() {
+  document.getElementById("lightboxCloseBtn").addEventListener("click", closeImageLightbox);
+  document.getElementById("imageLightboxModal").addEventListener("click", (e) => {
+    if (e.target.id === "imageLightboxModal") closeImageLightbox();
+  });
+  // Delegate: works for the profile avatar today, and any future avatar
+  // marked with data-viewable, without needing to re-wire after re-renders.
+  document.addEventListener("click", (e) => {
+    const img = e.target.closest("[data-viewable]");
+    if (img && img.tagName === "IMG" && img.src && img.style.display !== "none") {
+      openImageLightbox(img.src);
+    }
+  });
+}
 
 
 // NEW — forces an actual file download instead of opening the asset in a

@@ -3539,23 +3539,62 @@ async function toggleAgentDetail(id) {
   row.style.display = isOpen ? 'none' : 'table-row';
   if (btn) btn.className = isOpen ? 'fa-solid fa-chevron-right' : 'fa-solid fa-chevron-down';
 
+  const container = document.getElementById(`agent-orders-${id}`);
+
+  // Profile data is already in agentsCache from the list fetch — render it
+  // immediately on first expand, no extra API call needed.
+  if (!isOpen && container && !container.dataset.profileRendered) {
+    const agent = agentsCache.find((a) => a._id === id);
+    if (agent) {
+      container.innerHTML = renderAgentProfileHtml(agent) + `<div id="agent-orders-inner-${id}"><div class="spinner"></div></div>`;
+      container.dataset.profileRendered = '1';
+    }
+  }
+
   if (!isOpen && !agentOrdersCache[id]) {
     try {
       const [{ orders }, { clicks }] = await Promise.all([
         apiGet(`/agents/admin/${id}/orders`),
-        apiGet(`/agents/admin/${id}/clicks?limit=20`),
+        apiGet(`/agents/admin/${id}/clicks?limit=1000`),
       ]);
       agentOrdersCache[id] = orders;
       renderAgentOrdersAndClicks(id, orders, clicks);
     } catch (err) {
-      const container = document.getElementById(`agent-orders-${id}`);
-      if (container) container.innerHTML = `<div class="dash-empty"><p>${err.message}</p></div>`;
+      const inner = document.getElementById(`agent-orders-inner-${id}`);
+      if (inner) inner.innerHTML = `<div class="dash-empty"><p>${err.message}</p></div>`;
     }
   }
 }
 
+// NEW — referral click type/channel labels for grouped display
+const CLICK_TYPE_LABELS = {
+  general: 'General Marketplace',
+  buyer: 'Buyer Referral',
+  seller: 'Seller Recruitment',
+  agent: 'Agent Recruitment',
+  product: 'Product Share',
+};
+
+// NEW — collapses a raw click list into one row per type, with a
+// per-channel breakdown and the most recent click timestamp, so an
+// active agent's panel doesn't turn into dozens of near-identical rows.
+function groupReferralClicks(clicks) {
+  const groups = {};
+  (clicks || []).forEach((c) => {
+    const type = c.type || 'other';
+    if (!groups[type]) groups[type] = { type, count: 0, channels: {}, lastAt: null };
+    const g = groups[type];
+    g.count += 1;
+    const channel = c.channel || 'unknown';
+    g.channels[channel] = (g.channels[channel] || 0) + 1;
+    const d = new Date(c.createdAt);
+    if (!g.lastAt || d > g.lastAt) g.lastAt = d;
+  });
+  return Object.values(groups).sort((a, b) => b.count - a.count);
+}
+
 function renderAgentOrdersAndClicks(id, orders, clicks) {
-  const container = document.getElementById(`agent-orders-${id}`);
+  const container = document.getElementById(`agent-orders-inner-${id}`);
   if (!container) return;
 
   const ordersHtml = orders.length
@@ -3571,15 +3610,94 @@ function renderAgentOrdersAndClicks(id, orders, clicks) {
       </tbody></table>`
     : `<div class="dash-empty"><p>No orders have used this agent's code yet.</p></div>`;
 
-  const clicksHtml = (clicks || []).length
-    ? `<table class="dtable"><thead><tr><th>Type</th><th>Channel</th><th>Date</th></tr></thead><tbody>
-        ${clicks.map((c) => `<tr><td>${escapeHtml(c.type)}</td><td>${escapeHtml(c.channel)}</td><td>${new Date(c.createdAt).toLocaleString()}</td></tr>`).join('')}
+  const groupedClicks = groupReferralClicks(clicks);
+  const totalClicks = (clicks || []).length;
+
+  const clicksHtml = groupedClicks.length
+    ? `<table class="dtable"><thead><tr><th>Link Type</th><th>Total Clicks</th><th>By Channel</th><th>Last Click</th></tr></thead><tbody>
+        ${groupedClicks.map((g) => {
+          const channelBreakdown = Object.entries(g.channels)
+            .sort((a, b) => b[1] - a[1])
+            .map(([ch, count]) => `<span class="pill" style="margin:2px 4px 2px 0; text-transform:capitalize;">${escapeHtml(ch)}: ${count}</span>`)
+            .join('');
+          return `<tr>
+            <td><strong>${escapeHtml(CLICK_TYPE_LABELS[g.type] || g.type)}</strong></td>
+            <td>${g.count}</td>
+            <td class="wrap-cell">${channelBreakdown}</td>
+            <td class="text-muted">${g.lastAt ? g.lastAt.toLocaleString() : '—'}</td>
+          </tr>`;
+        }).join('')}
       </tbody></table>`
     : `<div class="dash-empty"><p>No referral clicks logged yet.</p></div>`;
 
   container.innerHTML = `
     <h5 style="margin:0 0 8px; font-size:.85rem;">Orders</h5>${ordersHtml}
-    <h5 style="margin:16px 0 8px; font-size:.85rem;">Recent Referral Clicks</h5>${clicksHtml}`;
+    <h5 style="margin:16px 0 8px; font-size:.85rem;">Referral Clicks${totalClicks ? ` <span class="text-muted" style="font-weight:400;">(${totalClicks} total${totalClicks >= 1000 ? '+' : ''})</span>` : ''}</h5>
+    ${clicksHtml}`;
+}
+
+// NEW — renders everything the Agent model actually stores that the table
+// row doesn't show: avatar, location, bio, payout details, verification
+// docs (idNumber/kraPin/businessName), social/preferred channel.
+function renderAgentProfileHtml(agent) {
+  const payout = agent.payout || {};
+  const verification = agent.verification || {};
+  const social = agent.socialMedia || {};
+
+  const payoutHtml = payout.method === 'bank'
+    ? [
+        verifField('Payout Method', 'Bank Transfer'),
+        verifField('ID Number', escapeHtml(payout.idNumber || '')),
+        verifField('Bank Name', escapeHtml(payout.bankName || '')),
+        verifField('Branch', escapeHtml(payout.branchName || '')),
+        verifField('Account Name', escapeHtml(payout.accountName || '')),
+        verifField('Account Number', escapeHtml(payout.accountNumber || '')),
+      ].join('')
+    : [
+        verifField('Payout Method', payout.method === 'mpesa' ? 'M-Pesa' : '— Not set —'),
+        verifField('ID Number', escapeHtml(payout.idNumber || '')),
+        verifField('M-Pesa Number', escapeHtml(payout.mpesaNumber || '')),
+        verifField('M-Pesa Name', escapeHtml(payout.mpesaName || '')),
+      ].join('');
+
+  const socialChips = [
+    linkChip('fa-brands fa-whatsapp', 'WhatsApp', social.whatsapp),
+    linkChip('fa-brands fa-facebook', 'Facebook', social.facebook),
+    linkChip('fa-brands fa-instagram', 'Instagram', social.instagram),
+    linkChip('fa-brands fa-tiktok', 'TikTok', social.tiktok),
+    linkChip('fa-brands fa-x-twitter', 'X', social.x),
+    linkChip('fa-brands fa-linkedin', 'LinkedIn', social.linkedin),
+  ].filter(Boolean);
+
+  return `
+    <div class="verif-section" style="margin-bottom:18px;">
+      <h4 style="font-size:.85rem; margin-bottom:10px;"><i class="fa-solid fa-user-tie"></i> Agent Profile</h4>
+      <div style="display:flex; gap:16px; align-items:flex-start; margin-bottom:14px;">
+        ${agent.avatar
+          ? `<img src="${agent.avatar}" alt="" style="width:64px; height:64px; border-radius:50%; object-fit:cover; flex-shrink:0;">`
+          : `<div style="width:64px; height:64px; border-radius:50%; background:rgba(0,0,0,.06); display:flex; align-items:center; justify-content:center; flex-shrink:0;"><i class="fa-solid fa-user" style="font-size:22px; color:var(--ink-soft);"></i></div>`}
+        <div>
+          <div style="font-weight:700;">${escapeHtml(agent.name)}</div>
+          <div class="text-muted" style="font-size:.8rem;">${escapeHtml(agent.location || 'No location set')}</div>
+          <div class="text-muted" style="font-size:.8rem; margin-top:4px;">${escapeHtml(agent.bio || 'No bio provided')}</div>
+        </div>
+      </div>
+
+      <div class="verif-field-grid" style="margin-bottom:14px;">
+        ${verifField('Agent Type', agent.agentType ? agent.agentType.replace(/_/g, ' ') : '')}
+        ${verifField('Preferred Channel', agent.preferredChannel || '')}
+        ${verifField('Business Name (verification)', escapeHtml(verification.businessName || ''))}
+        ${verifField('ID Number (verification)', escapeHtml(verification.idNumber || ''))}
+        ${verifField('KRA PIN (verification)', escapeHtml(verification.kraPin || ''))}
+        ${verifField('Lifetime Marketplace Profit', 'KES ' + (agent.lifetimeMarketplaceProfit || 0).toLocaleString())}
+      </div>
+
+      <h5 style="font-size:.8rem; margin-bottom:8px;"><i class="fa-solid fa-money-bill-transfer"></i> Payout Details</h5>
+      <div class="verif-field-grid" style="margin-bottom:14px;">${payoutHtml}</div>
+
+      <h5 style="font-size:.8rem; margin-bottom:8px;"><i class="fa-solid fa-share-nodes"></i> Social &amp; Contact</h5>
+      <div class="chip-row">${socialChips.length ? socialChips.join('') : '<span class="text-muted">No social/contact links provided</span>'}</div>
+    </div>`;
 }
 
 function openAgentModal(agent) {

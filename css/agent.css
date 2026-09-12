@@ -390,3 +390,38 @@ img.agent-avatar{ display:block; }
   .avatar-upload-row{ flex-direction:column; align-items:flex-start; }
   .act-btn{ padding:6px 10px; font-size:11px; }
 }
+
+
+
+#imageLightboxModal .lightbox-inner {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #imageLightboxModal .lightbox-inner img {
+    max-width: 90vw;
+    max-height: 90vh;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,.4);
+    object-fit: contain;
+  }
+  #imageLightboxModal .lightbox-close {
+    position: absolute;
+    top: -14px;
+    right: -14px;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: none;
+    background: #fff;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,.3);
+  }
+  .agent-avatar[data-viewable], #profileAvatarPreview[data-viewable] {
+    cursor: zoom-in;
+  }

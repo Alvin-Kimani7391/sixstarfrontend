@@ -409,7 +409,7 @@
           <div class="dash-card__head"><h3>Profile</h3></div>
           <form id="profileForm" class="form-grid" style="padding:18px;">
             <div class="avatar-upload-row">
-              <img id="profileAvatarPreview" class="agent-avatar agent-avatar--lg" src="" alt="" style="display:none;">
+              <img id="profileAvatarPreview" class="agent-avatar agent-avatar--lg" src="" alt="" style="display:none;" data-viewable>
               <div class="agent-avatar agent-avatar--lg agent-avatar--fallback" id="profileAvatarFallback"><i class="fa-solid fa-user"></i></div>
               <div class="avatar-upload-row__controls">
                 <label for="profAvatarInput" class="btn btn-outline btn-sm" style="width:fit-content; cursor:pointer;">Change Photo</label>
@@ -549,6 +549,16 @@
     <div id="assetShareResult" style="display:none; margin-top:14px;"></div>
   </div>
 </div>
+
+
+<!-- ===== Avatar / Image Lightbox ===== -->
+<div class="modal-overlay" id="imageLightboxModal">
+  <div class="lightbox-inner">
+    <button type="button" class="lightbox-close" id="lightboxCloseBtn" aria-label="Close">&times;</button>
+    <img id="lightboxImage" src="" alt="Full size image">
+  </div>
+</div>
+
 
 <div id="toast"><i class="fa-solid fa-circle-check"></i><span></span></div>
 
