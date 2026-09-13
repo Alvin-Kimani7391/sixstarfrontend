@@ -540,6 +540,19 @@ try {
     cancelFlashSaleForm: document.getElementById("cancelFlashSaleForm"),
     saveFlashSaleBtn: document.getElementById("saveFlashSaleBtn"),
 
+
+        // Marketplace Commission "page" (NEW)
+    commissionToggleBtn: document.getElementById("commissionToggleBtn"),
+    commissionOverlay: document.getElementById("commissionOverlay"),
+    commissionBack: document.getElementById("commissionBack"),
+    commissionLoading: document.getElementById("commissionLoading"),
+    commissionEmpty: document.getElementById("commissionEmpty"),
+    commissionContent: document.getElementById("commissionContent"),
+    commissionOverviewChart: document.getElementById("commissionOverviewChart"),
+    commissionOverviewTableBody: document.getElementById("commissionOverviewTableBody"),
+
+
+
     // My Shop "page"
     myShopToggleBtn: document.getElementById("myShopToggleBtn"),
     myShopOverlay: document.getElementById("myShopOverlay"),
@@ -657,11 +670,12 @@ try {
       if (!item) return;
       const action = item.dataset.mobileAction;
       closeDashMobileMenu();
-      if (action === "shop") openMyShop();
+            if (action === "shop") openMyShop();
       else if (action === "earnings") openEarnings();
       else if (action === "analytics") openAnalytics();
       else if (action === "rfq") location.href = "seller-rfq.html";
       else if (action === "flashsale") openFlashSaleOverlay();
+      else if (action === "commission") openCommissionOverview();
       else if (action === "profile") location.href = "seller-profile.html";
     });
   }
@@ -708,16 +722,18 @@ try {
   loadSellerOrders();
   loadActiveBidCount();
 
-    setInterval(() => {
+      setInterval(() => {
     loadSellerOrders();
     loadMyProducts({ silent: true });
     loadActiveBidCount();
     if (els.flashSaleOverlay?.classList.contains("active")) loadMyFlashSales();
     if (els.earningsOverlay?.classList.contains("active")) loadEarnings();
     if (els.analyticsOverlay?.classList.contains("active") && els.analyticsStockTab?.classList.contains("active")) {
-      loadStockOverview(); // NEW
+      loadStockOverview();
     }
+    if (els.commissionOverlay?.classList.contains("active")) loadCommissionOverview(); // NEW
   }, POLL_INTERVAL_MS);
+
 
   // ---------- products ----------
   async function loadMyProducts({ silent = false } = {}) {
@@ -1043,6 +1059,124 @@ try {
   if (els.pPrice) {
     els.pPrice.addEventListener("input", updateCommissionPayoutPreview);
   }
+
+
+
+
+
+
+    // =========================================================
+  // ---------- MARKETPLACE COMMISSION OVERVIEW "page" (NEW) ----------
+  // Full category/subcategory/sub-subcategory tree with the LIVE
+  // effective commission rate on every node, shown as a bar chart (top
+  // level) + a full table (every level) — powered by ONE call to
+  // GET /api/categories/commission-overview so it stays live even
+  // though the admin can change rates at any time.
+  // =========================================================
+  let commissionTreeData = [];
+
+  function openCommissionOverview() {
+    if (!els.commissionOverlay) return;
+    els.commissionOverlay.classList.add("active");
+    document.body.style.overflow = "hidden";
+    loadCommissionOverview();
+  }
+
+  function closeCommissionOverview() {
+    if (els.commissionOverlay) els.commissionOverlay.classList.remove("active");
+    if (
+      !els.ordersListOverlay?.classList.contains("active") &&
+      !els.orderDetailOverlay?.classList.contains("active") &&
+      !els.analyticsOverlay?.classList.contains("active") &&
+      !els.flashSaleOverlay?.classList.contains("active") &&
+      !els.myShopOverlay?.classList.contains("active") &&
+      !els.earningsOverlay?.classList.contains("active")
+    ) {
+      document.body.style.overflow = "";
+    }
+  }
+
+  if (els.commissionToggleBtn) els.commissionToggleBtn.addEventListener("click", openCommissionOverview);
+  if (els.commissionBack) els.commissionBack.addEventListener("click", closeCommissionOverview);
+
+  async function loadCommissionOverview() {
+    if (els.commissionLoading) els.commissionLoading.style.display = "block";
+    if (els.commissionContent) els.commissionContent.style.display = "none";
+    if (els.commissionEmpty) els.commissionEmpty.style.display = "none";
+
+    try {
+      const res = await SS_API.getCommissionOverview();
+      commissionTreeData = res.tree || [];
+      renderCommissionOverview();
+    } catch (err) {
+      console.error("COMMISSION OVERVIEW LOAD FAILED:", err);
+      ssToast(err.message || "Couldn't load commission rates", "fa-triangle-exclamation");
+    } finally {
+      if (els.commissionLoading) els.commissionLoading.style.display = "none";
+    }
+  }
+
+  function flattenCommissionTree(nodes, level = 0, out = []) {
+    (nodes || []).forEach((n) => {
+      out.push({ ...n, level });
+      if (n.children && n.children.length) flattenCommissionTree(n.children, level + 1, out);
+    });
+    return out;
+  }
+
+  function commissionToneClass(node) {
+    if (node.commissionSource === "default") return "tone-default";
+    if (node.commissionInherited) return "tone-inherited";
+    return "";
+  }
+
+  function commissionSourceLabelFor(node) {
+    if (node.commissionSource === "default") return "Platform default";
+    if (node.commissionInherited) return `Inherited (${escapeHtml(node.commissionSourceName || "")})`;
+    return "Set on this category";
+  }
+
+  function renderCommissionOverview() {
+    if (!commissionTreeData.length) {
+      if (els.commissionEmpty) els.commissionEmpty.style.display = "block";
+      if (els.commissionContent) els.commissionContent.style.display = "none";
+      return;
+    }
+    if (els.commissionContent) els.commissionContent.style.display = "block";
+
+    const flat = flattenCommissionTree(commissionTreeData);
+
+    // ---- chart: one bar per top-level (Parent Category) ----
+    if (els.commissionOverviewChart) {
+      const topLevel = commissionTreeData;
+      const maxRate = Math.max(1, ...topLevel.map((n) => n.effectiveCommissionRate || 0));
+      els.commissionOverviewChart.innerHTML = topLevel
+        .map((n) => {
+          const pct = Math.max(3, Math.round(((n.effectiveCommissionRate || 0) / maxRate) * 100));
+          const tone = commissionToneClass(n);
+          return `<div class="commission-bar-wrap ${tone}" title="${escapeHtml(n.name)}: ${n.effectiveCommissionRate}%">
+            <span class="commission-bar-pct">${n.effectiveCommissionRate}%</span>
+            <div class="commission-bar-track"><div class="commission-bar" style="height:${pct}%"></div></div>
+            <span class="commission-bar-label">${escapeHtml(n.name)}</span>
+          </div>`;
+        })
+        .join("");
+    }
+
+    // ---- table: every category / subcategory / sub-subcategory ----
+    if (els.commissionOverviewTableBody) {
+      els.commissionOverviewTableBody.innerHTML = flat
+        .map((n) => {
+          const tone = commissionToneClass(n);
+          return `<tr class="level-${n.level}">
+            <td>${escapeHtml(n.name)}</td>
+            <td><span class="rate-pill ${tone}">${n.effectiveCommissionRate}%</span></td>
+            <td><span class="commission-source-tag">${commissionSourceLabelFor(n)}</span></td>
+          </tr>`;
+        })
+        .join("");
+    }
+  }
   // =========================================================
   // ---------- DYNAMIC SHIPPING (NEW) ----------
   // Resolves whether the currently-selected leaf category ships as
@@ -1342,10 +1476,20 @@ try {
     if (isVariantMode) recomputeStockFromVariants();
   }
 
-  function addVariantRow() {
-    variantRows.push({ localId: ++variantRowSeq, values: {}, stock: "", priceAdjustment: "", sku: "" });
+    function addVariantRow() {
+    variantRows.push({
+      localId: ++variantRowSeq,
+      values: {},
+      stock: "",
+      priceAdjustment: "",
+      sku: "",
+      useCustomPrice: false, // NEW
+      customPrice: "",       // NEW
+    });
     renderVariantRows();
   }
+
+
 
   function removeVariantRow(localId) {
     variantRows = variantRows.filter((r) => r.localId !== localId);
@@ -1353,21 +1497,56 @@ try {
     else renderVariantRows();
   }
 
-  function renderVariantRows() {
+   function renderVariantRows() {
     if (!els.variantRowsWrap) return;
     els.variantRowsWrap.innerHTML = variantRows.map((row) => variantRowHtml(row)).join("");
 
     els.variantRowsWrap.querySelectorAll("[data-variant-remove]").forEach((btn) => {
       btn.addEventListener("click", () => removeVariantRow(Number(btn.dataset.variantRemove)));
     });
+
+    // NEW — "choose from list instead" cancel button on a custom-valued attribute
+    els.variantRowsWrap.querySelectorAll("[data-variant-custom-cancel]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const localId = Number(btn.dataset.variantRow);
+        const field = btn.dataset.variantField;
+        const row = variantRows.find((r) => r.localId === localId);
+        if (row) row.values[field] = "";
+        renderVariantRows();
+      });
+    });
+
     els.variantRowsWrap.querySelectorAll("[data-variant-input]").forEach((input) => {
       input.addEventListener("input", () => {
         const localId = Number(input.dataset.variantRow);
         const row = variantRows.find((r) => r.localId === localId);
         if (!row) return;
         const field = input.dataset.variantInput;
+
+        // NEW — picking "+ Custom value" on a variant-attribute select
+        // switches that field into free-text mode instead of storing the
+        // literal "__custom__" sentinel.
+        if (input.dataset.variantSelect === "1" && input.value === "__custom__") {
+          row.values[field] = "";
+          renderVariantRows();
+          requestAnimationFrame(() => {
+            const textInput = els.variantRowsWrap.querySelector(
+              `input[data-variant-row="${localId}"][data-variant-input="${field}"][data-variant-custom-text="1"]`
+            );
+            textInput?.focus();
+          });
+          return;
+        }
+
         if (field === "stock" || field === "priceAdjustment" || field === "sku") {
           row[field] = input.value;
+        } else if (field === "useCustomPrice") {
+          // NEW — toggling this re-renders to show/hide the custom price input
+          row.useCustomPrice = input.checked;
+          renderVariantRows();
+          return;
+        } else if (field === "customPrice") {
+          row.customPrice = input.value;
         } else {
           row.values[field] = input.value;
         }
@@ -1376,19 +1555,30 @@ try {
     });
   }
 
+
+
+
   function variantRowHtml(row) {
     const attrFields = currentVariantDefs
       .map((def) => {
         const val = row.values[def._id] || "";
         if (Array.isArray(def.options) && def.options.length) {
+          // NEW — a value the seller typed that isn't one of the admin's
+          // predefined options is treated as a custom value.
+          const isCustomVal = val !== "" && !def.options.includes(val);
           const options = def.options
-            .map((o) => `<option value="${escapeHtml(o)}" ${val === o ? "selected" : ""}>${escapeHtml(o)}</option>`)
+            .map((o) => `<option value="${escapeHtml(o)}" ${!isCustomVal && val === o ? "selected" : ""}>${escapeHtml(o)}</option>`)
             .join("");
           return `<div class="form-field">
             <label>${escapeHtml(def.name)}</label>
-            <select data-variant-row="${row.localId}" data-variant-input="${def._id}">
+            <select data-variant-row="${row.localId}" data-variant-input="${def._id}" data-variant-select="1" style="${isCustomVal ? "display:none;" : ""}">
               <option value="">Select ${escapeHtml(def.name)}</option>${options}
+              <option value="__custom__">+ Custom value (not in admin's list)</option>
             </select>
+            <input type="text" data-variant-row="${row.localId}" data-variant-input="${def._id}" data-variant-custom-text="1"
+              class="variant-value-other-input" value="${isCustomVal ? escapeHtml(val) : ""}"
+              placeholder="Type a custom ${escapeHtml(def.name).toLowerCase()} value" style="${isCustomVal ? "" : "display:none;"}" />
+            ${isCustomVal ? `<button type="button" class="btn-rm" style="margin-top:4px;" data-variant-custom-cancel data-variant-row="${row.localId}" data-variant-field="${def._id}" title="Choose from the list instead"><i class="fa-solid fa-list"></i></button>` : ""}
           </div>`;
         }
         return `<div class="form-field">
@@ -1398,31 +1588,49 @@ try {
       })
       .join("");
 
+    // NEW — special/custom variant pricing
+    const customPriceBlock = `
+      <div class="variant-custom-price-row">
+        <label>
+          <input type="checkbox" data-variant-row="${row.localId}" data-variant-input="useCustomPrice" ${row.useCustomPrice ? "checked" : ""} />
+          This variant has its own specific price
+        </label>
+        ${row.useCustomPrice
+          ? `<input type="number" min="0" step="0.01" data-variant-row="${row.localId}" data-variant-input="customPrice" value="${escapeHtml(String(row.customPrice ?? ""))}" placeholder="e.g. 5500 (KES)" />`
+          : `<span class="form-hint" style="margin:0;">Optional — use this when one specific variant needs a different price than the rest.</span>`}
+      </div>`;
+
     return `<div class="repeater-row">
       ${attrFields}
       <div class="form-field">
         <label>Stock</label>
         <input type="number" min="0" step="1" data-variant-row="${row.localId}" data-variant-input="stock" value="${escapeHtml(row.stock)}" placeholder="e.g. 20" />
       </div>
+      ${customPriceBlock}
       <button type="button" class="btn-rm" data-variant-remove="${row.localId}" title="Remove variant"><i class="fa-solid fa-trash"></i></button>
     </div>`;
   }
+
+
+
 
   function recomputeStockFromVariants() {
     const total = variantRows.reduce((sum, r) => sum + (Number(r.stock) || 0), 0);
     if (els.pStock) els.pStock.value = total;
   }
 
-  function collectVariantsFromUI() {
+    function collectVariantsFromUI() {
     return variantRows.map((row) => ({
       combination: currentVariantDefs.map((def) => ({ attribute: def._id, value: row.values[def._id] || "" })),
       stock: Number(row.stock) || 0,
       priceAdjustment: Number(row.priceAdjustment) || 0,
       sku: row.sku || "",
+      useCustomPrice: !!row.useCustomPrice, // NEW
+      customPrice: row.useCustomPrice ? Number(row.customPrice) || 0 : null, // NEW
     }));
   }
 
-  function validateVariantsBeforeSubmit() {
+   function validateVariantsBeforeSubmit() {
     if (!currentVariantDefs.length) return null;
     if (!variantRows.length) return "Add at least one variant for this category";
     for (const row of variantRows) {
@@ -1431,6 +1639,13 @@ try {
       }
       if (row.stock === "" || Number.isNaN(Number(row.stock)) || Number(row.stock) < 0) {
         return "Each variant needs a valid, non-negative stock number";
+      }
+      // NEW — special/custom price validation
+      if (row.useCustomPrice) {
+        const cp = Number(row.customPrice);
+        if (row.customPrice === "" || Number.isNaN(cp) || cp < 0) {
+          return "Please enter a valid specific price for the variant marked with its own price";
+        }
       }
     }
     return null;
@@ -4522,7 +4737,7 @@ async function saveCustomizerTheme() {
     // variants
     if (currentVariantDefs.length) {
       const existingVariants = product.variants || [];
-      if (existingVariants.length) {
+            if (existingVariants.length) {
         variantRows = existingVariants.map((v) => {
           const values = {};
           (v.combination || []).forEach((c) => {
@@ -4535,6 +4750,8 @@ async function saveCustomizerTheme() {
             stock: v.stock,
             priceAdjustment: v.priceAdjustment || "",
             sku: v.sku || "",
+            useCustomPrice: !!v.useCustomPrice, // NEW
+            customPrice: v.customPrice ?? "",   // NEW
           };
         });
       } else {

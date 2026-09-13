@@ -1118,6 +1118,10 @@
       <button class="iconbtn" id="flashSaleToggleBtn" title="Flash Sale">
         <i class="fa-solid fa-bolt"></i>
       </button>
+
+            <button class="iconbtn" id="commissionToggleBtn" title="Marketplace Commission">
+        <i class="fa-solid fa-percent"></i>
+      </button>
       <a href="seller-profile.html" class="iconbtn" title="My Profile">
         <i class="fa-solid fa-user-gear"></i>
       </a>
@@ -1160,6 +1164,12 @@
     <span class="dash-mobile-menu__ico"><i class="fa-solid fa-bolt"></i></span>
     <span class="dash-mobile-menu__label">Flash Sale</span>
   </button>
+
+    <button type="button" class="dash-mobile-menu__item" data-mobile-action="commission">
+    <span class="dash-mobile-menu__ico"><i class="fa-solid fa-percent"></i></span>
+    <span class="dash-mobile-menu__label">Marketplace Commission</span>
+  </button>
+
   <button type="button" class="dash-mobile-menu__item" data-mobile-action="profile">
     <span class="dash-mobile-menu__ico"><i class="fa-solid fa-user-gear"></i></span>
     <span class="dash-mobile-menu__label">My Profile</span>
@@ -1881,6 +1891,54 @@
     </div>
   </div>
 </div>
+
+
+
+<!-- ============ MARKETPLACE COMMISSION "page" (NEW) ============ -->
+<div class="orders-page-overlay" id="commissionOverlay">
+  <div class="orders-page">
+    <div class="orders-page__head">
+      <button type="button" class="order-detail-back" id="commissionBack">
+        <i class="fa-solid fa-arrow-left"></i>
+      </button>
+      <div class="orders-page__title">
+        <h2>Marketplace Commission</h2>
+        <p>Live rates by category — set by admin, can change at any time</p>
+      </div>
+    </div>
+
+    <div class="orders-page__body">
+      <div id="commissionLoading" class="orders-skel-wrap">
+        <div class="skel orders-skel"></div>
+        <div class="skel orders-skel"></div>
+      </div>
+
+      <div id="commissionEmpty" class="analytics-empty" style="display:none;">
+        <i class="fa-solid fa-percent"></i>
+        <h3>No categories found</h3>
+        <p>Categories will show up here once they're added by admin.</p>
+      </div>
+
+      <div id="commissionContent" style="display:none;">
+        <p class="form-hint" style="margin-bottom:14px;">
+          These rates are resolved live from the marketplace's current settings every time you open this page —
+          an admin can change any of them at any time.
+        </p>
+        <div class="commission-overview-chart" id="commissionOverviewChart"></div>
+        <div class="commission-overview-table-wrap">
+          <table class="commission-overview-table" id="commissionOverviewTable">
+            <thead>
+              <tr><th>Category</th><th>Effective rate</th><th>Source</th></tr>
+            </thead>
+            <tbody id="commissionOverviewTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
 
 <!-- ============ MY SHOP "PAGE" (ENHANCED) ============ -->
 <div class="orders-page-overlay" id="myShopOverlay">

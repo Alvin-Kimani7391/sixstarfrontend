@@ -857,11 +857,17 @@ function buildShareData(p) {
       return;
     }
 
-    if (statusEl) {
+      if (statusEl) {
       statusEl.className = "pd-variant-status ok";
       statusEl.innerHTML = `<i class="fa-solid fa-circle-check"></i> Selected: ${variant.label || ""}${variant.sku ? ` (SKU: ${variant.sku})` : ""}`;
     }
-    if (priceEl) priceEl.textContent = ssFmtPrice(basePrice(p) + (variant.priceAdjustment || 0));
+
+    // NEW — a variant flagged useCustomPrice ignores priceAdjustment
+    // entirely and uses its own fixed customPrice instead.
+    const variantPrice = (variant.useCustomPrice && variant.customPrice != null)
+      ? variant.customPrice
+      : basePrice(p) + (variant.priceAdjustment || 0);
+    if (priceEl) priceEl.textContent = ssFmtPrice(variantPrice);
 
     updateStockDisplay(stockState({ stock: variant.stock }));
   }
@@ -905,7 +911,7 @@ function buildShareData(p) {
     // cart/checkout code can price and identify it correctly. NOTE: SS_CART
     // and the checkout/order pipeline still need to be updated to actually
     // read/persist `selectedVariant` — this only prepares the payload.
-    function buildPayload() {
+        function buildPayload() {
       if (!selectedVariant) return p;
       return {
         ...p,
@@ -913,7 +919,12 @@ function buildShareData(p) {
           id: selectedVariant._id,
           label: selectedVariant.label,
           sku: selectedVariant.sku,
-          priceAdjustment: selectedVariant.priceAdjustment || 0
+          priceAdjustment: selectedVariant.priceAdjustment || 0,
+          // NEW — pass the special-price flag/value through to the cart so
+          // it's available if/when SS_CART's pricing logic is updated to
+          // read it (it currently derives price the same way it always has).
+          useCustomPrice: !!selectedVariant.useCustomPrice,
+          customPrice: selectedVariant.customPrice ?? null
         }
       };
     }

@@ -558,6 +558,14 @@ const SS_API = (() => {
     getCategoryShippingType(categoryId) {
       return request(`/categories/${categoryId}/shipping`, { requiresAuth: false });
     },
+
+        // NEW — full resolved commission tree (category/subcategory/sub-subcategory),
+    // each node carrying the LIVE effective rate (own/inherited/platform default).
+    // Powers the seller dashboard's "Marketplace Commission" page.
+    getCommissionOverview() {
+      return request("/categories/commission-overview", { requiresAuth: true });
+    },
+
     // The priced shipping-criteria option groups for a category — only
     // meaningful when its effective shippingType is 'special', but safe to
     // call regardless (returns an empty list otherwise).
