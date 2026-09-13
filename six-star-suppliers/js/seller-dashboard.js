@@ -3078,6 +3078,7 @@ try {
     if (activeTab === "products") loadShopProducts();
     else if (activeTab === "analytics") loadShopAnalytics();
     else if (activeTab === "settings") renderShopSettings();
+    else if (activeTab === "customize") renderShopCustomizer(); // ADD THIS LINE
   }
 
   // ---------- Shop tab switching ----------
@@ -3092,6 +3093,7 @@ try {
     if (tab === "products") loadShopProducts();
     else if (tab === "analytics") loadShopAnalytics();
     else if (tab === "settings") renderShopSettings();
+    else if (tab === "customize") renderShopCustomizer(); // ADD THIS LINE
   };
 
   // ---------- Render Shop Storefront (Overview tab) ----------
@@ -3324,6 +3326,401 @@ try {
       ssToast(err.message || "Couldn't save settings", "fa-triangle-exclamation");
     }
   };
+
+
+
+
+
+
+
+// =========================================================
+// ---------- STOREFRONT CUSTOMIZER (Customize tab) ----------
+// =========================================================
+let pendingCustomizerTheme = null;   // seller's in-progress working copy
+let pendingCustomizerMode = 'basic'; // 'basic' | 'custom'
+let customizerPreviewDebounce = null;
+let customizerSectionSeq = 0;
+let customizerSlideSeq = 0;
+let customizerFooterColSeq = 0;
+
+function renderShopCustomizer() {
+  const container = document.getElementById("shopCustomizeContainer");
+  if (!container || !myShop) return;
+
+  pendingCustomizerMode = myShop.customizationMode || "basic";
+  pendingCustomizerTheme = JSON.parse(JSON.stringify(myShop.themeConfiguration || {}));
+
+  container.innerHTML = `
+    <div class="customizer-mode-row" id="customizerModeRow">
+      <label class="customizer-mode-card" data-mode-card="basic">
+        <input type="radio" name="customizerMode" value="basic" ${pendingCustomizerMode === "basic" ? "checked" : ""} style="margin-top:3px;" />
+        <div class="customizer-mode-card__icon"><i class="fa-solid fa-store"></i></div>
+        <div>
+          <div class="customizer-mode-card__title">Basic</div>
+          <div class="customizer-mode-card__desc">The standard Six Star shop page — clean and simple, no setup needed.</div>
+        </div>
+      </label>
+      <label class="customizer-mode-card" data-mode-card="custom">
+        <input type="radio" name="customizerMode" value="custom" ${pendingCustomizerMode === "custom" ? "checked" : ""} style="margin-top:3px;" />
+        <div class="customizer-mode-card__icon"><i class="fa-solid fa-paintbrush"></i></div>
+        <div>
+          <div class="customizer-mode-card__title">Custom</div>
+          <div class="customizer-mode-card__desc">Design your own header, hero banner, layout, colors and footer.</div>
+        </div>
+      </label>
+    </div>
+
+    <div id="customizerBody" style="display:${pendingCustomizerMode === "custom" ? "block" : "none"};">
+      <div class="customizer-layout">
+        <div class="customizer-panel" id="customizerPanel"></div>
+        <div class="customizer-preview">
+          <div class="customizer-preview__bar"><i class="fa-solid fa-eye"></i> Live preview</div>
+          <iframe id="customizerPreviewFrame" src="/shop/${myShop.slug}"></iframe>
+        </div>
+      </div>
+      <div style="margin-top:16px;">
+        <button class="btn btn-primary" id="customizerSaveBtn"><i class="fa-solid fa-floppy-disk"></i> Save & publish design</button>
+      </div>
+    </div>
+
+    <div id="customizerBasicNote" style="display:${pendingCustomizerMode === "basic" ? "block" : "none"}; text-align:center; padding:30px 10px; color:var(--ink-soft,#7a7268);">
+      <i class="fa-solid fa-store" style="font-size:26px; color:var(--marigold,#f2a93b); display:block; margin-bottom:10px;"></i>
+      Your shop is using the basic layout. Switch to "Custom" above to design your own header, hero, colors and footer.
+    </div>
+  `;
+
+  container.querySelectorAll('input[name="customizerMode"]').forEach((r) => {
+    r.addEventListener("change", () => {
+      pendingCustomizerMode = r.value;
+      container.querySelectorAll(".customizer-mode-card").forEach((c) => c.classList.toggle("active", c.dataset.modeCard === pendingCustomizerMode));
+      document.getElementById("customizerBody").style.display = pendingCustomizerMode === "custom" ? "block" : "none";
+      document.getElementById("customizerBasicNote").style.display = pendingCustomizerMode === "basic" ? "block" : "none";
+    });
+  });
+  container.querySelectorAll(".customizer-mode-card").forEach((c) => c.classList.toggle("active", c.dataset.modeCard === pendingCustomizerMode));
+
+  renderCustomizerPanel();
+  document.getElementById("customizerSaveBtn")?.addEventListener("click", saveCustomizerTheme);
+}
+
+function renderCustomizerPanel() {
+  const panel = document.getElementById("customizerPanel");
+  if (!panel) return;
+  const t = pendingCustomizerTheme;
+
+  panel.innerHTML = `
+    ${customizerColorsSectionHtml(t)}
+    ${customizerHeaderSectionHtml(t)}
+    ${customizerHeroSectionHtml(t)}
+    ${customizerGridSectionHtml(t)}
+    ${customizerSectionsSectionHtml(t)}
+    ${customizerFooterSectionHtml(t)}
+  `;
+
+  wireCustomizerColors();
+  wireCustomizerHeader();
+  wireCustomizerHero();
+  wireCustomizerGrid();
+  wireCustomizerSections();
+  wireCustomizerFooter();
+}
+
+function scheduleCustomizerPreviewRefresh() {
+  clearTimeout(customizerPreviewDebounce);
+  customizerPreviewDebounce = setTimeout(async () => {
+    // Autosave the working copy silently so the iframe's fresh GET reflects it,
+    // without disturbing the seller's place with a toast on every keystroke.
+    try {
+      const res = await SS_API.updateMyShop({
+        customizationMode: "custom",
+        themeConfiguration: pendingCustomizerTheme,
+      });
+      myShop.themeConfiguration = res.shop.themeConfiguration;
+      const frame = document.getElementById("customizerPreviewFrame");
+      if (frame) frame.contentWindow.location.reload();
+    } catch (err) {
+      console.error("Preview autosave failed:", err);
+    }
+  }, 900);
+}
+
+// ---- Colors ----
+function customizerColorsSectionHtml(t) {
+  const c = t.colors || {};
+  const fields = [
+    ["primary", "Primary"], ["secondary", "Secondary"], ["background", "Background"],
+    ["surface", "Surface"], ["text", "Text"], ["textMuted", "Muted text"],
+  ];
+  return `<div class="customizer-section"><h4><i class="fa-solid fa-palette"></i> Colors</h4>
+    <div class="customizer-color-row">
+      ${fields.map(([key, label]) => `
+        <div class="customizer-color-field">
+          <input type="color" data-color-key="${key}" value="${c[key] || "#000000"}" />
+          <span>${label}</span>
+        </div>`).join("")}
+    </div>
+  </div>`;
+}
+function wireCustomizerColors() {
+  document.querySelectorAll("[data-color-key]").forEach((input) => {
+    input.addEventListener("input", () => {
+      pendingCustomizerTheme.colors = pendingCustomizerTheme.colors || {};
+      pendingCustomizerTheme.colors[input.dataset.colorKey] = input.value;
+      scheduleCustomizerPreviewRefresh();
+    });
+  });
+}
+
+// ---- Header ----
+function customizerHeaderSectionHtml(t) {
+  const h = t.header || {};
+  const ab = h.announcementBar || {};
+  return `<div class="customizer-section"><h4><i class="fa-solid fa-window-maximize"></i> Header</h4>
+    <div class="customizer-field">
+      <label>Layout style</label>
+      <select id="custHeaderStyle">
+        <option value="centered" ${h.style === "centered" ? "selected" : ""}>Centered logo</option>
+        <option value="left" ${h.style === "left" ? "selected" : ""}>Logo left</option>
+        <option value="logo-only" ${h.style === "logo-only" ? "selected" : ""}>Logo only, minimal</option>
+      </select>
+    </div>
+    <label class="customizer-toggle-row"><input type="checkbox" id="custHeaderSticky" ${h.sticky ? "checked" : ""} /> Sticky header</label>
+    <label class="customizer-toggle-row"><input type="checkbox" id="custHeaderSearch" ${h.showSearch ? "checked" : ""} /> Show search bar</label>
+    <label class="customizer-toggle-row"><input type="checkbox" id="custAnnounceEnabled" ${ab.enabled ? "checked" : ""} /> Show announcement bar</label>
+    <div class="customizer-field">
+      <label>Announcement text</label>
+      <input type="text" id="custAnnounceText" value="${(ab.text || "").replace(/"/g, "&quot;")}" placeholder="Free delivery on orders over KES 5,000" />
+    </div>
+  </div>`;
+}
+function wireCustomizerHeader() {
+  const bind = (id, path, isCheckbox) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener(isCheckbox ? "change" : "input", () => {
+      pendingCustomizerTheme.header = pendingCustomizerTheme.header || {};
+      const val = isCheckbox ? el.checked : el.value;
+      if (path.length === 1) pendingCustomizerTheme.header[path[0]] = val;
+      else {
+        pendingCustomizerTheme.header[path[0]] = pendingCustomizerTheme.header[path[0]] || {};
+        pendingCustomizerTheme.header[path[0]][path[1]] = val;
+      }
+      scheduleCustomizerPreviewRefresh();
+    });
+  };
+  bind("custHeaderStyle", ["style"], false);
+  bind("custHeaderSticky", ["sticky"], true);
+  bind("custHeaderSearch", ["showSearch"], true);
+  bind("custAnnounceEnabled", ["announcementBar", "enabled"], true);
+  bind("custAnnounceText", ["announcementBar", "text"], false);
+}
+
+// ---- Hero (slides repeater) ----
+function customizerHeroSectionHtml(t) {
+  const h = t.hero || { slides: [] };
+  return `<div class="customizer-section"><h4><i class="fa-solid fa-image"></i> Hero banner</h4>
+    <div class="customizer-field">
+      <label>Type</label>
+      <select id="custHeroType">
+        <option value="banner" ${h.type === "banner" ? "selected" : ""}>Single banner</option>
+        <option value="slideshow" ${h.type === "slideshow" ? "selected" : ""}>Slideshow</option>
+        <option value="none" ${h.type === "none" ? "selected" : ""}>No hero</option>
+      </select>
+    </div>
+    <div id="custHeroSlides">${(h.slides || []).map((s, i) => customizerHeroSlideHtml(s, i)).join("")}</div>
+    <button type="button" class="customizer-add-btn" id="custAddSlideBtn"><i class="fa-solid fa-plus"></i> Add slide</button>
+  </div>`;
+}
+function customizerHeroSlideHtml(s, i) {
+  return `<div class="customizer-repeater-item" data-slide-idx="${i}">
+    <button type="button" class="customizer-repeater-remove" data-remove-slide="${i}"><i class="fa-solid fa-xmark"></i></button>
+    <div class="customizer-field"><label>Image URL</label><input type="text" data-slide-field="image" data-slide-idx="${i}" value="${(s.image || "").replace(/"/g, "&quot;")}" placeholder="https://…" /></div>
+    <div class="customizer-field"><label>Heading</label><input type="text" data-slide-field="heading" data-slide-idx="${i}" value="${(s.heading || "").replace(/"/g, "&quot;")}" /></div>
+    <div class="customizer-field"><label>Subheading</label><input type="text" data-slide-field="subheading" data-slide-idx="${i}" value="${(s.subheading || "").replace(/"/g, "&quot;")}" /></div>
+    <div class="customizer-field"><label>Button text</label><input type="text" data-slide-field="buttonText" data-slide-idx="${i}" value="${(s.buttonText || "").replace(/"/g, "&quot;")}" /></div>
+    <div class="customizer-field"><label>Button link</label><input type="text" data-slide-field="buttonLink" data-slide-idx="${i}" value="${(s.buttonLink || "").replace(/"/g, "&quot;")}" /></div>
+  </div>`;
+}
+function wireCustomizerHero() {
+  document.getElementById("custHeroType")?.addEventListener("change", (e) => {
+    pendingCustomizerTheme.hero = pendingCustomizerTheme.hero || {};
+    pendingCustomizerTheme.hero.type = e.target.value;
+    scheduleCustomizerPreviewRefresh();
+  });
+  document.querySelectorAll("[data-slide-field]").forEach((input) => {
+    input.addEventListener("input", () => {
+      const idx = Number(input.dataset.slideIdx);
+      pendingCustomizerTheme.hero.slides[idx][input.dataset.slideField] = input.value;
+      scheduleCustomizerPreviewRefresh();
+    });
+  });
+  document.querySelectorAll("[data-remove-slide]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      pendingCustomizerTheme.hero.slides.splice(Number(btn.dataset.removeSlide), 1);
+      renderCustomizerPanel();
+      scheduleCustomizerPreviewRefresh();
+    });
+  });
+  document.getElementById("custAddSlideBtn")?.addEventListener("click", () => {
+    pendingCustomizerTheme.hero = pendingCustomizerTheme.hero || { slides: [] };
+    pendingCustomizerTheme.hero.slides = pendingCustomizerTheme.hero.slides || [];
+    if (pendingCustomizerTheme.hero.slides.length >= 6) { ssToast("Maximum 6 slides", "fa-triangle-exclamation"); return; }
+    pendingCustomizerTheme.hero.slides.push({ image: "", heading: "", subheading: "", buttonText: "", buttonLink: "" });
+    renderCustomizerPanel();
+    scheduleCustomizerPreviewRefresh();
+  });
+}
+
+// ---- Product grid ----
+function customizerGridSectionHtml(t) {
+  const g = t.productGrid || {};
+  return `<div class="customizer-section"><h4><i class="fa-solid fa-table-cells"></i> Product grid</h4>
+    <div class="customizer-field">
+      <label>Columns</label>
+      <select id="custGridCols">
+        <option value="2" ${g.columns === 2 ? "selected" : ""}>2</option>
+        <option value="3" ${g.columns === 3 ? "selected" : ""}>3</option>
+        <option value="4" ${g.columns === 4 ? "selected" : ""}>4</option>
+      </select>
+    </div>
+    <div class="customizer-field">
+      <label>Card style</label>
+      <select id="custGridCard">
+        <option value="minimal" ${g.cardStyle === "minimal" ? "selected" : ""}>Minimal</option>
+        <option value="bordered" ${g.cardStyle === "bordered" ? "selected" : ""}>Bordered</option>
+        <option value="shadow" ${g.cardStyle === "shadow" ? "selected" : ""}>Shadow</option>
+      </select>
+    </div>
+    <label class="customizer-toggle-row"><input type="checkbox" id="custGridRating" ${g.showRating ? "checked" : ""} /> Show star rating</label>
+    <label class="customizer-toggle-row"><input type="checkbox" id="custGridStock" ${g.showStockBadge ? "checked" : ""} /> Show stock badge</label>
+  </div>`;
+}
+function wireCustomizerGrid() {
+  const bind = (id, key, isCheckbox, isNumber) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener(isCheckbox ? "change" : "change", () => {
+      pendingCustomizerTheme.productGrid = pendingCustomizerTheme.productGrid || {};
+      pendingCustomizerTheme.productGrid[key] = isCheckbox ? el.checked : isNumber ? Number(el.value) : el.value;
+      scheduleCustomizerPreviewRefresh();
+    });
+  };
+  bind("custGridCols", "columns", false, true);
+  bind("custGridCard", "cardStyle", false, false);
+  bind("custGridRating", "showRating", true, false);
+  bind("custGridStock", "showStockBadge", true, false);
+}
+
+// ---- Sections (arrangeable blocks) ----
+function customizerSectionsSectionHtml(t) {
+  const sections = t.sections || [];
+  return `<div class="customizer-section"><h4><i class="fa-solid fa-layer-group"></i> Page sections</h4>
+    <div id="custSections">${sections.map((s, i) => customizerSectionItemHtml(s, i)).join("")}</div>
+    <button type="button" class="customizer-add-btn" id="custAddSectionBtn"><i class="fa-solid fa-plus"></i> Add section</button>
+  </div>`;
+}
+function customizerSectionItemHtml(s, i) {
+  return `<div class="customizer-repeater-item" data-section-idx="${i}">
+    <button type="button" class="customizer-repeater-remove" data-remove-section="${i}"><i class="fa-solid fa-xmark"></i></button>
+    <div class="customizer-field"><label>Type</label>
+      <select data-section-field="type" data-section-idx="${i}">
+        <option value="featured_products" ${s.type === "featured_products" ? "selected" : ""}>Featured products</option>
+        <option value="all_products" ${s.type === "all_products" ? "selected" : ""}>All products</option>
+        <option value="rich_text" ${s.type === "rich_text" ? "selected" : ""}>Text block</option>
+      </select>
+    </div>
+    <div class="customizer-field"><label>Title</label><input type="text" data-section-field="title" data-section-idx="${i}" value="${(s.title || "").replace(/"/g, "&quot;")}" /></div>
+    ${s.type === "rich_text" ? `<div class="customizer-field"><label>Body text</label><textarea rows="3" data-section-field="body" data-section-idx="${i}">${s.body || ""}</textarea></div>` : ""}
+  </div>`;
+}
+function wireCustomizerSections() {
+  document.querySelectorAll("[data-section-field]").forEach((input) => {
+    input.addEventListener(input.tagName === "SELECT" ? "change" : "input", () => {
+      const idx = Number(input.dataset.sectionIdx);
+      pendingCustomizerTheme.sections[idx][input.dataset.sectionField] = input.value;
+      if (input.dataset.sectionField === "type") { renderCustomizerPanel(); }
+      scheduleCustomizerPreviewRefresh();
+    });
+  });
+  document.querySelectorAll("[data-remove-section]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      pendingCustomizerTheme.sections.splice(Number(btn.dataset.removeSection), 1);
+      renderCustomizerPanel();
+      scheduleCustomizerPreviewRefresh();
+    });
+  });
+  document.getElementById("custAddSectionBtn")?.addEventListener("click", () => {
+    pendingCustomizerTheme.sections = pendingCustomizerTheme.sections || [];
+    if (pendingCustomizerTheme.sections.length >= 12) { ssToast("Maximum 12 sections", "fa-triangle-exclamation"); return; }
+    pendingCustomizerTheme.sections.push({ id: `s${++customizerSectionSeq}_${Date.now()}`, type: "rich_text", title: "", body: "" });
+    renderCustomizerPanel();
+    scheduleCustomizerPreviewRefresh();
+  });
+}
+
+// ---- Footer ----
+function customizerFooterSectionHtml(t) {
+  const f = t.footer || { columns: [], socialLinks: {} };
+  return `<div class="customizer-section"><h4><i class="fa-solid fa-shoe-prints"></i> Footer</h4>
+    <div class="customizer-field">
+      <label>Style</label>
+      <select id="custFooterStyle">
+        <option value="simple" ${f.style === "simple" ? "selected" : ""}>Simple</option>
+        <option value="expanded" ${f.style === "expanded" ? "selected" : ""}>Expanded (columns)</option>
+      </select>
+    </div>
+    <label class="customizer-toggle-row"><input type="checkbox" id="custFooterSocial" ${f.showSocial ? "checked" : ""} /> Show social links</label>
+    <div class="customizer-field"><label>Facebook URL</label><input type="text" id="custSocialFb" value="${(f.socialLinks?.facebook || "").replace(/"/g, "&quot;")}" /></div>
+    <div class="customizer-field"><label>Instagram URL</label><input type="text" id="custSocialIg" value="${(f.socialLinks?.instagram || "").replace(/"/g, "&quot;")}" /></div>
+    <div class="customizer-field"><label>WhatsApp link</label><input type="text" id="custSocialWa" value="${(f.socialLinks?.whatsapp || "").replace(/"/g, "&quot;")}" /></div>
+    <div class="customizer-field"><label>Copyright text</label><input type="text" id="custFooterCopy" value="${(f.copyrightText || "").replace(/"/g, "&quot;")}" placeholder="© 2026 ${myShop.shopName}" /></div>
+  </div>`;
+}
+function wireCustomizerFooter() {
+  const bind = (id, path, isCheckbox) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener(isCheckbox ? "change" : "input", () => {
+      pendingCustomizerTheme.footer = pendingCustomizerTheme.footer || {};
+      const val = isCheckbox ? el.checked : el.value;
+      if (path.length === 1) pendingCustomizerTheme.footer[path[0]] = val;
+      else {
+        pendingCustomizerTheme.footer[path[0]] = pendingCustomizerTheme.footer[path[0]] || {};
+        pendingCustomizerTheme.footer[path[0]][path[1]] = val;
+      }
+      scheduleCustomizerPreviewRefresh();
+    });
+  };
+  bind("custFooterStyle", ["style"], false);
+  bind("custFooterSocial", ["showSocial"], true);
+  bind("custSocialFb", ["socialLinks", "facebook"], false);
+  bind("custSocialIg", ["socialLinks", "instagram"], false);
+  bind("custSocialWa", ["socialLinks", "whatsapp"], false);
+  bind("custFooterCopy", ["copyrightText"], false);
+}
+
+async function saveCustomizerTheme() {
+  const btn = document.getElementById("customizerSaveBtn");
+  if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
+  try {
+    const res = await SS_API.updateMyShop({
+      customizationMode: pendingCustomizerMode,
+      themeConfiguration: pendingCustomizerTheme,
+    });
+    myShop.customizationMode = res.shop.customizationMode;
+    myShop.themeConfiguration = res.shop.themeConfiguration;
+    ssToast("Shop design saved and published", "fa-circle-check");
+    document.getElementById("customizerPreviewFrame")?.contentWindow.location.reload();
+  } catch (err) {
+    ssToast(err.message || "Couldn't save your design", "fa-triangle-exclamation");
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save & publish design`; }
+  }
+}
+
+
+
+
 
   // ---------- Share / QR ----------
   window.shareShop = function () {
