@@ -19,6 +19,19 @@
      so the seller's own themed header/footer is what the visitor
      actually sees (previously only the CSS class was added, but
      nothing ever hid the old header/footer underneath it).
+   - Hero "Slideshow" now actually rotates. Previously
+     ssRenderThemedHero() only ever rendered slides[0] — there was
+     no markup or JS for additional slides at all, so picking
+     "Slideshow" in the customizer looked identical to "Single
+     image." Single-slide heroes render with the exact original
+     markup (untouched), so existing hero CSS for that common case
+     is unaffected; multi-slide heroes get their own self-contained
+     styles injected at runtime plus dot navigation + autoplay.
+   - The themed header search box no longer hard-redirects to the
+     main site. It checks this shop's own products first; if there
+     are matches it shows them in the shop's own listing, and only
+     sends the customer to the site-wide search when the shop truly
+     has nothing for that query.
    ============================================================ */
 
 let ssShopDetailState = {
@@ -29,6 +42,8 @@ let ssShopDetailState = {
   search: "",
   sortTouched: false
 };
+
+let ssHeroSlideshowInterval = null;
 
 function ssGetSlugFromUrl() {
   const params = new URLSearchParams(location.search);
@@ -113,20 +128,121 @@ function ssRenderThemedHeader(shop, theme) {
     </header>`;
 }
 
+// A one-time <style> block for the multi-slide hero only — injected lazily
+// so single-image heroes (the common case) never pay for or depend on it,
+// and so we don't need to touch/guess at the seller's existing theme CSS.
+function ssEnsureHeroSlideshowStyles() {
+  if (document.getElementById('ssHeroSlideshowStyles')) return;
+  const style = document.createElement('style');
+  style.id = 'ssHeroSlideshowStyles';
+  style.textContent = `
+    .shop-theme-hero[data-hero-mode="slideshow"] { position: relative; overflow: hidden; }
+    .shop-theme-hero[data-hero-mode="slideshow"] .shop-theme-hero__slide {
+      position: absolute; inset: 0; opacity: 0; visibility: hidden;
+      transition: opacity .6s ease; background-size: cover; background-position: center;
+    }
+    .shop-theme-hero[data-hero-mode="slideshow"] .shop-theme-hero__slide.active {
+      position: relative; opacity: 1; visibility: visible; z-index: 1;
+    }
+    .shop-theme-hero__dots {
+      position: absolute; left: 0; right: 0; bottom: 14px; z-index: 2;
+      display: flex; justify-content: center; gap: 8px;
+    }
+    .shop-theme-hero__dot {
+      width: 9px; height: 9px; border-radius: 50%; border: none; padding: 0;
+      background: rgba(255,255,255,.5); cursor: pointer;
+    }
+    .shop-theme-hero__dot.active { background: #fff; }
+  `;
+  document.head.appendChild(style);
+}
+
 function ssRenderThemedHero(theme) {
   const hero = theme.hero || {};
   if (hero.type === 'none' || !hero.type) return '';
-  const slide = (hero.slides && hero.slides[0]) || {};
-  if (!slide.image && !slide.heading) return '';
-  return `
-    <section class="shop-theme-hero" style="${slide.image ? `background-image:url('${slide.image}')` : ''}">
+
+  const slides = Array.isArray(hero.slides) ? hero.slides.filter((s) => s && (s.image || s.heading)) : [];
+  if (!slides.length) return '';
+
+  const isSlideshow = hero.type === 'slideshow' && slides.length > 1;
+
+  if (!isSlideshow) {
+    // Single image (or a "slideshow" pick with only one slide configured) —
+    // keep the EXACT original markup so existing hero CSS is untouched.
+    const slide = slides[0];
+    return `
+      <section class="shop-theme-hero" style="${slide.image ? `background-image:url('${slide.image}')` : ''}">
+        <div class="shop-theme-hero__overlay"></div>
+        <div class="shop-theme-hero__content">
+          ${slide.heading ? `<h1>${escapeHtmlSD(slide.heading)}</h1>` : ''}
+          ${slide.subheading ? `<p>${escapeHtmlSD(slide.subheading)}</p>` : ''}
+          ${slide.buttonText ? `<a href="${slide.buttonLink || '#'}" class="btn btn-primary">${escapeHtmlSD(slide.buttonText)}</a>` : ''}
+        </div>
+      </section>`;
+  }
+
+  ssEnsureHeroSlideshowStyles();
+
+  const slidesHtml = slides.map((slide, i) => `
+    <div class="shop-theme-hero__slide ${i === 0 ? 'active' : ''}" data-slide-index="${i}" style="${slide.image ? `background-image:url('${slide.image}')` : ''}">
       <div class="shop-theme-hero__overlay"></div>
       <div class="shop-theme-hero__content">
         ${slide.heading ? `<h1>${escapeHtmlSD(slide.heading)}</h1>` : ''}
         ${slide.subheading ? `<p>${escapeHtmlSD(slide.subheading)}</p>` : ''}
         ${slide.buttonText ? `<a href="${slide.buttonLink || '#'}" class="btn btn-primary">${escapeHtmlSD(slide.buttonText)}</a>` : ''}
       </div>
+    </div>`).join('');
+
+  const dotsHtml = `
+    <div class="shop-theme-hero__dots">
+      ${slides.map((_, i) => `<button type="button" class="shop-theme-hero__dot ${i === 0 ? 'active' : ''}" data-dot-index="${i}" aria-label="Go to slide ${i + 1}"></button>`).join('')}
+    </div>`;
+
+  return `
+    <section class="shop-theme-hero" data-hero-mode="slideshow">
+      ${slidesHtml}
+      ${dotsHtml}
     </section>`;
+}
+
+// Wires up dot-click navigation + autoplay for a rendered slideshow hero.
+// Safe no-op for single-image heroes (no [data-hero-mode="slideshow"] in
+// the DOM) and clears any previous interval first so re-rendering the
+// themed shop never stacks up multiple timers.
+function ssInitHeroSlideshow() {
+  if (ssHeroSlideshowInterval) {
+    clearInterval(ssHeroSlideshowInterval);
+    ssHeroSlideshowInterval = null;
+  }
+
+  const section = document.querySelector('.shop-theme-hero[data-hero-mode="slideshow"]');
+  if (!section) return;
+
+  const slideEls = section.querySelectorAll('.shop-theme-hero__slide');
+  const dotEls = section.querySelectorAll('.shop-theme-hero__dot');
+  if (slideEls.length <= 1) return;
+
+  let current = 0;
+
+  function goToSlide(index) {
+    current = ((index % slideEls.length) + slideEls.length) % slideEls.length;
+    slideEls.forEach((el, i) => el.classList.toggle('active', i === current));
+    dotEls.forEach((el, i) => el.classList.toggle('active', i === current));
+  }
+
+  function resetAutoplay() {
+    if (ssHeroSlideshowInterval) clearInterval(ssHeroSlideshowInterval);
+    ssHeroSlideshowInterval = setInterval(() => goToSlide(current + 1), 5000);
+  }
+
+  dotEls.forEach((dot) => {
+    dot.addEventListener('click', () => {
+      goToSlide(Number(dot.dataset.dotIndex));
+      resetAutoplay();
+    });
+  });
+
+  resetAutoplay();
 }
 
 function ssRenderThemedSections(theme) {
@@ -222,6 +338,7 @@ function ssRenderThemedShop(shop) {
   ssRenderShopPassport(shop);
   ssLoadShopProducts();
   ssLoadShopReviews();
+  ssInitHeroSlideshow();
 
   // Re-wire the search/sort controls since we just replaced the DOM they live in.
   // These only exist if the theme actually has an "all_products" section, hence
@@ -241,10 +358,61 @@ function ssRenderThemedShop(shop) {
   document.getElementById('shopThemeSearchForm')?.addEventListener('submit', (e) => {
     e.preventDefault();
     const q = document.getElementById('shopThemeSearch')?.value.trim();
-    if (q) window.location.href = `/product.html?search=${encodeURIComponent(q)}`;
+    if (q) ssHandleThemeHeaderSearch(q);
   });
 
   ssRenderFeaturedProductSections(shop, theme);
+}
+
+// The themed header's search box used to hard-redirect straight to the main
+// site's product listing, no matter what. It should search THIS shop first
+// and only send the customer to the main site if the shop genuinely has
+// nothing matching the query.
+async function ssHandleThemeHeaderSearch(q) {
+  const shop = ssShopDetailState.shop;
+  const shopId = shop && (shop.id || shop._id);
+  const input = document.getElementById('shopThemeSearch');
+  if (input) input.disabled = true;
+
+  try {
+    const res = await SS_API.getProducts({ shop: shopId, search: q, limit: 1 });
+    const total = res.total ?? (res.products ? res.products.length : 0);
+
+    if (total > 0) {
+      // Matches exist in this shop — show them in the shop's own listing
+      // instead of sending the customer away from the shop.
+      ssShopDetailState.search = q;
+      ssShopDetailState.page = 1;
+      ssShopDetailState.sortTouched = true; // keep results in relevance/search order, not shuffled
+
+      const toolbarSearchInput = document.getElementById('shopProductSearchInput');
+      if (toolbarSearchInput) toolbarSearchInput.value = q;
+
+      const grid = document.getElementById('shopProductsGrid');
+      if (grid) {
+        ssLoadShopProducts();
+        const toolbar = document.getElementById('shopProductsToolbar');
+        if (toolbar) toolbar.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        // This theme has no "all products" section to show results in —
+        // there's still a match in the shop, so scope the site-wide search
+        // to this shop rather than losing that result.
+        window.location.href = `/product.html?shop=${encodeURIComponent(shopId)}&search=${encodeURIComponent(q)}`;
+      }
+      return;
+    }
+  } catch (err) {
+    console.error('ssHandleThemeHeaderSearch failed:', err);
+    // Couldn't even check — fall through to the site-wide search below
+    // rather than leaving the customer stuck on a dead search box.
+  } finally {
+    if (input) input.disabled = false;
+  }
+
+  // Nothing found in this shop (or the check failed) — only now do we send
+  // the customer to the main site.
+  ssToast?.(`No matches for "${q}" in this shop — showing results across Six Star Suppliers`);
+  window.location.href = `/product.html?search=${encodeURIComponent(q)}`;
 }
 
 // "Featured products" sections declare productIds — fill them in if present.
