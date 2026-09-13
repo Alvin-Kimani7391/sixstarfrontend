@@ -3486,6 +3486,26 @@ function customizerHeaderSectionHtml(t) {
     </div>
     <label class="customizer-toggle-row"><input type="checkbox" id="custHeaderSticky" ${h.sticky ? "checked" : ""} /> Sticky header</label>
     <label class="customizer-toggle-row"><input type="checkbox" id="custHeaderSearch" ${h.showSearch ? "checked" : ""} /> Show search bar</label>
+
+    <div class="customizer-field">
+      <label>Text after logo <span style="font-weight:400;color:var(--ink-faint,#a89f92);">(tagline / slogan)</span></label>
+      <input type="text" id="custHeaderTagline" maxlength="80" value="${(h.tagline || "").replace(/"/g, "&quot;")}" placeholder="e.g. Quality produce, delivered fresh" />
+    </div>
+    <div class="customizer-color-row" style="margin-bottom:10px;">
+      <div class="customizer-color-field">
+        <input type="color" id="custHeaderTaglineColor" value="${h.taglineColor || "#7a7268"}" />
+        <span>Tagline color</span>
+      </div>
+    </div>
+    <div class="customizer-field">
+      <label>Tagline size</label>
+      <select id="custHeaderTaglineSize">
+        <option value="small" ${h.taglineSize === "small" ? "selected" : ""}>Small</option>
+        <option value="medium" ${(!h.taglineSize || h.taglineSize === "medium") ? "selected" : ""}>Medium</option>
+        <option value="large" ${h.taglineSize === "large" ? "selected" : ""}>Large</option>
+      </select>
+    </div>
+
     <label class="customizer-toggle-row"><input type="checkbox" id="custAnnounceEnabled" ${ab.enabled ? "checked" : ""} /> Show announcement bar</label>
     <div class="customizer-field">
       <label>Announcement text</label>
@@ -3493,6 +3513,7 @@ function customizerHeaderSectionHtml(t) {
     </div>
   </div>`;
 }
+
 function wireCustomizerHeader() {
   const bind = (id, path, isCheckbox) => {
     const el = document.getElementById(id);
@@ -3511,6 +3532,9 @@ function wireCustomizerHeader() {
   bind("custHeaderStyle", ["style"], false);
   bind("custHeaderSticky", ["sticky"], true);
   bind("custHeaderSearch", ["showSearch"], true);
+  bind("custHeaderTagline", ["tagline"], false);
+  bind("custHeaderTaglineColor", ["taglineColor"], false);
+  bind("custHeaderTaglineSize", ["taglineSize"], false);
   bind("custAnnounceEnabled", ["announcementBar", "enabled"], true);
   bind("custAnnounceText", ["announcementBar", "text"], false);
 }
@@ -3565,6 +3589,8 @@ function customizerHeroSectionHtml(t) {
 // ---- Hero (slides repeater) — REPLACES the old customizerHeroSlideHtml ----
 function customizerHeroSlideHtml(s, i) {
   const hasImage = !!s.image;
+  const align = s.contentAlign || "left";
+  const vpos = s.contentPosition || "middle";
   return `<div class="customizer-repeater-item" data-slide-idx="${i}">
     <button type="button" class="customizer-repeater-remove" data-remove-slide="${i}"><i class="fa-solid fa-xmark"></i></button>
 
@@ -3592,10 +3618,40 @@ function customizerHeroSlideHtml(s, i) {
     <div class="customizer-field"><label>Subheading</label><input type="text" data-slide-field="subheading" data-slide-idx="${i}" value="${(s.subheading || "").replace(/"/g, "&quot;")}" /></div>
     <div class="customizer-field"><label>Button text</label><input type="text" data-slide-field="buttonText" data-slide-idx="${i}" value="${(s.buttonText || "").replace(/"/g, "&quot;")}" /></div>
     <div class="customizer-field"><label>Button link</label><input type="text" data-slide-field="buttonLink" data-slide-idx="${i}" value="${(s.buttonLink || "").replace(/"/g, "&quot;")}" /></div>
+
+    <div class="customizer-field">
+      <label>Text alignment</label>
+      <div class="customizer-align-group">
+        <button type="button" class="customizer-align-btn ${align === "left" ? "active" : ""}" data-slide-align="${i}" data-align-val="left" title="Left"><i class="fa-solid fa-align-left"></i></button>
+        <button type="button" class="customizer-align-btn ${align === "center" ? "active" : ""}" data-slide-align="${i}" data-align-val="center" title="Center"><i class="fa-solid fa-align-center"></i></button>
+        <button type="button" class="customizer-align-btn ${align === "right" ? "active" : ""}" data-slide-align="${i}" data-align-val="right" title="Right"><i class="fa-solid fa-align-right"></i></button>
+      </div>
+    </div>
+    <div class="customizer-field">
+      <label>Vertical position</label>
+      <div class="customizer-align-group">
+        <button type="button" class="customizer-align-btn ${vpos === "top" ? "active" : ""}" data-slide-vpos="${i}" data-vpos-val="top" title="Top"><i class="fa-solid fa-arrow-up-to-line"></i></button>
+        <button type="button" class="customizer-align-btn ${vpos === "middle" ? "active" : ""}" data-slide-vpos="${i}" data-vpos-val="middle" title="Middle"><i class="fa-solid fa-arrows-up-down"></i></button>
+        <button type="button" class="customizer-align-btn ${vpos === "bottom" ? "active" : ""}" data-slide-vpos="${i}" data-vpos-val="bottom" title="Bottom"><i class="fa-solid fa-arrow-down-to-line"></i></button>
+      </div>
+    </div>
+    <div class="customizer-field">
+      <label>Heading size</label>
+      <select data-slide-field="headingSize" data-slide-idx="${i}">
+        <option value="small" ${s.headingSize === "small" ? "selected" : ""}>Small</option>
+        <option value="medium" ${s.headingSize === "medium" ? "selected" : ""}>Medium</option>
+        <option value="large" ${(!s.headingSize || s.headingSize === "large") ? "selected" : ""}>Large</option>
+      </select>
+    </div>
+    <div class="customizer-color-row">
+      <div class="customizer-color-field"><input type="color" data-slide-field="headingColor" data-slide-idx="${i}" value="${s.headingColor || "#ffffff"}" /><span>Heading</span></div>
+      <div class="customizer-color-field"><input type="color" data-slide-field="subheadingColor" data-slide-idx="${i}" value="${s.subheadingColor || "#ffffff"}" /><span>Subheading</span></div>
+      <div class="customizer-color-field"><input type="color" data-slide-field="buttonBgColor" data-slide-idx="${i}" value="${s.buttonBgColor || "#f2a93b"}" /><span>Button</span></div>
+      <div class="customizer-color-field"><input type="color" data-slide-field="buttonTextColor" data-slide-idx="${i}" value="${s.buttonTextColor || "#16324f"}" /><span>Button text</span></div>
+    </div>
   </div>`;
 }
 
-// ---- REPLACES the old wireCustomizerHero ----
 function wireCustomizerHero() {
   document.getElementById("custHeroType")?.addEventListener("change", (e) => {
     pendingCustomizerTheme.hero = pendingCustomizerTheme.hero || {};
@@ -3603,15 +3659,32 @@ function wireCustomizerHero() {
     scheduleCustomizerPreviewRefresh();
   });
 
-  // Text fields (heading / subheading / buttonText / buttonLink / the
-  // fallback URL input, which shares the same data-slide-field="image").
   document.querySelectorAll("[data-slide-field]").forEach((input) => {
-    input.addEventListener("input", () => {
+    const evt = input.tagName === "SELECT" ? "change" : "input";
+    input.addEventListener(evt, () => {
       const idx = Number(input.dataset.slideIdx);
       pendingCustomizerTheme.hero.slides[idx][input.dataset.slideField] = input.value;
       if (input.dataset.slideField === "image") {
         updateSlideImagePreview(idx, input.value);
       }
+      scheduleCustomizerPreviewRefresh();
+    });
+  });
+
+  document.querySelectorAll("[data-slide-align]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const idx = Number(btn.dataset.slideAlign);
+      pendingCustomizerTheme.hero.slides[idx].contentAlign = btn.dataset.alignVal;
+      renderCustomizerPanel();
+      scheduleCustomizerPreviewRefresh();
+    });
+  });
+
+  document.querySelectorAll("[data-slide-vpos]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const idx = Number(btn.dataset.slideVpos);
+      pendingCustomizerTheme.hero.slides[idx].contentPosition = btn.dataset.vposVal;
+      renderCustomizerPanel();
       scheduleCustomizerPreviewRefresh();
     });
   });
@@ -3628,12 +3701,16 @@ function wireCustomizerHero() {
     pendingCustomizerTheme.hero = pendingCustomizerTheme.hero || { slides: [] };
     pendingCustomizerTheme.hero.slides = pendingCustomizerTheme.hero.slides || [];
     if (pendingCustomizerTheme.hero.slides.length >= 6) { ssToast("Maximum 6 slides", "fa-triangle-exclamation"); return; }
-    pendingCustomizerTheme.hero.slides.push({ image: "", heading: "", subheading: "", buttonText: "", buttonLink: "" });
+    pendingCustomizerTheme.hero.slides.push({
+      image: "", heading: "", subheading: "", buttonText: "", buttonLink: "",
+      contentAlign: "left", contentPosition: "middle",
+      headingColor: "#ffffff", subheadingColor: "#ffffff",
+      buttonBgColor: "#f2a93b", buttonTextColor: "#16324f", headingSize: "large",
+    });
     renderCustomizerPanel();
     scheduleCustomizerPreviewRefresh();
   });
 
-  // "Or paste an image URL instead" reveals the plain text field.
   document.querySelectorAll("[data-slide-url-toggle]").forEach((toggle) => {
     toggle.addEventListener("click", () => {
       const idx = toggle.dataset.slideUrlToggle;
@@ -3642,14 +3719,13 @@ function wireCustomizerHero() {
     });
   });
 
-  // Real file upload — picks a photo, uploads it, stores the returned URL.
   document.querySelectorAll("[data-slide-upload-input]").forEach((fileInput) => {
     fileInput.addEventListener("change", async (e) => {
       const idx = Number(fileInput.dataset.slideUploadInput);
       const file = e.target.files?.[0];
       if (!file) return;
       await uploadCustomizerSlideImage(idx, file);
-      e.target.value = ""; // allow re-picking the same file later
+      e.target.value = "";
     });
   });
 }
@@ -3792,8 +3868,44 @@ function wireCustomizerSections() {
 }
 
 // ---- Footer ----
+// NEW — supported social platforms for the footer icon list
+const SOCIAL_PLATFORM_META = {
+  facebook: { label: "Facebook" },
+  instagram: { label: "Instagram" },
+  tiktok: { label: "TikTok" },
+  whatsapp: { label: "WhatsApp" },
+  twitter: { label: "X (Twitter)" },
+  youtube: { label: "YouTube" },
+  linkedin: { label: "LinkedIn" },
+  pinterest: { label: "Pinterest" },
+  telegram: { label: "Telegram" },
+  snapchat: { label: "Snapchat" },
+  threads: { label: "Threads" },
+  website: { label: "Website / other" },
+};
+
+// NEW — one repeater row per social link
+function customizerSocialItemHtml(s, i) {
+  const options = Object.entries(SOCIAL_PLATFORM_META)
+    .map(([key, meta]) => `<option value="${key}" ${s.platform === key ? "selected" : ""}>${meta.label}</option>`)
+    .join("");
+  return `<div class="customizer-repeater-item" data-social-idx="${i}">
+    <button type="button" class="customizer-repeater-remove" data-remove-social="${i}"><i class="fa-solid fa-xmark"></i></button>
+    <div class="customizer-field">
+      <label>Platform</label>
+      <select data-social-field="platform" data-social-idx="${i}">${options}</select>
+    </div>
+    <div class="customizer-field">
+      <label>Link URL</label>
+      <input type="text" data-social-field="url" data-social-idx="${i}" value="${(s.url || "").replace(/"/g, "&quot;")}" placeholder="https://…" />
+    </div>
+  </div>`;
+}
+
 function customizerFooterSectionHtml(t) {
-  const f = t.footer || { columns: [], socialLinks: {} };
+  const f = t.footer || { columns: [], socialLinks: [] };
+  const socials = Array.isArray(f.socialLinks) ? f.socialLinks : [];
+  const copyAlign = f.copyrightAlign || "center";
   return `<div class="customizer-section"><h4><i class="fa-solid fa-shoe-prints"></i> Footer</h4>
     <div class="customizer-field">
       <label>Style</label>
@@ -3802,34 +3914,75 @@ function customizerFooterSectionHtml(t) {
         <option value="expanded" ${f.style === "expanded" ? "selected" : ""}>Expanded (columns)</option>
       </select>
     </div>
+
     <label class="customizer-toggle-row"><input type="checkbox" id="custFooterSocial" ${f.showSocial ? "checked" : ""} /> Show social links</label>
-    <div class="customizer-field"><label>Facebook URL</label><input type="text" id="custSocialFb" value="${(f.socialLinks?.facebook || "").replace(/"/g, "&quot;")}" /></div>
-    <div class="customizer-field"><label>Instagram URL</label><input type="text" id="custSocialIg" value="${(f.socialLinks?.instagram || "").replace(/"/g, "&quot;")}" /></div>
-    <div class="customizer-field"><label>WhatsApp link</label><input type="text" id="custSocialWa" value="${(f.socialLinks?.whatsapp || "").replace(/"/g, "&quot;")}" /></div>
-    <div class="customizer-field"><label>Copyright text</label><input type="text" id="custFooterCopy" value="${(f.copyrightText || "").replace(/"/g, "&quot;")}" placeholder="© 2026 ${myShop.shopName}" /></div>
+
+    <div id="custSocialLinks">${socials.map((s, i) => customizerSocialItemHtml(s, i)).join("")}</div>
+    <button type="button" class="customizer-add-btn" id="custAddSocialBtn"><i class="fa-solid fa-plus"></i> Add social link</button>
+
+    <div class="customizer-field" style="margin-top:14px;">
+      <label>Copyright text</label>
+      <input type="text" id="custFooterCopy" value="${(f.copyrightText || "").replace(/"/g, "&quot;")}" placeholder="© 2026 ${myShop.shopName}" />
+    </div>
+    <div class="customizer-field">
+      <label>Copyright text position</label>
+      <div class="customizer-align-group">
+        <button type="button" class="customizer-align-btn ${copyAlign === "left" ? "active" : ""}" data-footer-copy-align="left" title="Left"><i class="fa-solid fa-align-left"></i></button>
+        <button type="button" class="customizer-align-btn ${copyAlign === "center" ? "active" : ""}" data-footer-copy-align="center" title="Center"><i class="fa-solid fa-align-center"></i></button>
+        <button type="button" class="customizer-align-btn ${copyAlign === "right" ? "active" : ""}" data-footer-copy-align="right" title="Right"><i class="fa-solid fa-align-right"></i></button>
+      </div>
+    </div>
   </div>`;
 }
+
 function wireCustomizerFooter() {
-  const bind = (id, path, isCheckbox) => {
+  const bind = (id, key, isCheckbox) => {
     const el = document.getElementById(id);
     if (!el) return;
     el.addEventListener(isCheckbox ? "change" : "input", () => {
       pendingCustomizerTheme.footer = pendingCustomizerTheme.footer || {};
-      const val = isCheckbox ? el.checked : el.value;
-      if (path.length === 1) pendingCustomizerTheme.footer[path[0]] = val;
-      else {
-        pendingCustomizerTheme.footer[path[0]] = pendingCustomizerTheme.footer[path[0]] || {};
-        pendingCustomizerTheme.footer[path[0]][path[1]] = val;
-      }
+      pendingCustomizerTheme.footer[key] = isCheckbox ? el.checked : el.value;
       scheduleCustomizerPreviewRefresh();
     });
   };
-  bind("custFooterStyle", ["style"], false);
-  bind("custFooterSocial", ["showSocial"], true);
-  bind("custSocialFb", ["socialLinks", "facebook"], false);
-  bind("custSocialIg", ["socialLinks", "instagram"], false);
-  bind("custSocialWa", ["socialLinks", "whatsapp"], false);
-  bind("custFooterCopy", ["copyrightText"], false);
+  bind("custFooterStyle", "style", false);
+  bind("custFooterSocial", "showSocial", true);
+  bind("custFooterCopy", "copyrightText", false);
+
+  document.querySelectorAll("[data-footer-copy-align]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      pendingCustomizerTheme.footer = pendingCustomizerTheme.footer || {};
+      pendingCustomizerTheme.footer.copyrightAlign = btn.dataset.footerCopyAlign;
+      renderCustomizerPanel();
+      scheduleCustomizerPreviewRefresh();
+    });
+  });
+
+  document.querySelectorAll("[data-social-field]").forEach((input) => {
+    const evt = input.tagName === "SELECT" ? "change" : "input";
+    input.addEventListener(evt, () => {
+      const idx = Number(input.dataset.socialIdx);
+      pendingCustomizerTheme.footer.socialLinks[idx][input.dataset.socialField] = input.value;
+      scheduleCustomizerPreviewRefresh();
+    });
+  });
+
+  document.querySelectorAll("[data-remove-social]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      pendingCustomizerTheme.footer.socialLinks.splice(Number(btn.dataset.removeSocial), 1);
+      renderCustomizerPanel();
+      scheduleCustomizerPreviewRefresh();
+    });
+  });
+
+  document.getElementById("custAddSocialBtn")?.addEventListener("click", () => {
+    pendingCustomizerTheme.footer = pendingCustomizerTheme.footer || {};
+    pendingCustomizerTheme.footer.socialLinks = pendingCustomizerTheme.footer.socialLinks || [];
+    if (pendingCustomizerTheme.footer.socialLinks.length >= 10) { ssToast("Maximum 10 social links", "fa-triangle-exclamation"); return; }
+    pendingCustomizerTheme.footer.socialLinks.push({ platform: "facebook", url: "" });
+    renderCustomizerPanel();
+    scheduleCustomizerPreviewRefresh();
+  });
 }
 
 async function saveCustomizerTheme() {
