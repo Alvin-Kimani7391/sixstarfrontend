@@ -263,6 +263,18 @@ const SS_API = (() => {
       return request("/shops/my-shop/toggle-active", { method: "PATCH", requiresAuth: true });
     },
 
+
+
+    uploadShopThemeImage(file) {
+      const fd = new FormData();
+      fd.append("image", file);
+      return request("/shops/my-shop/theme-image", {
+        method: "POST",
+        body: fd,
+        isForm: true,
+        requiresAuth: true,
+      });
+    },
     // ============================================================
     // SELLER VERIFICATION (onboarding gate — must be approved before
     // the seller dashboard is accessible)

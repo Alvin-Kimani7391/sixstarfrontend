@@ -1058,3 +1058,125 @@ body.shop-theme-active { background: var(--shop-bg, #fbf3e7); color: var(--shop-
   border-top:1px solid rgba(255,255,255,.12); padding:14px 24px; display:flex; justify-content:space-between;
   flex-wrap:wrap; gap:8px; font-size:11.5px; opacity:.75; max-width:1200px; margin:0 auto;
 }
+
+
+
+
+
+
+
+/* ============================================================
+   APPEND THIS TO THE END OF css/shop.css
+   Fixes: custom-themed shops were still showing the site-wide
+   header/footer underneath their own themed header/footer.
+   shop-detail.js now also hides these via JS (belt + suspenders —
+   CSS covers any flash-of-old-header before JS runs).
+   ============================================================ */
+
+body.shop-theme-active #site-header,
+body.shop-theme-active #site-footer,
+body.shop-theme-active #wa-float {
+  display: none !important;
+}
+
+/* Themed shop owns the full viewport now that the site chrome is gone */
+body.shop-theme-active {
+  min-height: 100vh;
+}
+
+/* ============================================================
+   Customizer — premium polish (seller-dashboard.html)
+   Two-pane layout: settings panel on the left, live iframe
+   preview on the right. Add this if it's not already present.
+   ============================================================ */
+.customizer-mode-row {
+  display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 20px;
+}
+.customizer-mode-card {
+  flex: 1; min-width: 220px; display: flex; gap: 12px; align-items: flex-start;
+  padding: 16px; border: 1.5px solid var(--line, #e4d6bd); border-radius: 14px;
+  cursor: pointer; transition: .2s ease; background: var(--white, #fff);
+}
+.customizer-mode-card:hover { border-color: var(--marigold, #f2a93b); }
+.customizer-mode-card.active { border-color: var(--marigold, #f2a93b); background: rgba(242,169,59,.06); box-shadow: 0 4px 16px rgba(242,169,59,.12); }
+.customizer-mode-card__icon {
+  width: 40px; height: 40px; border-radius: 50%; background: rgba(242,169,59,.14);
+  color: var(--marigold-deep, #d98c1f); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;
+}
+.customizer-mode-card__title { font-weight: 700; font-size: 14px; margin-bottom: 3px; }
+.customizer-mode-card__desc { font-size: 12px; color: var(--ink-soft, #7a7268); line-height: 1.5; }
+
+.customizer-layout { display: flex; gap: 20px; align-items: flex-start; }
+.customizer-panel {
+  flex: 0 0 380px; max-width: 380px; max-height: 78vh; overflow-y: auto;
+  padding-right: 6px;
+}
+.customizer-preview {
+  flex: 1; min-width: 0; position: sticky; top: 12px;
+  border: 1px solid var(--line, #e4d6bd); border-radius: 16px; overflow: hidden;
+  background: var(--white, #fff); box-shadow: 0 10px 30px rgba(0,0,0,.06);
+}
+.customizer-preview__bar {
+  padding: 9px 14px; font-size: 12px; font-weight: 700; color: var(--ink-soft, #7a7268);
+  border-bottom: 1px solid var(--line, #e4d6bd); display: flex; align-items: center; gap: 7px;
+  background: var(--paper-dim, #f1e4ce);
+}
+.customizer-preview iframe { width: 100%; height: 74vh; border: none; display: block; background: #fff; }
+
+@media (max-width: 960px) {
+  .customizer-layout { flex-direction: column; }
+  .customizer-panel { flex: none; max-width: 100%; max-height: none; }
+  .customizer-preview { position: static; }
+  .customizer-preview iframe { height: 60vh; }
+}
+
+.customizer-section {
+  border: 1px solid var(--line, #e4d6bd); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; background: var(--white, #fff);
+}
+.customizer-section h4 { font-size: 13px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--navy-deep, #16324f); }
+.customizer-section h4 i { color: var(--marigold-deep, #d98c1f); }
+.customizer-field { margin-bottom: 10px; }
+.customizer-field label { display: block; font-size: 11.5px; font-weight: 600; color: var(--ink-soft, #7a7268); margin-bottom: 4px; }
+.customizer-field input[type="text"],
+.customizer-field select,
+.customizer-field textarea {
+  width: 100%; padding: 8px 10px; border: 1px solid var(--line, #e4d6bd); border-radius: 8px; font-size: 12.5px; font-family: inherit;
+}
+.customizer-toggle-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; margin-bottom: 10px; }
+
+.customizer-color-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.customizer-color-field { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.customizer-color-field input[type="color"] { width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line, #e4d6bd); padding: 2px; cursor: pointer; }
+.customizer-color-field span { font-size: 10px; color: var(--ink-soft, #7a7268); font-weight: 600; }
+
+.customizer-repeater-item {
+  position: relative; border: 1px dashed var(--line, #e4d6bd); border-radius: 10px; padding: 12px; margin-bottom: 10px; background: var(--paper-dim, #f1e4ce);
+}
+.customizer-repeater-remove {
+  position: absolute; top: 8px; right: 8px; width: 22px; height: 22px; border-radius: 50%; border: none;
+  background: rgba(224,80,80,.14); color: #b13a3a; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 11px;
+}
+.customizer-add-btn {
+  display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%;
+  padding: 9px; border: 1.5px dashed var(--marigold, #f2a93b); border-radius: 10px; background: transparent;
+  color: var(--marigold-deep, #d98c1f); font-weight: 700; font-size: 12.5px; cursor: pointer;
+}
+.customizer-add-btn:hover { background: rgba(242,169,59,.08); }
+
+/* Image-upload field (hero slide images, etc.) — replaces plain URL inputs */
+.customizer-image-field { display: flex; gap: 10px; align-items: center; }
+.customizer-image-field__preview {
+  width: 56px; height: 56px; border-radius: 8px; overflow: hidden; flex-shrink: 0;
+  background: var(--white, #fff); border: 1px solid var(--line, #e4d6bd);
+  display: flex; align-items: center; justify-content: center; color: var(--ink-faint, #a89f92); font-size: 16px;
+}
+.customizer-image-field__preview img { width: 100%; height: 100%; object-fit: cover; }
+.customizer-image-field__btns { display: flex; flex-direction: column; gap: 5px; flex: 1; }
+.customizer-image-field__upload-btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 7px 11px; border-radius: 8px;
+  border: 1px solid var(--line, #e4d6bd); background: var(--white, #fff); font-size: 11.5px; font-weight: 700;
+  color: var(--navy-deep, #16324f); cursor: pointer;
+}
+.customizer-image-field__upload-btn:hover { border-color: var(--marigold, #f2a93b); }
+.customizer-image-field__upload-btn.uploading { opacity: .6; pointer-events: none; }
+.customizer-image-field__url-toggle { font-size: 10.5px; color: var(--ink-faint, #a89f92); text-decoration: underline; cursor: pointer; background: none; border: none; padding: 0; text-align: left; }

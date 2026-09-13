@@ -3531,29 +3531,91 @@ function customizerHeroSectionHtml(t) {
     <button type="button" class="customizer-add-btn" id="custAddSlideBtn"><i class="fa-solid fa-plus"></i> Add slide</button>
   </div>`;
 }
+/* ============================================================
+   DROP-IN PATCH for js/seller-dashboard.js
+
+   WHAT TO DO:
+   1. Find `function customizerHeroSlideHtml(s, i) { ... }` in your
+      seller-dashboard.js and REPLACE the whole function with the
+      version below.
+   2. Find `function wireCustomizerHero() { ... }` and REPLACE the
+      whole function with the version below.
+   3. Add the two new helper functions below them anywhere in the
+      same file (right after wireCustomizerHero is a good spot).
+
+   WHAT THIS CHANGES:
+   - The hero slide "Image URL" plain text field is replaced with an
+     upload button + live thumbnail preview. Picking a photo uploads
+     it immediately to POST /api/shops/my-shop/theme-image and stores
+     the returned Cloudinary URL in the slide, exactly like logo/
+     banner uploads already work elsewhere in this dashboard.
+   - A small "Or paste an image URL instead" link is kept underneath
+     for sellers who already have a hosted image elsewhere — nothing
+     is removed, just no longer the primary/only path.
+   - Reuses the existing scheduleCustomizerPreviewRefresh() so the
+     live iframe preview updates the moment the upload finishes.
+
+   Requires:
+   - css/shop.css to include the ".customizer-image-field*" rules
+     from shop-theme-append.css (already provided).
+   - SS_API.uploadShopThemeImage(file) to exist in js/api.js (see
+     api-js-patch-snippet.js — already provided).
+   ============================================================ */
+
+// ---- Hero (slides repeater) — REPLACES the old customizerHeroSlideHtml ----
 function customizerHeroSlideHtml(s, i) {
+  const hasImage = !!s.image;
   return `<div class="customizer-repeater-item" data-slide-idx="${i}">
     <button type="button" class="customizer-repeater-remove" data-remove-slide="${i}"><i class="fa-solid fa-xmark"></i></button>
-    <div class="customizer-field"><label>Image URL</label><input type="text" data-slide-field="image" data-slide-idx="${i}" value="${(s.image || "").replace(/"/g, "&quot;")}" placeholder="https://…" /></div>
+
+    <div class="customizer-field">
+      <label>Slide image</label>
+      <div class="customizer-image-field">
+        <div class="customizer-image-field__preview" data-slide-preview="${i}">
+          ${hasImage ? `<img src="${s.image}" alt="">` : `<i class="fa-solid fa-image"></i>`}
+        </div>
+        <div class="customizer-image-field__btns">
+          <label class="customizer-image-field__upload-btn" data-slide-upload-btn="${i}">
+            <i class="fa-solid fa-upload"></i> ${hasImage ? "Replace photo" : "Upload photo"}
+            <input type="file" accept="image/png,image/jpeg,image/webp" data-slide-upload-input="${i}" style="display:none;" />
+          </label>
+          <button type="button" class="customizer-image-field__url-toggle" data-slide-url-toggle="${i}">
+            Or paste an image URL instead
+          </button>
+        </div>
+      </div>
+      <input type="text" data-slide-field="image" data-slide-idx="${i}" value="${(s.image || "").replace(/"/g, "&quot;")}"
+        placeholder="https://…" style="display:none;margin-top:8px;" data-slide-url-input="${i}" />
+    </div>
+
     <div class="customizer-field"><label>Heading</label><input type="text" data-slide-field="heading" data-slide-idx="${i}" value="${(s.heading || "").replace(/"/g, "&quot;")}" /></div>
     <div class="customizer-field"><label>Subheading</label><input type="text" data-slide-field="subheading" data-slide-idx="${i}" value="${(s.subheading || "").replace(/"/g, "&quot;")}" /></div>
     <div class="customizer-field"><label>Button text</label><input type="text" data-slide-field="buttonText" data-slide-idx="${i}" value="${(s.buttonText || "").replace(/"/g, "&quot;")}" /></div>
     <div class="customizer-field"><label>Button link</label><input type="text" data-slide-field="buttonLink" data-slide-idx="${i}" value="${(s.buttonLink || "").replace(/"/g, "&quot;")}" /></div>
   </div>`;
 }
+
+// ---- REPLACES the old wireCustomizerHero ----
 function wireCustomizerHero() {
   document.getElementById("custHeroType")?.addEventListener("change", (e) => {
     pendingCustomizerTheme.hero = pendingCustomizerTheme.hero || {};
     pendingCustomizerTheme.hero.type = e.target.value;
     scheduleCustomizerPreviewRefresh();
   });
+
+  // Text fields (heading / subheading / buttonText / buttonLink / the
+  // fallback URL input, which shares the same data-slide-field="image").
   document.querySelectorAll("[data-slide-field]").forEach((input) => {
     input.addEventListener("input", () => {
       const idx = Number(input.dataset.slideIdx);
       pendingCustomizerTheme.hero.slides[idx][input.dataset.slideField] = input.value;
+      if (input.dataset.slideField === "image") {
+        updateSlideImagePreview(idx, input.value);
+      }
       scheduleCustomizerPreviewRefresh();
     });
   });
+
   document.querySelectorAll("[data-remove-slide]").forEach((btn) => {
     btn.addEventListener("click", () => {
       pendingCustomizerTheme.hero.slides.splice(Number(btn.dataset.removeSlide), 1);
@@ -3561,6 +3623,7 @@ function wireCustomizerHero() {
       scheduleCustomizerPreviewRefresh();
     });
   });
+
   document.getElementById("custAddSlideBtn")?.addEventListener("click", () => {
     pendingCustomizerTheme.hero = pendingCustomizerTheme.hero || { slides: [] };
     pendingCustomizerTheme.hero.slides = pendingCustomizerTheme.hero.slides || [];
@@ -3569,6 +3632,76 @@ function wireCustomizerHero() {
     renderCustomizerPanel();
     scheduleCustomizerPreviewRefresh();
   });
+
+  // "Or paste an image URL instead" reveals the plain text field.
+  document.querySelectorAll("[data-slide-url-toggle]").forEach((toggle) => {
+    toggle.addEventListener("click", () => {
+      const idx = toggle.dataset.slideUrlToggle;
+      const urlInput = document.querySelector(`[data-slide-url-input="${idx}"]`);
+      if (urlInput) urlInput.style.display = urlInput.style.display === "none" ? "block" : "none";
+    });
+  });
+
+  // Real file upload — picks a photo, uploads it, stores the returned URL.
+  document.querySelectorAll("[data-slide-upload-input]").forEach((fileInput) => {
+    fileInput.addEventListener("change", async (e) => {
+      const idx = Number(fileInput.dataset.slideUploadInput);
+      const file = e.target.files?.[0];
+      if (!file) return;
+      await uploadCustomizerSlideImage(idx, file);
+      e.target.value = ""; // allow re-picking the same file later
+    });
+  });
+}
+
+// ---- NEW helpers ----
+async function uploadCustomizerSlideImage(idx, file) {
+  if (!file.type.startsWith("image/")) {
+    ssToast("Please choose a JPG, PNG or WEBP image", "fa-triangle-exclamation");
+    return;
+  }
+
+  const btn = document.querySelector(`[data-slide-upload-btn="${idx}"]`);
+  btn?.classList.add("uploading");
+  const originalHtml = btn?.innerHTML;
+  if (btn) btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Uploading…`;
+
+  // Instant local preview while the real upload is in flight.
+  const localPreviewUrl = URL.createObjectURL(file);
+  updateSlideImagePreview(idx, localPreviewUrl);
+
+  try {
+    const res = await SS_API.uploadShopThemeImage(file);
+    pendingCustomizerTheme.hero.slides[idx].image = res.url;
+
+    const urlInput = document.querySelector(`[data-slide-field="image"][data-slide-idx="${idx}"]`);
+    if (urlInput) urlInput.value = res.url;
+
+    updateSlideImagePreview(idx, res.url);
+    ssToast("Image uploaded", "fa-circle-check");
+    scheduleCustomizerPreviewRefresh();
+  } catch (err) {
+    console.error("Theme image upload failed:", err);
+    ssToast(err.message || "Couldn't upload that image", "fa-triangle-exclamation");
+    // Roll the preview back to whatever was actually saved before this attempt.
+    updateSlideImagePreview(idx, pendingCustomizerTheme.hero.slides[idx].image || "");
+  } finally {
+    if (btn) { btn.classList.remove("uploading"); btn.innerHTML = originalHtml; }
+  }
+}
+
+function updateSlideImagePreview(idx, url) {
+  const preview = document.querySelector(`[data-slide-preview="${idx}"]`);
+  if (!preview) return;
+  preview.innerHTML = url ? `<img src="${url}" alt="">` : `<i class="fa-solid fa-image"></i>`;
+  const uploadBtn = document.querySelector(`[data-slide-upload-btn="${idx}"]`);
+  if (uploadBtn) {
+    const icon = uploadBtn.querySelector("i");
+    uploadBtn.childNodes.forEach((n) => {
+      if (n.nodeType === Node.TEXT_NODE) n.textContent = url ? " Replace photo" : " Upload photo";
+    });
+    if (icon) icon.className = "fa-solid fa-upload";
+  }
 }
 
 // ---- Product grid ----
