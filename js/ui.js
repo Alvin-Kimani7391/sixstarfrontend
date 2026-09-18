@@ -696,7 +696,7 @@ function ssRenderFooter() {
   ` : `
     <h4>Sell With Us</h4>
     <a href="/about.html#becoming-a-seller">Become a Seller</a>
-    <a href="/about.html#own-a-shop">Own a Shop</a>
+    <a href="/about.html#affiliate-program">Affiliate Program</a>
     <a href="/six-star-suppliers/login.html ">Seller Login</a>
   `;
 
@@ -704,7 +704,7 @@ function ssRenderFooter() {
     <div class="footer-grid">
       <div>
         <h4>Customer Service</h4>
-        <a href="/contact.html">Contact Us / Visit Us</a>
+        <a href="/contact.html">Contact Us</a>
         <a href="/about.html#faq">FAQs</a>
         <a href="/profile.html#panel-orders">Track My Order</a>
       </div>
