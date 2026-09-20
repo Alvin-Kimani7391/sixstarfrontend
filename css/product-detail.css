@@ -13,13 +13,23 @@
      1. Resets & local tokens
      2. Badges / title row / share
      3. Seller line, rating, stock
-     4. Description card                 (NEW — redesigned)
-     5. Specifications grid              (NEW — redesigned)
-     6. Buy box (qty + add to cart/buy)  (NEW — redesigned)
+     4. Description card
+     5. Specifications grid
+     6. Buy box (qty + add to cart/buy now)
      7. Wholesale terms panel
      8. Variant picker
      9. Related products
     10. Share popover
+    11. Gallery track / expand / lightbox
+    12. SSR crawler text
+   NEW — appended at the bottom of this file:
+    13. Breadcrumb trail + Back button
+    14. Button micro-animations (ripple, "Added ✓", loading)
+    15. Sticky buy bar
+    16. Floating buttons make room for the sticky bar
+    17. Variant "please choose" nudge
+    18. Dark-mode versions of everything new
+    19. Reduced motion
    ============================================================ */
 
 /* ---------------------------------------------------------- */
@@ -48,7 +58,9 @@
   #pdContent .pd-wrap { grid-template-columns: 1.15fr 0.85fr; gap: 44px; }
   #pdContent .pd-wrap > div:last-child {
     position: sticky;
-    top: 20px;
+    /* was a flat 20px, which slid the column UNDER the sticky site header.
+       --siteHeaderH is kept in sync by ui.js (ssSyncHeaderHeightVar). */
+    top: calc(var(--siteHeaderH, 96px) + 16px);
   }
 }
 
@@ -188,7 +200,7 @@
 .pd-stock-row.out span { color: var(--danger, #D64545); }
 
 /* ---------------------------------------------------------- */
-/* 4. Description card — NEW                                   */
+/* 4. Description card                                          */
 /* ---------------------------------------------------------- */
 .pd-description-card {
   margin: 22px 0;
@@ -235,7 +247,7 @@
 .pd-desc-toggle.open i { transform: rotate(180deg); }
 
 /* ---------------------------------------------------------- */
-/* 5. Specifications — NEW spec-sheet grid                      */
+/* 5. Specifications — spec-sheet grid                          */
 /* ---------------------------------------------------------- */
 .pd-specs { margin: 22px 0; }
 .pd-specs__head {
@@ -303,7 +315,9 @@
    wholesale terms, and variant picker, exactly where the flow
    naturally lands on a decision. On desktop this column is
    sticky (see section 0), so it's what stays on screen while
-   the reader scrolls the description below. */
+   the reader scrolls the description below.
+   NEW: #pdPurchasePanel is what the sticky bar's
+   IntersectionObserver watches. */
 .pd-purchase-panel {
   margin: 18px 0 0;
   padding: 16px 18px;
@@ -399,6 +413,8 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
+  position: relative;   /* NEW — anchors the tap ripple */
+  overflow: hidden;     /* NEW — clips the ripple to the button */
 }
 
 .trust-row {
@@ -765,7 +781,7 @@
 
 
 /* ============================================================
-   NEW — expand icon + full-screen image lightbox
+   expand icon + full-screen image lightbox
    ============================================================ */
 
 /* Small "view full size" icon, bottom-right of the main image */
@@ -969,9 +985,12 @@ body.pd-lightbox-open { overflow: hidden; }
 
 
 
-/* SSR crawler-fallback text — present in the HTML for search engines
-   and no-JS clients, but never visible to a normal visitor once the
-   real, styled #pdContent has rendered. */
+/* ---------------------------------------------------------- */
+/* 12. SSR crawler-fallback text — present in the HTML for      */
+/*     search engines and no-JS clients, but never visible to a */
+/*     normal visitor once the real, styled #pdContent has      */
+/*     rendered.                                                 */
+/* ---------------------------------------------------------- */
 .ssr-visually-hidden {
   position: absolute;
   width: 1px;
@@ -982,4 +1001,579 @@ body.pd-lightbox-open { overflow: hidden; }
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+
+
+
+/* ============================================================
+   ============================================================
+   NEW ADDITIONS START HERE
+   ============================================================
+   ============================================================ */
+
+:root {
+  --pd-sticky-h: 78px;                 /* bar height incl. its bottom gap (safe-area added separately) */
+  --pd-spring: cubic-bezier(.34, 1.45, .5, 1);   /* gentle overshoot — "settles" into place */
+  --pd-ease-out: cubic-bezier(.22, 1, .36, 1);
+}
+
+/* ---------------------------------------------------------- */
+/* 13. Breadcrumb trail + Back button                           */
+/* ---------------------------------------------------------- */
+.pd-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 0 0;
+  min-width: 0;
+}
+/* the trail now owns the space above the product grid, so tighten the
+   grid's own top padding (id-level specificity beats style.css's .pd-wrap) */
+#pdCrumbs ~ #pdContent .pd-wrap { padding-top: 14px; }
+
+.pd-crumbs__skel {
+  flex: 0 0 auto;
+  width: 240px;
+  max-width: 70%;
+  height: 34px;
+  border-radius: 999px;
+}
+
+.pd-crumbs__back {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 14px 0 11px;
+  border-radius: 999px;
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  opacity: 0;
+  animation: ssCrumbIn .5s var(--pd-ease-out) .02s forwards;
+  transition: border-color .2s ease, color .2s ease, background .2s ease, transform .15s ease, box-shadow .25s ease;
+}
+.pd-crumbs__back i {
+  font-size: 11px;
+  color: var(--brand-dark, #da5521);
+  transition: transform .3s var(--pd-spring);
+}
+.pd-crumbs__back:hover {
+  border-color: var(--brand, #FF5A1F);
+  color: var(--brand-dark, #da5521);
+  box-shadow: 0 6px 16px -8px rgba(255, 90, 31, .45);
+}
+.pd-crumbs__back:hover i { transform: translateX(-4px); }
+.pd-crumbs__back:active { transform: scale(.94); }
+.pd-crumbs.is-static .pd-crumbs__back { animation: none; opacity: 1; }
+
+.pd-crumbs__list {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 4px 2px;
+  overflow-x: auto;
+  white-space: nowrap;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.pd-crumbs__list::-webkit-scrollbar { display: none; }
+/* soft edge fades — only on the side that actually has more to scroll to */
+.pd-crumbs__list.fade-l {
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 26px);
+  mask-image: linear-gradient(90deg, transparent 0, #000 26px);
+}
+.pd-crumbs__list.fade-r {
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 26px), transparent 100%);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 26px), transparent 100%);
+}
+.pd-crumbs__list.fade-l.fade-r {
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 26px, #000 calc(100% - 26px), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 26px, #000 calc(100% - 26px), transparent 100%);
+}
+
+.pd-crumbs__item {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  min-width: 0;
+  opacity: 0;
+  animation: ssCrumbIn .5s var(--pd-ease-out) forwards;
+  animation-delay: calc(var(--i, 0) * 55ms + 90ms);
+}
+.pd-crumbs.is-static .pd-crumbs__item { animation: none; opacity: 1; }
+.pd-crumbs__item:last-child { flex-shrink: 1; }
+
+.pd-crumbs__link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 2px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  transition: color .2s ease;
+}
+.pd-crumbs__link i { font-size: 11px; }
+.pd-crumbs__link::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  bottom: 2px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--brand, #FF5A1F);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform .3s var(--pd-ease-out);
+}
+.pd-crumbs__link:hover { color: var(--brand-dark, #da5521); }
+.pd-crumbs__link:hover::after { transform: scaleX(1); }
+
+.pd-crumbs__sep {
+  margin: 0 8px;
+  font-size: 8.5px;
+  color: var(--ink-faint);
+  flex-shrink: 0;
+}
+
+.pd-crumbs__current {
+  display: block;
+  padding: 6px 2px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink);
+  max-width: min(52vw, 360px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes ssCrumbIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (max-width: 599px) {
+  .pd-crumbs { padding-top: 12px; gap: 8px; }
+  .pd-crumbs__back { height: 32px; padding: 0 12px 0 9px; }
+  .pd-crumbs__back span { font-size: 12px; }
+  .pd-crumbs__link, .pd-crumbs__current { font-size: 12px; }
+  .pd-crumbs__sep { margin: 0 6px; }
+}
+
+/* ---------------------------------------------------------- */
+/* 14. Button micro-animations                                   */
+/* ---------------------------------------------------------- */
+
+/* tap ripple (injected by product-detail.js → attachRipple) */
+.pd-ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .42);
+  transform: scale(0);
+  opacity: 1;
+  pointer-events: none;
+  animation: ssPdRipple .65s ease-out forwards;
+}
+@keyframes ssPdRipple {
+  to { transform: scale(1); opacity: 0; }
+}
+
+/* "Added ✓" state — used on the main Add button and the sticky one */
+.pd-actions .btn.is-added,
+.pd-sticky__btn.is-added {
+  background: linear-gradient(135deg, #14b35c, #0C7A3F);
+  color: #fff;
+  box-shadow: 0 10px 22px -10px rgba(18, 161, 80, .7);
+  animation: ssPdAddedPulse .55s var(--pd-ease-out);
+}
+.pd-actions .btn.is-added i,
+.pd-sticky__btn.is-added i {
+  animation: ssPdCheckPop .5s var(--pd-spring);
+}
+@keyframes ssPdAddedPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(18, 161, 80, .55); }
+  100% { box-shadow: 0 0 0 14px rgba(18, 161, 80, 0); }
+}
+@keyframes ssPdCheckPop {
+  0%   { transform: scale(0) rotate(-40deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+
+/* loading state — "Buy now" while the page hands off to the cart */
+.pd-actions .btn.is-loading,
+.pd-sticky__btn.is-loading {
+  pointer-events: none;
+  opacity: .9;
+}
+.pd-actions .btn.is-loading i,
+.pd-sticky__btn.is-loading i { display: none; }
+.pd-actions .btn.is-loading::before,
+.pd-sticky__btn.is-loading::before {
+  content: "";
+  width: 16px;
+  height: 16px;
+  border: 2.5px solid rgba(255, 255, 255, .35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: ssSpin .7s linear infinite; /* defined in style.css */
+}
+
+/* ---------------------------------------------------------- */
+/* 15. Sticky buy bar                                            */
+/*     Floating "island" pinned to the bottom. Hidden by         */
+/*     default (off-screen + visibility:hidden so it can't be    */
+/*     focused); .is-visible is toggled by product-detail.js.    */
+/* ---------------------------------------------------------- */
+.pd-sticky {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9990;                       /* under header (9998), drawer, lightbox, share sheet */
+  padding: 0 10px calc(10px + env(safe-area-inset-bottom, 0px));
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(calc(100% + 28px));
+  transition:
+    transform .38s cubic-bezier(.5, 0, .75, 0),
+    opacity .25s ease,
+    visibility 0s linear .38s;
+}
+.pd-sticky:empty { display: none; }
+
+.pd-sticky.is-visible {
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+  transition:
+    transform .6s var(--pd-spring),
+    opacity .3s ease,
+    visibility 0s;
+}
+
+.pd-sticky__inner {
+  position: relative;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 10px 10px 10px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, .92);
+  -webkit-backdrop-filter: saturate(180%) blur(16px);
+  backdrop-filter: saturate(180%) blur(16px);
+  box-shadow:
+    0 -4px 24px -6px rgba(23, 24, 28, .14),
+    0 18px 40px -14px rgba(23, 24, 28, .38);
+}
+
+/* a single light sweep along the top edge when the bar arrives */
+.pd-sticky__edge {
+  position: absolute;
+  top: -1px;
+  left: 22px;
+  right: 22px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--brand, #FF5A1F), var(--sun, #FFC93C), transparent);
+  opacity: 0;
+  transform: scaleX(.15);
+  pointer-events: none;
+}
+.pd-sticky.is-visible .pd-sticky__edge {
+  animation: ssPdEdge 1s .3s ease-out forwards;
+}
+@keyframes ssPdEdge {
+  0%   { opacity: 0; transform: scaleX(.15); }
+  35%  { opacity: 1; transform: scaleX(1); }
+  100% { opacity: 0; transform: scaleX(1); }
+}
+
+.pd-sticky__product {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pd-sticky__thumb {
+  display: none;               /* phones: no room — price + buttons matter more */
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+.pd-sticky__meta { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.pd-sticky__name {
+  display: none;               /* revealed ≥600px */
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pd-sticky__priceline {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.pd-sticky__price {
+  font-family: var(--font-mono);
+  font-size: 15.5px;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -.2px;
+  white-space: nowrap;
+}
+.pd-sticky__price.tick { animation: ssPdTick .34s var(--pd-ease-out); }
+@keyframes ssPdTick {
+  from { opacity: 0; transform: translateY(7px); }
+  to   { opacity: 1; transform: none; }
+}
+.pd-sticky__note {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pd-sticky__note[hidden] { display: none; }
+.pd-sticky__note--pick { color: var(--brand-dark, #da5521); }
+.pd-sticky__note--out  { color: var(--danger, #E23744); }
+
+.pd-sticky__actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+.pd-sticky__btn {
+  position: relative;
+  overflow: hidden;
+  height: 48px;
+  padding: 0 15px;
+  border: none;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: transform .18s var(--pd-ease-out), box-shadow .25s ease, filter .2s ease, background .3s ease;
+}
+.pd-sticky__btn i { font-size: 14px; display: none; }   /* icons appear ≥430px */
+.pd-sticky__btn:active:not(:disabled) { transform: scale(.95); }
+.pd-sticky__btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.pd-sticky__btn--add {
+  color: #fff;
+  background: var(--grad-brand-deep, linear-gradient(135deg, #FF5A1F, #da5521));
+  box-shadow: 0 10px 20px -10px rgba(224, 70, 0, .65);
+}
+.pd-sticky__btn--add:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 14px 26px -10px rgba(224, 70, 0, .75); }
+
+.pd-sticky__btn--buy {
+  color: #fff;
+  background: #17181C;
+  box-shadow: 0 10px 20px -12px rgba(0, 0, 0, .6);
+}
+.pd-sticky__btn--buy:hover:not(:disabled) { transform: translateY(-2px); background: #000; }
+
+/* buttons rise in one after another when the bar appears
+   (backwards fill only, so hover/active transforms still work afterwards) */
+.pd-sticky.is-visible .pd-sticky__btn--add { animation: ssPdBtnIn .55s .14s var(--pd-spring) backwards; }
+.pd-sticky.is-visible .pd-sticky__btn--buy { animation: ssPdBtnIn .55s .24s var(--pd-spring) backwards; }
+.pd-sticky.is-visible .pd-sticky__product  { animation: ssPdFadeIn .45s .1s ease backwards; }
+/* higher specificity so the "Added ✓" pulse still wins over the entrance animation */
+.pd-sticky.is-visible .pd-sticky__btn.is-added { animation: ssPdAddedPulse .55s var(--pd-ease-out); }
+@keyframes ssPdBtnIn {
+  from { opacity: 0; transform: translateY(14px) scale(.92); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes ssPdFadeIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (min-width: 430px) {
+  .pd-sticky__thumb { display: block; }
+  .pd-sticky__btn i { display: inline-block; }
+}
+@media (min-width: 600px) {
+  .pd-sticky { padding-left: 16px; padding-right: 16px; }
+  .pd-sticky__inner { padding: 10px 10px 10px 14px; gap: 16px; }
+  .pd-sticky__name { display: block; }
+  .pd-sticky__priceline { flex-direction: row; align-items: baseline; gap: 10px; }
+  .pd-sticky__price { font-size: 16.5px; }
+  .pd-sticky__btn { padding: 0 22px; font-size: 14px; }
+}
+/* very small phones: keep both buttons on screen */
+@media (max-width: 359px) {
+  .pd-sticky { padding-left: 6px; padding-right: 6px; }
+  .pd-sticky__inner { gap: 8px; padding-left: 10px; }
+  .pd-sticky__btn { padding: 0 11px; font-size: 12.5px; }
+  .pd-sticky__price { font-size: 14px; }
+}
+
+/* ---------------------------------------------------------- */
+/* 16. Floating buttons make room for the sticky bar             */
+/*     (body.pd-sticky-active is toggled with the bar)           */
+/* ---------------------------------------------------------- */
+.wa-float {
+  transition:
+    bottom .55s var(--pd-spring),
+    transform .25s ease,
+    box-shadow .25s ease;
+}
+.scroll-top-btn {
+  transition:
+    opacity .25s ease,
+    transform .25s ease,
+    background .2s ease,
+    bottom .55s var(--pd-spring);
+}
+body.pd-sticky-active .wa-float,
+body.pd-sticky-active .scroll-top-btn {
+  bottom: calc(var(--pd-sticky-h) + env(safe-area-inset-bottom, 0px) + 6px);
+}
+/* generic toasts (share → "copied", etc.) also clear the bar */
+body.pd-sticky-active #toast {
+  bottom: calc(var(--pd-sticky-h) + env(safe-area-inset-bottom, 0px) + 14px);
+  z-index: 100005;
+}
+
+/* ---------------------------------------------------------- */
+/* 17. Variant "please choose" nudge                              */
+/*     Fired when the sticky bar's button is tapped before a      */
+/*     variant is picked: page scrolls to the picker, which       */
+/*     shakes once and rings.                                     */
+/* ---------------------------------------------------------- */
+#pdVariantPicker.pd-nudge {
+  border-radius: 14px;
+  animation: ssPdNudge .85s ease;
+}
+@keyframes ssPdNudge {
+  0%, 100% { transform: translateX(0); box-shadow: 0 0 0 0 rgba(255, 90, 31, 0); }
+  15%      { transform: translateX(-7px); }
+  30%      { transform: translateX(6px);  box-shadow: 0 0 0 6px rgba(255, 90, 31, .22); }
+  45%      { transform: translateX(-4px); }
+  60%      { transform: translateX(3px); }
+  80%      { transform: translateX(0);    box-shadow: 0 0 0 12px rgba(255, 90, 31, 0); }
+}
+
+/* ---------------------------------------------------------- */
+/* 18. DARK MODE — everything above that isn't already handled  */
+/*     by the shared tokens (--surface/--ink/--line flip on      */
+/*     :root[data-theme="dark"] in style.css)                    */
+/* ---------------------------------------------------------- */
+
+/* breadcrumbs */
+:root[data-theme="dark"] .pd-crumbs__back {
+  background: #1B1C22;
+  border-color: rgba(255, 255, 255, .1);
+}
+:root[data-theme="dark"] .pd-crumbs__back i { color: var(--brand-light, #FF8A5B); }
+:root[data-theme="dark"] .pd-crumbs__back:hover {
+  border-color: var(--brand, #FF5A1F);
+  color: var(--brand-light, #FF8A5B);
+  box-shadow: 0 8px 22px -8px rgba(255, 90, 31, .5);
+}
+:root[data-theme="dark"] .pd-crumbs__link:hover { color: var(--brand-light, #FF8A5B); }
+
+/* sticky bar: smoked glass with a faint brand glow instead of a white card */
+:root[data-theme="dark"] .pd-sticky__inner {
+  background: rgba(23, 24, 29, .9);
+  border-color: rgba(255, 255, 255, .09);
+  box-shadow:
+    0 -6px 30px -8px rgba(0, 0, 0, .7),
+    0 20px 46px -12px rgba(0, 0, 0, .85),
+    0 0 0 1px rgba(255, 90, 31, .1),
+    0 0 42px -16px rgba(255, 90, 31, .45);
+}
+:root[data-theme="dark"] .pd-sticky__thumb {
+  border-color: rgba(255, 255, 255, .12);
+  background: #fff;                     /* product photos are shot on white */
+}
+:root[data-theme="dark"] .pd-sticky__note--pick { color: var(--brand-light, #FF8A5B); }
+:root[data-theme="dark"] .pd-sticky__btn--add {
+  box-shadow: 0 10px 24px -10px rgba(255, 90, 31, .7), 0 0 0 1px rgba(255, 138, 91, .25) inset;
+}
+/* black-on-black would vanish — give "Buy now" a lifted surface + hairline */
+:root[data-theme="dark"] .pd-sticky__btn--buy {
+  background: #25262E;
+  color: #fff;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .16) inset;
+}
+:root[data-theme="dark"] .pd-sticky__btn--buy:hover:not(:disabled) { background: #2E2F38; }
+:root[data-theme="dark"] .pd-ripple { background: rgba(255, 255, 255, .3); }
+
+:root[data-theme="dark"] .pd-actions .btn.is-added,
+:root[data-theme="dark"] .pd-sticky__btn.is-added {
+  background: linear-gradient(135deg, #17b862, #0e8a48);
+  box-shadow: 0 10px 26px -10px rgba(23, 184, 98, .55);
+}
+
+:root[data-theme="dark"] #pdVariantPicker.pd-nudge { animation-name: ssPdNudgeDark; }
+@keyframes ssPdNudgeDark {
+  0%, 100% { transform: translateX(0); box-shadow: 0 0 0 0 rgba(255, 138, 91, 0); }
+  15%      { transform: translateX(-7px); }
+  30%      { transform: translateX(6px);  box-shadow: 0 0 0 6px rgba(255, 138, 91, .3); }
+  45%      { transform: translateX(-4px); }
+  60%      { transform: translateX(3px); }
+  80%      { transform: translateX(0);    box-shadow: 0 0 0 12px rgba(255, 138, 91, 0); }
+}
+
+/* ---------------------------------------------------------- */
+/* 19. Reduced motion — keep the state changes, drop the travel */
+/* ---------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .pd-sticky,
+  .pd-sticky.is-visible {
+    transform: none;
+    transition: opacity .2s ease, visibility 0s;
+  }
+  .pd-sticky:not(.is-visible) { transition: opacity .2s ease, visibility 0s linear .2s; }
+  .pd-sticky.is-visible .pd-sticky__btn--add,
+  .pd-sticky.is-visible .pd-sticky__btn--buy,
+  .pd-sticky.is-visible .pd-sticky__product,
+  .pd-sticky.is-visible .pd-sticky__edge,
+  .pd-sticky__price.tick,
+  .pd-crumbs__back,
+  .pd-crumbs__item,
+  #pdVariantPicker.pd-nudge,
+  .pd-actions .btn.is-added,
+  .pd-sticky__btn.is-added,
+  .pd-sticky.is-visible .pd-sticky__btn.is-added,
+  .pd-actions .btn.is-added i,
+  .pd-sticky__btn.is-added i { animation: none; }
+  .pd-crumbs__back,
+  .pd-crumbs__item { opacity: 1; }
+  .pd-ripple { display: none; }
+  .wa-float, .scroll-top-btn { transition: opacity .2s ease, background .2s ease; }
 }

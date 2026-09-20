@@ -3081,3 +3081,359 @@ html, body{ transition:background-color .3s ease, color .3s ease; }
   background:#241A3D;
   color:#C9A8FF;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ============================================================
+   >>> DROP-IN SECTION FOR style.css <<<
+   Paste this whole block at the very END of style.css
+   (after the "DARK MODE — profile.html fixes" block).
+   Nothing above it needs to change.
+
+   Contains (all global, because ui.js is on every page):
+     1. "Added to cart" top overlay  (.ss-cart-toast*)  — light + dark
+     2. Header cart badge bounce     (.ss-bump)
+     3. WhatsApp float speech-bubble (.wa-float__tip)   — light + dark
+     4. Reduced-motion handling
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   1. "ADDED TO CART" TOP OVERLAY
+   Slides in from above with a soft spring, a green check badge
+   that pops and draws itself, and a timer bar that drains until
+   the card leaves on its own. Sits above the sticky header.
+   ------------------------------------------------------------ */
+.ss-cart-toast-wrap{
+  position:fixed;
+  top:0; left:0; right:0;
+  z-index:100020;
+  display:flex;
+  justify-content:center;
+  padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 0;
+  pointer-events:none;              /* only the card itself is clickable */
+}
+@media(min-width:900px){
+  .ss-cart-toast-wrap{ justify-content:flex-end; padding:18px 28px 0 0; }
+}
+
+.ss-cart-toast{
+  position:relative;
+  width:100%;
+  max-width:430px;
+  background:var(--surface,#fff);
+  color:var(--ink,#17181C);
+  border:1px solid var(--line,#F0E4D2);
+  border-radius:18px;
+  box-shadow:0 22px 46px -14px rgba(23,24,28,.32), 0 4px 10px -4px rgba(23,24,28,.08);
+  overflow:hidden;
+  pointer-events:auto;
+  touch-action:pan-x;               /* vertical drags are ours (swipe up to dismiss) */
+  will-change:transform,opacity;
+
+  /* start state: parked above the screen */
+  transform:translateY(-140%) scale(.96);
+  opacity:0;
+  transition:transform .6s cubic-bezier(.34,1.45,.5,1), opacity .25s ease;
+}
+.ss-cart-toast.is-in{ transform:none; opacity:1; }
+.ss-cart-toast.is-out{
+  transform:translateY(-130%) scale(.97);
+  opacity:0;
+  transition:transform .34s cubic-bezier(.5,0,.75,0), opacity .28s ease;
+}
+.ss-cart-toast.is-dragging{ transition:none; }
+
+.ss-cart-toast__main{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  align-items:center;
+  gap:13px;
+  padding:14px 12px 12px 14px;
+}
+
+/* thumbnail + check badge */
+.ss-cart-toast__thumb{
+  position:relative;
+  width:56px; height:56px;
+  border-radius:14px;
+  background:var(--paper-dim,#FDF1E2);
+  border:1px solid var(--line,#F0E4D2);
+  display:flex; align-items:center; justify-content:center;
+  color:var(--brand,#FF5A1F);
+  font-size:20px;
+}
+.ss-cart-toast__thumb img{
+  width:100%; height:100%;
+  object-fit:cover;
+  border-radius:13px;
+  background:#fff;
+}
+.ss-cart-toast__badge{
+  position:absolute;
+  right:-7px; bottom:-7px;
+  width:24px; height:24px;
+  border-radius:50%;
+  background:#12A150;
+  border:2px solid var(--surface,#fff);
+  display:flex; align-items:center; justify-content:center;
+  transform:scale(0);
+}
+.ss-cart-toast__badge svg{ width:16px; height:16px; }
+.ss-cart-toast__badge path{
+  fill:none;
+  stroke:#fff;
+  stroke-width:3.4;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  stroke-dasharray:1;
+  stroke-dashoffset:1;
+}
+/* expanding ring behind the badge, fires once */
+.ss-cart-toast__badge::after{
+  content:"";
+  position:absolute; inset:-3px;
+  border-radius:50%;
+  border:2px solid #12A150;
+  opacity:0;
+  pointer-events:none;
+}
+.ss-cart-toast.is-in .ss-cart-toast__badge{ animation:ssCtsPop .5s .2s cubic-bezier(.34,1.7,.5,1) forwards; }
+.ss-cart-toast.is-in .ss-cart-toast__badge path{ animation:ssCtsDraw .36s .45s ease forwards; }
+.ss-cart-toast.is-in .ss-cart-toast__badge::after{ animation:ssCtsRing .85s .3s ease-out; }
+
+@keyframes ssCtsPop{  from{ transform:scale(0); } to{ transform:scale(1); } }
+@keyframes ssCtsDraw{ to{ stroke-dashoffset:0; } }
+@keyframes ssCtsRing{
+  0%  { opacity:.7; transform:scale(.8); }
+  100%{ opacity:0;  transform:scale(1.9); }
+}
+
+/* text */
+.ss-cart-toast__text{ min-width:0; }
+.ss-cart-toast__title{
+  font-size:13.5px;
+  font-weight:800;
+  color:var(--ink,#17181C);
+  letter-spacing:-.1px;
+}
+.ss-cart-toast__name{
+  font-size:12.5px;
+  font-weight:500;
+  color:var(--ink-soft,#6b6d78);
+  margin-top:1px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.ss-cart-toast__meta{
+  font-family:var(--font-mono,monospace);
+  font-size:11.5px;
+  font-weight:700;
+  color:var(--brand-dark,#da5521);
+  margin-top:3px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.ss-cart-toast__close{
+  align-self:flex-start;
+  width:28px; height:28px;
+  border:none;
+  border-radius:50%;
+  background:var(--paper-dim,#FDF1E2);
+  color:var(--ink-soft,#6b6d78);
+  font-size:12px;
+  cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition:background .2s ease, color .2s ease, transform .2s ease;
+}
+.ss-cart-toast__close:hover{ background:var(--line,#F0E4D2); color:var(--ink,#17181C); transform:rotate(90deg); }
+
+/* actions */
+.ss-cart-toast__actions{
+  display:grid;
+  grid-template-columns:1.15fr 1fr;
+  gap:8px;
+  padding:0 14px 14px;
+}
+.ss-cart-toast__btn{
+  height:42px;
+  border-radius:12px;
+  border:1.5px solid var(--line,#F0E4D2);
+  background:transparent;
+  color:var(--ink,#17181C);
+  font-family:var(--font-body,inherit);
+  font-size:13px;
+  font-weight:800;
+  cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  text-decoration:none;
+  transition:transform .18s cubic-bezier(.22,1,.36,1), box-shadow .25s ease, border-color .2s ease, background .2s ease;
+}
+.ss-cart-toast__btn:hover{ transform:translateY(-2px); border-color:var(--ink-faint,#9a9ba5); }
+.ss-cart-toast__btn:active{ transform:scale(.96); }
+.ss-cart-toast__btn--primary{
+  border:none;
+  color:#fff;
+  background:var(--grad-brand-deep,linear-gradient(135deg,#FF5A1F,#da5521));
+  box-shadow:0 10px 20px -10px rgba(224,70,0,.65);
+}
+.ss-cart-toast__btn--primary:hover{ box-shadow:0 14px 26px -10px rgba(224,70,0,.75); }
+.ss-cart-toast__btn--primary i{ font-size:13px; }
+
+/* the "quick loading timer" — drains left-to-right over --cts-dur */
+.ss-cart-toast__timer{
+  height:4px;
+  background:var(--line-soft,#F6EEDF);
+}
+.ss-cart-toast__timer i{
+  display:block;
+  height:100%;
+  transform-origin:left center;
+  background:linear-gradient(90deg,var(--brand,#FF5A1F),var(--sun,#FFC93C));
+  animation:ssCtsTimer var(--cts-dur,5s) linear forwards;
+  animation-play-state:paused;      /* starts only once the card has arrived */
+}
+.ss-cart-toast.is-in:not(.is-paused) .ss-cart-toast__timer i{ animation-play-state:running; }
+@keyframes ssCtsTimer{ from{ transform:scaleX(1); } to{ transform:scaleX(0); } }
+
+@media(max-width:380px){
+  .ss-cart-toast__main{ gap:11px; padding:12px 10px 10px 12px; }
+  .ss-cart-toast__thumb{ width:50px; height:50px; }
+  .ss-cart-toast__actions{ padding:0 12px 12px; }
+  .ss-cart-toast__btn{ font-size:12.5px; }
+}
+
+/* ---- dark mode: lifted charcoal card with a faint brand glow ---- */
+:root[data-theme="dark"] .ss-cart-toast{
+  background:#1B1C22;
+  border-color:rgba(255,255,255,.09);
+  box-shadow:
+    0 24px 54px -12px rgba(0,0,0,.8),
+    0 0 0 1px rgba(255,90,31,.14),
+    0 0 40px -12px rgba(255,90,31,.32);
+}
+:root[data-theme="dark"] .ss-cart-toast__thumb{
+  background:#23242B;
+  border-color:rgba(255,255,255,.08);
+}
+:root[data-theme="dark"] .ss-cart-toast__thumb img{ background:#fff; }   /* product photos are shot on white */
+:root[data-theme="dark"] .ss-cart-toast__badge{ border-color:#1B1C22; background:#17b862; }
+:root[data-theme="dark"] .ss-cart-toast__badge::after{ border-color:#17b862; }
+:root[data-theme="dark"] .ss-cart-toast__meta{ color:var(--brand-light,#FF8A5B); }
+:root[data-theme="dark"] .ss-cart-toast__close{ background:rgba(255,255,255,.07); color:#B9BAC2; }
+:root[data-theme="dark"] .ss-cart-toast__close:hover{ background:rgba(255,255,255,.14); color:#fff; }
+:root[data-theme="dark"] .ss-cart-toast__btn{ border-color:rgba(255,255,255,.14); color:#F4F5F7; }
+:root[data-theme="dark"] .ss-cart-toast__btn:hover{ border-color:rgba(255,255,255,.3); background:rgba(255,255,255,.05); }
+:root[data-theme="dark"] .ss-cart-toast__btn--primary{
+  border:none; color:#fff;
+  box-shadow:0 10px 24px -10px rgba(255,90,31,.7), 0 0 0 1px rgba(255,138,91,.25) inset;
+}
+:root[data-theme="dark"] .ss-cart-toast__timer{ background:rgba(255,255,255,.07); }
+
+/* ------------------------------------------------------------
+   2. HEADER CART BADGE BOUNCE — fired by ssBumpCartBadge()
+   ------------------------------------------------------------ */
+.cart-count.ss-bump{ animation:ssCartBump .65s cubic-bezier(.34,1.56,.64,1); }
+#cartBtn.ss-bump > i{ animation:ssCartWiggle .65s ease; transform-origin:50% 80%; }
+@keyframes ssCartBump{
+  0%  { transform:scale(1); }
+  30% { transform:scale(1.55) rotate(-10deg); }
+  60% { transform:scale(.9)  rotate(5deg); }
+  100%{ transform:scale(1)   rotate(0); }
+}
+@keyframes ssCartWiggle{
+  0%,100%{ transform:rotate(0); }
+  25%    { transform:rotate(-14deg) translateY(-1px); }
+  55%    { transform:rotate(9deg); }
+  80%    { transform:rotate(-4deg); }
+}
+
+/* ------------------------------------------------------------
+   3. WHATSAPP FLOAT — product-aware speech bubble
+   Only rendered when a page calls ssSetWhatsAppProvider(fn, {tip}).
+   Fades in a couple of seconds after load, stays ~5s, then tucks
+   away; hovering the button brings it back.
+   ------------------------------------------------------------ */
+.wa-float__tip{
+  position:absolute;
+  right:calc(100% + 12px);
+  top:50%;
+  transform:translateY(-50%) translateX(10px) scale(.94);
+  transform-origin:right center;
+  opacity:0;
+  pointer-events:none;
+  white-space:nowrap;
+  padding:8px 13px;
+  border-radius:12px;
+  background:var(--surface,#fff);
+  color:var(--ink,#17181C);
+  border:1px solid var(--line,#F0E4D2);
+  font-family:var(--font-body,inherit);
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:.1px;
+  box-shadow:0 12px 28px -10px rgba(23,24,28,.35);
+  transition:opacity .2s ease, transform .25s cubic-bezier(.22,1,.36,1);
+  animation:ssWaTip 7s cubic-bezier(.22,1,.36,1) 2.2s 1 both;
+}
+/* little arrow pointing at the icon */
+.wa-float__tip::after{
+  content:"";
+  position:absolute;
+  right:-5px; top:50%;
+  width:9px; height:9px;
+  background:var(--surface,#fff);
+  border-right:1px solid var(--line,#F0E4D2);
+  border-top:1px solid var(--line,#F0E4D2);
+  transform:translateY(-50%) rotate(45deg);
+}
+@keyframes ssWaTip{
+  0%   { opacity:0; transform:translateY(-50%) translateX(10px) scale(.94); }
+  7%   { opacity:1; transform:translateY(-50%) translateX(0)    scale(1); }
+  86%  { opacity:1; transform:translateY(-50%) translateX(0)    scale(1); }
+  100% { opacity:0; transform:translateY(-50%) translateX(10px) scale(.94); }
+}
+@media(hover:hover){
+  .wa-float--product:hover .wa-float__tip{
+    animation:none;
+    opacity:1;
+    transform:translateY(-50%) translateX(0) scale(1);
+  }
+}
+:root[data-theme="dark"] .wa-float__tip{
+  background:#22232A;
+  border-color:rgba(255,255,255,.1);
+  color:#F4F5F7;
+  box-shadow:0 14px 32px -10px rgba(0,0,0,.75), 0 0 0 1px rgba(37,211,102,.14);
+}
+:root[data-theme="dark"] .wa-float__tip::after{
+  background:#22232A;
+  border-color:rgba(255,255,255,.1);
+}
+
+/* ------------------------------------------------------------
+   4. REDUCED MOTION — cards still appear/disappear, minus travel.
+   (The timer bar keeps running: it's information, not decoration.)
+   ------------------------------------------------------------ */
+@media(prefers-reduced-motion:reduce){
+  .ss-cart-toast,
+  .ss-cart-toast.is-out{ transform:none; transition:opacity .2s ease; }
+  .ss-cart-toast__badge{ transform:scale(1); animation:none !important; }
+  .ss-cart-toast__badge path{ stroke-dashoffset:0; animation:none !important; }
+  .ss-cart-toast__badge::after{ display:none; }
+  .cart-count.ss-bump,
+  #cartBtn.ss-bump > i{ animation:none; }
+  .wa-float__tip{ animation:none; }
+}

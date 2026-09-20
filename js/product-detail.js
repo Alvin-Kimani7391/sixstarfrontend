@@ -51,6 +51,27 @@
    instead of firing a first request at the Render API. It also
    toggles #pdWrap / #pdNotFound so a genuinely missing product
    actually looks like a 404 before this script even runs.
+
+   ------------------------------------------------------------
+   NEW IN THIS VERSION
+   1. STICKY BUY BAR (#pdSticky). A floating "Add to cart / Buy
+      now" bar that only slides in once the shopper has started
+      scrolling AND the real purchase panel (#pdPurchasePanel) is
+      off-screen. It slides away again the moment that panel comes
+      back into view. It mirrors live state: price (variant/tier
+      aware), qty, out-of-stock, and "pick a variant first".
+   2. ADD-TO-CART OVERLAY. Adding to cart now fires ssShowCartAdded()
+      (ui.js): a top overlay with a draining timer and
+      "View cart" / "Continue shopping" — replaces the old
+      bottom toast. The clicked buttons also morph to "Added ✓".
+   3. WHATSAPP FLOAT. The floating WhatsApp button now opens a chat
+      pre-filled with THIS product (name, current price, chosen
+      option, qty, link). Built at tap time, so it always reflects
+      the variant/qty the shopper has selected right then.
+   4. BREADCRUMBS + BACK. A link trail (Home › All products ›
+      category path › product) with a Back button. The category
+      path is resolved from the category tree so every ancestor is
+      a real link.
    ============================================================ */
 (function () {
   const id = new URLSearchParams(location.search).get("id");
@@ -62,6 +83,12 @@
   // variant-defining attributes, e.g. Size/Color).
   let selectedVariant = null;
   let selectedOptions = {};
+
+  // NEW — extra state the sticky bar / WhatsApp message need.
+  let variantRequired = false;   // true once we know the shopper MUST pick a variant
+  let variantNames = [];         // e.g. ["Size", "Color"] — for "Select Size & Color"
+  let cartActions = null;        // { add(), buy(btn) } — shared by main + sticky buttons
+  let stickyCleanup = null;      // tears down observers/listeners on re-render
 
   // Reads the product object api/product-detail.js already fetched
   // server-side (see <!--SSR_PRODUCT_DATA--> in the template) so the page
@@ -95,6 +122,12 @@
     ssShowPdNotFound();
     return;
   }
+
+  // Coming back to this page via the browser's back/forward cache would
+  // otherwise leave a "Buy now" button stuck in its loading spinner.
+  window.addEventListener("pageshow", (e) => {
+    if (e.persisted) document.querySelectorAll(".is-loading").forEach(b => b.classList.remove("is-loading"));
+  });
 
   /* ---------------- helpers ---------------- */
 
@@ -226,14 +259,166 @@
 
   // Canonical, shareable link for THIS product (drops any other query params
   // the page might have picked up, keeps just ?id=).
-function buildShareData(p) {
-  const refCode = (window.SS_REFERRAL && SS_REFERRAL.getCode()) || "";
-  const link = `${location.origin}${location.pathname}?id=${p.id}${refCode ? `&ref=${encodeURIComponent(refCode)}` : ""}`;
-  const price = ssFmtPrice(basePrice(p));
-  const message = `Check out this product on Six Star Suppliers\n\n${p.name}\n${price}\n${link}`;
-  const images = Array.isArray(p.images) && p.images.length ? p.images : [ssImg(p)];
-  return { link, price, message, image: mainImgUrl(images[0]) };
-}
+  function buildShareData(p) {
+    const refCode = (window.SS_REFERRAL && SS_REFERRAL.getCode()) || "";
+    const link = `${location.origin}${location.pathname}?id=${p.id}${refCode ? `&ref=${encodeURIComponent(refCode)}` : ""}`;
+    const price = ssFmtPrice(basePrice(p));
+    const message = `Check out this product on Six Star Suppliers\n\n${p.name}\n${price}\n${link}`;
+    const images = Array.isArray(p.images) && p.images.length ? p.images : [ssImg(p)];
+    return { link, price, message, image: mainImgUrl(images[0]) };
+  }
+
+  /* ---------------- NEW: small UI micro-interactions ---------------- */
+
+  // Material-style ripple that grows from the exact point of the tap.
+  function attachRipple(el) {
+    if (!el || el._rippleBound) return;
+    el._rippleBound = true;
+    el.addEventListener("pointerdown", (e) => {
+      if (el.disabled) return;
+      const r = el.getBoundingClientRect();
+      const size = Math.max(r.width, r.height) * 2;
+      const dot = document.createElement("span");
+      dot.className = "pd-ripple";
+      dot.style.cssText = `width:${size}px;height:${size}px;left:${e.clientX - r.left - size / 2}px;top:${e.clientY - r.top - size / 2}px;`;
+      el.appendChild(dot);
+      dot.addEventListener("animationend", () => dot.remove());
+    });
+  }
+
+  // Morphs an add-to-cart button into a green "Added ✓" state for a moment,
+  // then restores it exactly. Safe to call repeatedly (original label/icon
+  // are captured once and reused).
+  function flashAdded(btn) {
+    if (!btn) return;
+    const icon = btn.querySelector("i");
+    const label = btn.querySelector(".pd-btn__label");
+    if (!icon || !label) return;
+    if (!btn.dataset.origLabel) {
+      btn.dataset.origLabel = label.textContent;
+      btn.dataset.origIcon = icon.className;
+    }
+    btn.classList.remove("is-added");
+    void btn.offsetWidth; // restart the pop animation on rapid re-clicks
+    btn.classList.add("is-added");
+    icon.className = "fa-solid fa-check";
+    label.textContent = "Added";
+    clearTimeout(btn._addedT);
+    btn._addedT = setTimeout(() => {
+      btn.classList.remove("is-added");
+      icon.className = btn.dataset.origIcon;
+      label.textContent = btn.dataset.origLabel;
+    }, 1700);
+  }
+
+  /* ---------------- NEW: breadcrumbs + back ---------------- */
+
+  function crumbHref(node) {
+    return `/category-explore.html?category=${encodeURIComponent(node._id || node.id)}`;
+  }
+
+  // `path` (optional) is the full category ancestor chain resolved from the
+  // category tree. First paint uses just the product's own category; once
+  // the tree loads we re-render (without replaying the entrance animation)
+  // so every ancestor becomes a link too.
+  function renderCrumbs(p, path) {
+    const nav = document.getElementById("pdCrumbs");
+    if (!nav) return;
+
+    const trail = [
+      { label: "Home", href: "/index.html", icon: "fa-house" },
+      { label: "All products", href: "/product.html" }
+    ];
+
+    if (path && path.length) {
+      path.forEach(n => trail.push({ label: n.name, href: crumbHref(n) }));
+    } else {
+      const cat = p.category;
+      const catId = cat && typeof cat === "object" ? (cat._id || cat.id) : null;
+      if (catId && cat.name) trail.push({ label: cat.name, href: crumbHref({ _id: catId }) });
+    }
+    trail.push({ label: p.name, current: true });
+
+    // Back goes to the deepest category link if the shopper landed here cold
+    // (shared link, search engine…), otherwise it's a real history.back().
+    const fallbackHref = trail.length > 3 ? trail[trail.length - 2].href : "/product.html";
+
+    nav.classList.toggle("is-static", !!path);
+    nav.innerHTML = `
+      <button type="button" class="pd-crumbs__back" id="pdCrumbBack" aria-label="Go back">
+        <i class="fa-solid fa-arrow-left"></i><span>Back</span>
+      </button>
+      <ol class="pd-crumbs__list" id="pdCrumbList" itemscope itemtype="https://schema.org/BreadcrumbList">
+        ${trail.map((c, i) => `
+          <li class="pd-crumbs__item" style="--i:${i}" itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+            ${c.current
+              ? `<span class="pd-crumbs__current" itemprop="name" aria-current="page" title="${ssEscapeHtml(c.label)}">${ssEscapeHtml(c.label)}</span>`
+              : `<a class="pd-crumbs__link" href="${c.href}" itemprop="item">${c.icon ? `<i class="fa-solid ${c.icon}"></i>` : ""}<span itemprop="name">${ssEscapeHtml(c.label)}</span></a>`}
+            <meta itemprop="position" content="${i + 1}">
+            ${i < trail.length - 1 ? `<i class="fa-solid fa-chevron-right pd-crumbs__sep" aria-hidden="true"></i>` : ""}
+          </li>`).join("")}
+      </ol>`;
+
+    document.getElementById("pdCrumbBack").addEventListener("click", () => {
+      let canGoBack = false;
+      try {
+        canGoBack = history.length > 1 && !!document.referrer && new URL(document.referrer).origin === location.origin;
+      } catch (_) {}
+      if (canGoBack) history.back();
+      else location.href = fallbackHref;
+    });
+
+    // On narrow screens a long trail scrolls sideways: start scrolled to the
+    // end so the current product is visible, and fade whichever edge has more.
+    const list = document.getElementById("pdCrumbList");
+    function updateFades() {
+      const max = list.scrollWidth - list.clientWidth;
+      list.classList.toggle("fade-l", list.scrollLeft > 2);
+      list.classList.toggle("fade-r", list.scrollLeft < max - 2);
+    }
+    list.addEventListener("scroll", updateFades, { passive: true });
+    requestAnimationFrame(() => {
+      list.scrollLeft = list.scrollWidth;
+      updateFades();
+    });
+  }
+
+  async function loadCrumbTrail(p) {
+    const cat = p.category;
+    const catId = cat && typeof cat === "object" ? (cat._id || cat.id) : cat;
+    if (!catId || typeof ssFindCategoryPath !== "function") return;
+    try {
+      const data = await SS_API.getCategoryTree();
+      const tree = Array.isArray(data) ? data : (data.categories || data.tree || []);
+      const path = ssFindCategoryPath(tree, catId);
+      if (path && path.length && product && product.id === p.id) renderCrumbs(p, path);
+    } catch (_) {
+      // keep the simple trail — the page works fine without the full path
+    }
+  }
+
+  /* ---------------- NEW: WhatsApp message (built at tap time) ---------------- */
+
+  function buildWhatsAppMessage() {
+    if (!product) return "Hello, I want to inquire about a product on Six Star Suppliers";
+    const p = product;
+    const priceEl = document.getElementById("pdPrice");
+    const price = (priceEl && priceEl.textContent.trim()) || ssFmtPrice(basePrice(p));
+    const link = `${location.origin}${location.pathname}?id=${p.id}`;
+
+    const lines = [
+      "Hello Six Star Suppliers 👋",
+      "I'd like to ask about this product:",
+      "",
+      `*${p.name}*`,
+      `Price: ${price}`
+    ];
+    if (selectedVariant && selectedVariant.label) lines.push(`Option: ${selectedVariant.label}`);
+    if (selectedVariant && selectedVariant.sku) lines.push(`SKU: ${selectedVariant.sku}`);
+    if (qty > 1 || isWholesaler(p)) lines.push(`Quantity: ${qty}`);
+    lines.push(`Link: ${link}`, "", "Is it available?");
+    return lines.join("\n");
+  }
 
   /* ---------------- main render ---------------- */
 
@@ -255,6 +440,8 @@ function buildShareData(p) {
     // Reset variant-picker state on every render (fresh product load).
     selectedVariant = null;
     selectedOptions = {};
+    variantRequired = false;
+    variantNames = [];
 
     document.title = `${p.name} — Six Star Suppliers`;
 
@@ -328,7 +515,7 @@ function buildShareData(p) {
 
           <div id="pdVariantPicker"></div>
 
-          <div class="pd-purchase-panel">
+          <div class="pd-purchase-panel" id="pdPurchasePanel">
             <div class="qty-row">
               <div class="qty-stepper">
                 <button id="qtyMinus" aria-label="Decrease quantity">−</button>
@@ -346,8 +533,8 @@ function buildShareData(p) {
             <div class="pd-stock-warn" id="pdMoqStockWarn" style="display:none;"></div>
 
             <div class="pd-actions">
-              <button class="btn btn-primary" id="addBtn" ${stock.level === "out" ? "disabled" : ""}><i class="fa-solid fa-cart-plus"></i> Add to cart</button>
-              <button class="btn btn-dark" id="buyBtn" ${stock.level === "out" ? "disabled" : ""}><i class="fa-solid fa-bolt"></i> Buy now</button>
+              <button class="btn btn-primary" id="addBtn" ${stock.level === "out" ? "disabled" : ""}><i class="fa-solid fa-cart-plus"></i><span class="pd-btn__label">Add to cart</span></button>
+              <button class="btn btn-dark" id="buyBtn" ${stock.level === "out" ? "disabled" : ""}><i class="fa-solid fa-bolt"></i><span class="pd-btn__label">Buy now</span></button>
             </div>
 
             <div class="trust-row">
@@ -439,6 +626,9 @@ function buildShareData(p) {
       </div>
     `;
 
+    renderCrumbs(p);
+    loadCrumbTrail(p);
+
     bindGallery();
     bindLightbox(images);
     bindDescriptionToggle();
@@ -447,7 +637,13 @@ function buildShareData(p) {
     bindReviewForm(p);
     bindShare(p);
     if (wholesale) updateWholesaleLive(p, moq, tiers, heavyWholesale);
+    initStickyBar(p, images);
     setupVariantPicker(p);
+
+    // Point the floating WhatsApp button at THIS product (ui.js).
+    if (typeof ssSetWhatsAppProvider === "function") {
+      ssSetWhatsAppProvider(buildWhatsAppMessage, { tip: "Ask about this product" });
+    }
   }
 
   function renderWholesalePanel(p, moq, tiers, heavyWholesale) {
@@ -740,6 +936,7 @@ function buildShareData(p) {
       qtyVal.textContent = qty;
       minusBtn.disabled = qty <= floor;
       if (wholesale) updateWholesaleLive(p, moq, sortedTiers(p), isHeavyWholesale(p));
+      syncPurchaseUi();
     }
 
     minusBtn.addEventListener("click", () => {
@@ -790,6 +987,8 @@ function buildShareData(p) {
       refreshActionState(p, false);
       return;
     }
+
+    variantNames = variantDefs.map(d => d.name);
 
     // Collect the distinct option values available at each position, in
     // first-seen order.
@@ -857,7 +1056,7 @@ function buildShareData(p) {
       return;
     }
 
-      if (statusEl) {
+    if (statusEl) {
       statusEl.className = "pd-variant-status ok";
       statusEl.innerHTML = `<i class="fa-solid fa-circle-check"></i> Selected: ${variant.label || ""}${variant.sku ? ` (SKU: ${variant.sku})` : ""}`;
     }
@@ -886,18 +1085,22 @@ function buildShareData(p) {
   // (used both when there's no variant scheme, and by the initial static
   // template markup before setupVariantPicker resolves).
   function refreshActionState(p, hasVariants) {
+    variantRequired = !!hasVariants;
+
     const addBtn = document.getElementById("addBtn");
     const buyBtn = document.getElementById("buyBtn");
-    if (!addBtn || !buyBtn) return;
-    if (!hasVariants) {
-      const out = stockState(p).level === "out";
-      addBtn.disabled = out;
-      buyBtn.disabled = out;
-      return;
+    if (addBtn && buyBtn) {
+      if (!hasVariants) {
+        const out = stockState(p).level === "out";
+        addBtn.disabled = out;
+        buyBtn.disabled = out;
+      } else {
+        const noStock = !selectedVariant || (Number(selectedVariant.stock) || 0) <= 0;
+        addBtn.disabled = noStock;
+        buyBtn.disabled = noStock;
+      }
     }
-    const noStock = !selectedVariant || (Number(selectedVariant.stock) || 0) <= 0;
-    addBtn.disabled = noStock;
-    buyBtn.disabled = noStock;
+    syncPurchaseUi();
   }
 
   /* ---------------- cart actions ---------------- */
@@ -907,11 +1110,14 @@ function buildShareData(p) {
     const buyBtn = document.getElementById("buyBtn");
     if (!addBtn || !buyBtn) return;
 
+    attachRipple(addBtn);
+    attachRipple(buyBtn);
+
     // If a variant is selected, tag it onto the cart payload so downstream
     // cart/checkout code can price and identify it correctly. NOTE: SS_CART
     // and the checkout/order pipeline still need to be updated to actually
     // read/persist `selectedVariant` — this only prepares the payload.
-        function buildPayload() {
+    function buildPayload() {
       if (!selectedVariant) return p;
       return {
         ...p,
@@ -929,14 +1135,220 @@ function buildShareData(p) {
       };
     }
 
-    addBtn.addEventListener("click", () => {
+    // Shared by the main button AND the sticky bar's button.
+    function addToCart() {
       SS_CART.add(buildPayload(), qty);
-      ssToast(`${p.name} added to cart${wholesale ? ` (${qty} units)` : ""}`, "fa-cart-shopping");
-    });
-    buyBtn.addEventListener("click", () => {
+
+      flashAdded(document.getElementById("addBtn"));
+      flashAdded(document.getElementById("stickyAdd"));
+
+      const priceEl = document.getElementById("pdPrice");
+      if (typeof ssShowCartAdded === "function") {
+        ssShowCartAdded({
+          name: p.name,
+          image: typeof ssImgSized === "function"
+            ? ssImgSized(p, "f_auto,q_auto:good,w_160,h_160,c_fill,dpr_auto")
+            : ssImg(p),
+          qty,
+          priceText: priceEl ? priceEl.textContent.trim() : ssFmtPrice(basePrice(p)),
+          variantLabel: selectedVariant ? (selectedVariant.label || "") : ""
+        });
+      } else {
+        ssToast(`${p.name} added to cart${wholesale ? ` (${qty} units)` : ""}`, "fa-cart-shopping");
+      }
+    }
+
+    function buyNow(btn) {
+      if (btn && btn.classList.contains("is-loading")) return; // no double-fire
       SS_CART.add(buildPayload(), qty);
+      if (btn) btn.classList.add("is-loading");
       location.href = "cart.html";
-    });
+    }
+
+    cartActions = { add: addToCart, buy: buyNow };
+
+    addBtn.addEventListener("click", () => addToCart());
+    buyBtn.addEventListener("click", () => buyNow(buyBtn));
+  }
+
+  /* ---------------- NEW: sticky buy bar ----------------
+     Shown only when BOTH are true:
+       1. the shopper has started scrolling (scrollY > 24), and
+       2. the real purchase panel (#pdPurchasePanel) is NOT on screen.
+     An IntersectionObserver watches the panel so the bar hides the
+     instant the shopper reaches it — no scroll-math, no jank — and
+     comes back if they scroll past it again. (Falls back to a
+     getBoundingClientRect check where IntersectionObserver is missing.)
+     Tapping a button while a variant hasn't been chosen scrolls to the
+     picker and nudges it instead of failing silently. */
+
+  function actionStatus() {
+    if (!product) return { kind: "ok" };
+    if (variantRequired) {
+      if (!selectedVariant) return { kind: "pick" };
+      return (Number(selectedVariant.stock) || 0) <= 0 ? { kind: "out" } : { kind: "ok" };
+    }
+    return stockState(product).level === "out" ? { kind: "out" } : { kind: "ok" };
+  }
+
+  function nudgeVariantPicker() {
+    const picker = document.getElementById("pdVariantPicker");
+    if (!picker) return;
+    picker.scrollIntoView({ behavior: "smooth", block: "center" });
+    picker.classList.remove("pd-nudge");
+    void picker.offsetWidth;
+    picker.classList.add("pd-nudge");
+    setTimeout(() => picker.classList.remove("pd-nudge"), 1000);
+    ssToast(variantNames.length ? `Please select ${variantNames.join(" & ")} first` : "Please choose an option first", "fa-hand-pointer");
+  }
+
+  function onStickyAction(kind, btn) {
+    const status = actionStatus();
+    if (status.kind === "pick") { nudgeVariantPicker(); return; }
+    if (status.kind === "out" || !cartActions) return;
+    if (kind === "add") cartActions.add();
+    else cartActions.buy(btn);
+  }
+
+  // Keeps everything that mirrors purchase state (sticky bar + WhatsApp link)
+  // in step with the main panel. Cheap enough to call on every change.
+  function syncPurchaseUi() {
+    syncStickyBar();
+    if (typeof ssRefreshWhatsApp === "function") ssRefreshWhatsApp();
+  }
+
+  function syncStickyBar() {
+    const bar = document.getElementById("pdSticky");
+    if (!bar || !bar.dataset.ready || !product) return;
+
+    // price — re-triggers a small "tick" animation whenever it changes
+    const priceEl = document.getElementById("pdPrice");
+    const sp = document.getElementById("pdStickyPrice");
+    if (priceEl && sp && sp.textContent !== priceEl.textContent) {
+      sp.textContent = priceEl.textContent;
+      sp.classList.remove("tick");
+      void sp.offsetWidth;
+      sp.classList.add("tick");
+    }
+
+    const status = actionStatus();
+    const note = document.getElementById("pdStickyNote");
+    let text = "";
+    if (status.kind === "pick") text = variantNames.length ? `Select ${variantNames.join(" & ")}` : "Select options";
+    else if (status.kind === "out") text = "Out of stock";
+    else if (selectedVariant && selectedVariant.label) text = selectedVariant.label;
+    else if (isWholesaler(product) || qty > 1) text = `Qty ${qty}`;
+
+    if (note) {
+      note.textContent = text;
+      note.hidden = !text;
+      note.className = "pd-sticky__note" + (status.kind !== "ok" ? ` pd-sticky__note--${status.kind}` : "");
+    }
+
+    bar.dataset.state = status.kind;
+    const out = status.kind === "out";
+    const add = document.getElementById("stickyAdd");
+    const buy = document.getElementById("stickyBuy");
+    if (add) add.disabled = out;
+    if (buy) buy.disabled = out;
+  }
+
+  function initStickyBar(p, images) {
+    if (stickyCleanup) { stickyCleanup(); stickyCleanup = null; }
+
+    const bar = document.getElementById("pdSticky");
+    const panel = document.getElementById("pdPurchasePanel");
+    if (!bar || !panel) return;
+
+    const priceEl = document.getElementById("pdPrice");
+    const startPrice = priceEl ? priceEl.textContent : ssFmtPrice(basePrice(p));
+
+    bar.innerHTML = `
+      <div class="pd-sticky__inner" role="region" aria-label="Quick purchase">
+        <span class="pd-sticky__edge" aria-hidden="true"></span>
+        <div class="pd-sticky__product">
+          <img class="pd-sticky__thumb" src="${thumbImgUrl(images[0])}" alt="" width="46" height="46">
+          <div class="pd-sticky__meta">
+            <div class="pd-sticky__name">${ssEscapeHtml(p.name)}</div>
+            <div class="pd-sticky__priceline">
+              <span class="pd-sticky__price" id="pdStickyPrice">${ssEscapeHtml(startPrice)}</span>
+              <span class="pd-sticky__note" id="pdStickyNote" hidden></span>
+            </div>
+          </div>
+        </div>
+        <div class="pd-sticky__actions">
+          <button type="button" class="pd-sticky__btn pd-sticky__btn--add" id="stickyAdd"><i class="fa-solid fa-cart-plus"></i><span class="pd-btn__label">Add to cart</span></button>
+          <button type="button" class="pd-sticky__btn pd-sticky__btn--buy" id="stickyBuy"><i class="fa-solid fa-bolt"></i><span class="pd-btn__label">Buy now</span></button>
+        </div>
+      </div>`;
+    bar.dataset.ready = "1";
+
+    const addBtn = document.getElementById("stickyAdd");
+    const buyBtn = document.getElementById("stickyBuy");
+    attachRipple(addBtn);
+    attachRipple(buyBtn);
+    addBtn.addEventListener("click", () => onStickyAction("add", addBtn));
+    buyBtn.addEventListener("click", () => onStickyAction("buy", buyBtn));
+
+    const state = { scrolled: window.scrollY > 24, panelVisible: false };
+
+    function apply() {
+      const show = state.scrolled && !state.panelVisible;
+      bar.classList.toggle("is-visible", show);
+      bar.toggleAttribute("inert", !show);
+      bar.setAttribute("aria-hidden", show ? "false" : "true");
+      document.body.classList.toggle("pd-sticky-active", show);
+    }
+
+    function rectVisible() {
+      const r = panel.getBoundingClientRect();
+      return r.top < window.innerHeight && r.bottom > 0;
+    }
+
+    let io = null;
+    if ("IntersectionObserver" in window) {
+      io = new IntersectionObserver((entries) => {
+        state.panelVisible = entries[entries.length - 1].isIntersecting;
+        apply();
+      }, { threshold: 0 });
+      io.observe(panel);
+    } else {
+      state.panelVisible = rectVisible();
+    }
+
+    let ticking = false;
+    function onScroll() {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        ticking = false;
+        state.scrolled = window.scrollY > 24;
+        if (!io) state.panelVisible = rectVisible();
+        apply();
+      });
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll, { passive: true });
+
+    // Price can change from several places (variant pick, wholesale tier,
+    // qty) — watching the element itself keeps the bar honest without
+    // wiring every one of them.
+    let mo = null;
+    if (priceEl && "MutationObserver" in window) {
+      mo = new MutationObserver(syncStickyBar);
+      mo.observe(priceEl, { childList: true, characterData: true, subtree: true });
+    }
+
+    stickyCleanup = () => {
+      if (io) io.disconnect();
+      if (mo) mo.disconnect();
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      document.body.classList.remove("pd-sticky-active");
+    };
+
+    syncStickyBar();
+    apply();
   }
 
   /* ---------------- share ---------------- */

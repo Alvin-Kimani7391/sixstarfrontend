@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <!--SEO_HEAD-->
 <title>Product — Six Star Suppliers</title>
 <meta name="description" content="Shop quality products at Six Star Suppliers.">
 <link rel="canonical" href="https://www.sixstarsuppliers.com/product-detail.html">
 <!--/SEO_HEAD-->
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://kit.fontawesome.com/e1426ab85b.js" crossorigin="anonymous"></script>
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/product-detail.css">
@@ -32,6 +32,12 @@
       <p>Shop quality products at Six Star Suppliers.</p>
       <!--/SSR_PRODUCT_INTRO-->
     </section>
+
+    <!-- NEW — breadcrumb trail + Back button. Filled in by product-detail.js
+         (render → renderCrumbs). Shows a skeleton pill until then. -->
+    <nav class="pd-crumbs" id="pdCrumbs" aria-label="Breadcrumb">
+      <div class="pd-crumbs__skel skel"></div>
+    </nav>
 
     <div id="pdContent">
       <div class="pd-wrap">
@@ -58,6 +64,13 @@
 <footer class="site-footer" id="site-footer"></footer>
 <a href="#" class="wa-float" id="wa-float"></a>
 <div id="toast"></div>
+
+<!-- NEW — floating "Add to cart / Buy now" bar. Lives outside #pdContent so it
+     survives re-renders. Filled + shown/hidden by product-detail.js: it only
+     slides in once the shopper has scrolled AND the main purchase panel is
+     off-screen, and slides away again when they reach it. Starts inert so it
+     can't be tabbed to while hidden. -->
+<div class="pd-sticky" id="pdSticky" aria-hidden="true" inert></div>
 
 <!--SSR_PRODUCT_DATA-->
 <!--/SSR_PRODUCT_DATA-->

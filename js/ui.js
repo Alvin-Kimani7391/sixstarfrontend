@@ -4,6 +4,15 @@
    All internal links/assets are root-relative (leading "/") so
    this works correctly no matter what URL depth the page is
    served at (e.g. /shop/miamii-bags as well as /shops.html).
+
+   NEW IN THIS VERSION
+   - ssShowCartAdded(): top "Added to cart" overlay with a draining
+     timer, View cart / Continue shopping, swipe-up to dismiss.
+     ssQuickAdd() and ssQuickAddFlashSale() now use it.
+   - ssBumpCartBadge(): little bounce on the header cart badge.
+   - WhatsApp float can now be pointed at a specific product:
+     ssSetWhatsAppProvider(fn, {tip}) / ssRefreshWhatsApp().
+     (Used by product-detail.js. Every other page is unchanged.)
    ============================================================ */
 
 function ssFmtPrice(n) {
@@ -248,7 +257,15 @@ function ssQuickAdd(id) {
   if ((Number(p.stock) || 0) <= 0) { ssToast("This product is out of stock", "fa-circle-exclamation"); return; }
   const qty = p.sellerRole === "wholesaler" ? (p.minOrderQuantity || 1) : 1;
   SS_CART.add(p, qty);
-  ssToast(`${p.name} added to cart${qty > 1 ? ` (${qty} units)` : ""}`, "fa-cart-shopping");
+  // NEW — top overlay with "View cart / Continue" instead of the bottom toast.
+  // (To go back to the old behaviour, swap this call for:
+  //  ssToast(`${p.name} added to cart${qty > 1 ? ` (${qty} units)` : ""}`, "fa-cart-shopping");)
+  ssShowCartAdded({
+    name: p.name,
+    image: ssImgSized(p, "f_auto,q_auto:good,w_160,h_160,c_fill,dpr_auto"),
+    qty,
+    priceText: ssFmtPrice(p.displayPrice ?? p.finalPrice ?? 0)
+  });
 }
 
 //skeleton cards for loading state
@@ -736,12 +753,58 @@ function ssRenderFooter() {
   document.getElementById("ssYear").textContent = new Date().getFullYear();
 }
 
+/* ============================================================
+   FLOATING WHATSAPP BUTTON
+   Default behaviour (every page): opens a chat with the generic
+   "Hello, I want to inquire about" text — exactly as before.
+
+   NEW: a page can hand the button a "message provider" — a function
+   that returns the text to pre-fill. product-detail.js does this so
+   the chat opens with the exact product the shopper is viewing.
+   The provider is called at tap time (pointerdown + click), so the
+   message always reflects the latest variant / quantity / price.
+
+     ssSetWhatsAppProvider(() => "text…", { tip: "Ask about this product" });
+
+   `tip` adds a small speech-bubble label beside the icon that
+   appears briefly after page load (and on hover).
+   ============================================================ */
+window.__ssWa = window.__ssWa || { provider: null, tip: "" };
+
+function ssRefreshWhatsApp() {
+  const el = document.getElementById("wa-float");
+  if (!el || !window.SS_CONFIG) return;
+  let msg = "";
+  try {
+    if (typeof window.__ssWa.provider === "function") msg = window.__ssWa.provider() || "";
+  } catch (_) { msg = ""; }
+  el.href = `https://wa.me/${window.SS_CONFIG.WHATSAPP_NUMBER}?text=${encodeURIComponent(msg || "Hello, I want to inquire about")}`;
+}
+
 function ssRenderWhatsApp() {
   const el = document.getElementById("wa-float");
   if (!el) return;
-  el.href = `https://wa.me/${window.SS_CONFIG.WHATSAPP_NUMBER}?text=${encodeURIComponent("Hello, I want to inquire about")}`;
+  const tip = window.__ssWa.tip;
   el.target = "_blank";
-  el.innerHTML = `<i class="fa-brands fa-whatsapp"></i>`;
+  el.rel = "noopener";
+  el.setAttribute("aria-label", tip || "Chat on WhatsApp");
+  el.classList.toggle("wa-float--product", !!tip);
+  el.innerHTML = `<i class="fa-brands fa-whatsapp"></i>${tip ? `<span class="wa-float__tip">${ssEscapeHtml(tip)}</span>` : ""}`;
+
+  // Refresh the link the instant a tap begins, so even a long-press /
+  // middle-click / "copy link" uses the freshest message.
+  if (!el.dataset.waBound) {
+    el.dataset.waBound = "1";
+    el.addEventListener("pointerdown", ssRefreshWhatsApp);
+    el.addEventListener("click", ssRefreshWhatsApp);
+  }
+  ssRefreshWhatsApp();
+}
+
+function ssSetWhatsAppProvider(fn, opts = {}) {
+  window.__ssWa.provider = typeof fn === "function" ? fn : null;
+  window.__ssWa.tip = opts.tip || "";
+  ssRenderWhatsApp(); // safe if the element already exists; otherwise DOMContentLoaded picks it up
 }
 
 /* ---------- scroll-to-top button ----------
@@ -816,7 +879,8 @@ async function ssLoadCategories() {
       category id, or null if it isn't in the tree. Used to pre-select the
       cascade correctly when a user lands with a category already in the
       URL (mega-menu click, drawer accordion link, category banner,
-      browser back/forward).
+      browser back/forward). NEW: product-detail.js also uses it to build
+      the breadcrumb trail.
 
    2. ssRenderCategoryCascade(container, tree, opts) — renders ONE <select>
       per tree depth actually in use: main category, then (only if the
@@ -929,7 +993,7 @@ function ssRenderCategoryGrid(targetId, limit = null) {
       const rawImg = c.image || 'https://placehold.co/300/F3F4F8/15161A?text=' + encodeURIComponent(c.name);
       const img = ssCldTransform(rawImg, "f_auto,q_auto:good,w_300,h_300,c_fill,dpr_auto");
       return `
-      <a class="cat-item" href="/category-explore.html?category=${encodeURIComponent(catRef)}"">
+      <a class="cat-item" href="/category-explore.html?category=${encodeURIComponent(catRef)}">
         <div class="cat-thumb"><img src="${img}" alt="${c.name}"></div>
         <span>${c.name}</span>
       </a>`;
@@ -1527,7 +1591,13 @@ function ssQuickAddFlashSale(fsId) {
   window.__ssProductCache[cartProduct.id] = cartProduct;
 
   SS_CART.add(cartProduct, 1);
-  ssToast(`${product.name || "Item"} added to cart`, "fa-cart-shopping");
+  // NEW — same top overlay as every other add-to-cart.
+  ssShowCartAdded({
+    name: product.name || "Item",
+    image: ssImgSized(product, "f_auto,q_auto:good,w_160,h_160,c_fill,dpr_auto"),
+    qty: 1,
+    priceText: ssFmtPrice(fs.flashSalePrice)
+  });
 }
 
 // Fetches /flash-sales/today (live + locked-upcoming) and renders the rail.
@@ -1800,6 +1870,165 @@ async function ssLoadDrawerBadges() {
     badgeEl.style.display = "none";
   }
 }
+
+
+/* ============================================================
+   NEW — "ADDED TO CART" TOP OVERLAY
+   ssShowCartAdded({ name, image, qty, priceText, variantLabel, duration })
+
+   A card that drops in from the top of the screen:
+     - product thumbnail with an animated green check badge
+     - what was added (name, option, qty × price)
+     - "View cart" (primary) and "Continue shopping" buttons
+     - a thin timer bar that drains over `duration` ms, after which
+       the card slides away on its own
+
+   Behaviour details
+     - hover / focus / touch PAUSES the timer (the bar freezes too)
+       and it resumes when the pointer leaves
+     - swipe up on touch devices dismisses it; Esc dismisses it
+     - adding another item replaces the current card instantly
+       (no stacking pile-up)
+     - the header cart badge gives a small bounce so the eye is led
+       to where the item went
+   Styles live in style.css (".ss-cart-toast*"), incl. dark mode.
+   ============================================================ */
+function ssBumpCartBadge() {
+  document.querySelectorAll(".js-cart-count, #cartBtn").forEach(el => {
+    el.classList.remove("ss-bump");
+    void el.offsetWidth; // restart animation on rapid adds
+    el.classList.add("ss-bump");
+    setTimeout(() => el.classList.remove("ss-bump"), 750);
+  });
+}
+
+function ssShowCartAdded(opts = {}) {
+  const {
+    name = "Item",
+    image = "",
+    qty = 1,
+    priceText = "",
+    variantLabel = "",
+    duration = 5000
+  } = opts;
+
+  // one card at a time — swap instantly if another is still showing
+  if (window.__ssCartToast) window.__ssCartToast.dismiss(true);
+
+  const metaParts = [];
+  if (variantLabel) metaParts.push(variantLabel);
+  if (priceText) metaParts.push(qty > 1 ? `${qty} × ${priceText}` : priceText);
+  const meta = metaParts.join(" · ");
+
+  const wrap = document.createElement("div");
+  wrap.className = "ss-cart-toast-wrap";
+  wrap.setAttribute("role", "status");
+  wrap.setAttribute("aria-live", "polite");
+  wrap.innerHTML = `
+    <div class="ss-cart-toast" style="--cts-dur:${duration}ms">
+      <div class="ss-cart-toast__main">
+        <div class="ss-cart-toast__thumb">
+          ${image ? `<img src="${ssEscapeHtml(image)}" alt="">` : `<i class="fa-solid fa-bag-shopping"></i>`}
+          <span class="ss-cart-toast__badge" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path pathLength="1" d="M6.5 12.8l3.6 3.6 7.4-8"/></svg>
+          </span>
+        </div>
+        <div class="ss-cart-toast__text">
+          <div class="ss-cart-toast__title">Added to your cart</div>
+          <div class="ss-cart-toast__name">${ssEscapeHtml(name)}</div>
+          ${meta ? `<div class="ss-cart-toast__meta">${ssEscapeHtml(meta)}</div>` : ""}
+        </div>
+        <button type="button" class="ss-cart-toast__close" aria-label="Dismiss"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="ss-cart-toast__actions">
+        <a href="/cart.html" class="ss-cart-toast__btn ss-cart-toast__btn--primary"><i class="fa-solid fa-cart-shopping"></i> View cart</a>
+        <button type="button" class="ss-cart-toast__btn ss-cart-toast__btn--ghost" data-continue>Continue shopping</button>
+      </div>
+      <div class="ss-cart-toast__timer" aria-hidden="true"><i></i></div>
+    </div>`;
+  document.body.appendChild(wrap);
+
+  const card = wrap.querySelector(".ss-cart-toast");
+  let remaining = duration;
+  let startedAt = 0;
+  let timer = null;
+  let closed = false;
+
+  function run() {
+    if (closed || timer) return;
+    startedAt = performance.now();
+    timer = setTimeout(() => dismiss(false), Math.max(0, remaining));
+    card.classList.remove("is-paused");
+  }
+  function hold() {
+    if (closed || !timer) return;
+    clearTimeout(timer);
+    timer = null;
+    remaining -= performance.now() - startedAt;
+    card.classList.add("is-paused");
+  }
+  function onKey(e) { if (e.key === "Escape") dismiss(false); }
+
+  function dismiss(instant) {
+    if (closed) return;
+    closed = true;
+    clearTimeout(timer);
+    document.removeEventListener("keydown", onKey);
+    if (window.__ssCartToast && window.__ssCartToast.wrap === wrap) window.__ssCartToast = null;
+    if (instant) { wrap.remove(); return; }
+    card.classList.remove("is-in");
+    card.classList.add("is-out");
+    setTimeout(() => wrap.remove(), 380);
+  }
+
+  window.__ssCartToast = { wrap, dismiss };
+  document.addEventListener("keydown", onKey);
+
+  card.querySelector(".ss-cart-toast__close").addEventListener("click", () => dismiss(false));
+  card.querySelector("[data-continue]").addEventListener("click", () => dismiss(false));
+  card.addEventListener("pointerenter", hold);
+  card.addEventListener("pointerleave", run);
+  card.addEventListener("focusin", hold);
+  card.addEventListener("focusout", run);
+
+  // swipe up to dismiss (touch)
+  let startY = null, dy = 0;
+  card.addEventListener("touchstart", (e) => {
+    startY = e.touches[0].clientY; dy = 0;
+    hold();
+    card.classList.add("is-dragging");
+  }, { passive: true });
+  card.addEventListener("touchmove", (e) => {
+    if (startY === null) return;
+    dy = Math.min(0, e.touches[0].clientY - startY);
+    card.style.transform = `translateY(${dy}px)`;
+    card.style.opacity = String(Math.max(0.2, 1 + dy / 200));
+  }, { passive: true });
+  card.addEventListener("touchend", () => {
+    card.classList.remove("is-dragging");
+    if (dy < -46) {
+      card.style.transform = "translateY(-130%)";
+      card.style.opacity = "0";
+      dismiss(false);
+    } else {
+      card.style.transform = "";
+      card.style.opacity = "";
+      run();
+    }
+    startY = null; dy = 0;
+  });
+
+  // two frames so the browser paints the "off-screen" start state first,
+  // otherwise the slide-in transition would be skipped
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    if (closed) return;
+    card.classList.add("is-in");
+    run();
+  }));
+
+  setTimeout(ssBumpCartBadge, 420);
+}
+
 
 document.addEventListener("DOMContentLoaded", () => {
   ssRenderHeader(document.body.dataset.page || "");
