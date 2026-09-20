@@ -826,10 +826,11 @@
       <!-- ===== 2) TAB PANEL ===== -->
 <div class="tab-panel" id="panel-emailmarketing">
 
-  <div class="tabbar order-subtab" id="emkSubtabBar">
+    <div class="tabbar order-subtab" id="emkSubtabBar">
     <button class="active" data-emk-subtab="campaigns">Campaigns</button>
     <button data-emk-subtab="subscribers">Subscribers &amp; CRM</button>
     <button data-emk-subtab="whatsapp">WhatsApp Promos</button>
+    <button data-emk-subtab="instafb">Instagram &amp; Facebook</button>
   </div>
 
   <!-- ---------- CAMPAIGNS ---------- -->
@@ -930,6 +931,64 @@
       <div class="emk-wa-grid" id="emkWaGrid"></div>
     </div>
   </div>
+
+
+    <!-- ---------- INSTAGRAM & FACEBOOK PROMOS (new, separate from WhatsApp) ---------- -->
+  <div id="emkPanelInstaFb" style="display:none;">
+    <div class="dash-card">
+      <div class="dash-card__head"><h3>Generate an Instagram / Facebook Post or Story</h3></div>
+      <p class="text-muted" style="padding:0 18px;">Pick a platform and post type, then a product (or write your own message) to get a ready-to-post image + caption variants. Copy the caption and download the image, then post it yourself. Facebook also gets a one-click Share button.</p>
+      <form id="emkInstaFbForm" class="form-grid" style="padding:18px;">
+        <div class="form-row-2">
+          <div class="form-field">
+            <label for="emkIfPlatform">Platform</label>
+            <select id="emkIfPlatform">
+              <option value="instagram">Instagram</option>
+              <option value="facebook">Facebook</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="emkIfPostType">Post Type</label>
+            <select id="emkIfPostType">
+              <option value="post">Post (feed)</option>
+              <option value="story">Story</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-field">
+          <label for="emkIfProductSearch">Product (optional — search by name)</label>
+          <input type="text" id="emkIfProductSearch" placeholder="Start typing a product name...">
+          <div id="emkIfProductResults" style="margin-top:6px;"></div>
+          <input type="hidden" id="emkIfProductId">
+        </div>
+        <div class="form-field">
+          <label for="emkIfCustomMessage">Custom message (used if no product selected, or added as an extra variant)</label>
+          <textarea id="emkIfCustomMessage" placeholder="e.g. Flash weekend sale — everything at unbeatable prices!"></textarea>
+        </div>
+        <div class="form-field">
+          <label for="emkIfImageUrl">Override image URL (optional — defaults to the product's first photo)</label>
+          <input type="text" id="emkIfImageUrl" placeholder="https://...">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:fit-content;">Generate Promo</button>
+      </form>
+    </div>
+
+    <div class="dash-card">
+      <div class="dash-card__head">
+        <h3>Recent Promos</h3>
+        <div class="dash-toolbar">
+          <select id="emkIfFilterSelect">
+            <option value="">Both platforms</option>
+            <option value="instagram">Instagram</option>
+            <option value="facebook">Facebook</option>
+          </select>
+        </div>
+      </div>
+      <div class="emk-wa-grid" id="emkIfGrid"></div>
+    </div>
+  </div>
+
+
 
 </div>
 
@@ -2125,12 +2184,13 @@
 
       <div class="form-field">
         <label>Content type</label>
-        <div class="chip-row">
+                <div class="chip-row">
           <label class="chip active" data-emk-content-chip="custom"><input type="radio" name="emkContentType" value="custom" checked style="display:none;"> Custom message</label>
           <label class="chip" data-emk-content-chip="auto_recommendation"><input type="radio" name="emkContentType" value="auto_recommendation" style="display:none;"> Auto "Recommended for you"</label>
+          <label class="chip" data-emk-content-chip="new_arrivals"><input type="radio" name="emkContentType" value="new_arrivals" style="display:none;"> Auto "New Arrivals"</label>
         </div>
-        <div class="form-hint">Auto mode builds a personalized product grid per recipient from their own searches/recently viewed. You can also drop <code>{{recommended_products}}</code> into your own message below to place that grid exactly where you want it in Custom mode.</div>
-      </div>
+        <div class="form-hint">"Recommended for you" is personalized per recipient. "New Arrivals" shows the newest listed products to everyone, same order. Drop <code>{{recommended_products}}</code> into your own message to place either grid exactly where you want it in Custom mode.</div>
+        </div>   <!-- ← this line is missing -->
 
       <div class="form-field">
         <label>Message body</label>

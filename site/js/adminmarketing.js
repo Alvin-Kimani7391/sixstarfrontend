@@ -40,12 +40,13 @@ function closeModal(id) {
 // opened as a real page navigation (not a fetch/apiGet call) so the
 // browser sends the admin's auth cookie. Adjust the global name(s) below
 // to match whatever js/config.js actually exposes if this doesn't work.
+// The result must end in "/api" (e.g. https://sixstarbackend.onrender.com/api).
 function getApiBaseUrl() {
   return (
     window.API_BASE_URL ||
     window.API_URL ||
     window.API_BASE ||
-    (window.CONFIG && window.CONFIG.API_URL) ||
+    (window.CONFIG && (window.CONFIG.API_URL || window.CONFIG.API_BASE_URL)) ||
     ''
   );
 }
@@ -117,9 +118,14 @@ function init() {
     loadEmkSubscribers();
   });
 
-  // WhatsApp
+  // WhatsApp (unchanged)
   wireEmkWaProductSearch();
   document.getElementById('emkWaForm')?.addEventListener('submit', submitEmkWaForm);
+
+  // Instagram / Facebook
+  wireEmkInstaFbProductSearch();
+  document.getElementById('emkInstaFbForm')?.addEventListener('submit', submitEmkInstaFbForm);
+  document.getElementById('emkIfFilterSelect')?.addEventListener('change', loadEmkInstaFbPromos);
 }
 
 function wireEmkSubtabs() {
@@ -131,6 +137,7 @@ function wireEmkSubtabs() {
       document.getElementById('emkPanelCampaigns').style.display = emkSubtab === 'campaigns' ? 'block' : 'none';
       document.getElementById('emkPanelSubscribers').style.display = emkSubtab === 'subscribers' ? 'block' : 'none';
       document.getElementById('emkPanelWhatsapp').style.display = emkSubtab === 'whatsapp' ? 'block' : 'none';
+      document.getElementById('emkPanelInstaFb').style.display = emkSubtab === 'instafb' ? 'block' : 'none';
       loadEmailMarketingTab();
     });
   });
@@ -145,6 +152,8 @@ function loadEmailMarketingTab() {
     loadEmkSubscribers();
   } else if (emkSubtab === 'whatsapp') {
     loadEmkWaPromos();
+  } else if (emkSubtab === 'instafb') {
+    loadEmkInstaFbPromos();
   }
 }
 
@@ -239,7 +248,8 @@ function emkCampaignActionsHtml(c) {
     actions.push(`<button class="act-suspend" data-emk-cancel="${c._id}">Cancel</button>`);
   }
   actions.push(`<button class="act-edit" data-emk-preview="${c._id}">Preview</button>`);
-  if (['sending', 'sent'].includes(c.status)) {
+  // 'failed' campaigns can still have partial send logs, so allow viewing them.
+  if (['sending', 'sent', 'failed'].includes(c.status)) {
     actions.push(`<button class="act-edit" data-emk-logs="${c._id}">Logs</button>`);
   }
   actions.push(`<button class="act-edit" data-emk-duplicate="${c._id}">Duplicate</button>`);
@@ -477,15 +487,23 @@ async function submitEmkCampaignForm(e) {
   }
 }
 
+// FIX: always save the current form values first (so the preview reflects
+// edits to an EXISTING draft, e.g. switching it to "New Arrivals"), and open
+// the preview tab synchronously so popup blockers don't kill it after the
+// awaited save.
 async function openEmkPreviewCurrent() {
-  const modal = document.getElementById('emkCampaignModal');
-  let id = modal.dataset.campaignId;
-  if (!id) {
-    const campaign = await saveEmkCampaignDraft(false);
-    if (!campaign) return;
-    id = campaign._id;
+  const win = window.open('', '_blank');
+  const campaign = await saveEmkCampaignDraft(false);
+  if (!campaign) {
+    if (win) win.close();
+    return;
   }
-  openEmkPreviewById(id);
+  const url = `${getApiBaseUrl()}/marketing/email/campaigns/${campaign._id}/preview`;
+  if (win) {
+    win.location.href = url;
+  } else {
+    window.open(url, '_blank');
+  }
 }
 
 function openEmkPreviewById(id) {
@@ -703,7 +721,7 @@ async function openEmkSubscriberModal(id) {
 }
 
 // ===================================================================
-// WHATSAPP PROMOS
+// WHATSAPP PROMOS — UNCHANGED
 // ===================================================================
 function wireEmkWaProductSearch() {
   const input = document.getElementById('emkWaProductSearch');
@@ -816,6 +834,150 @@ async function loadEmkWaPromos() {
           await apiDelete(`/marketing/email/whatsapp-promo/${btn.dataset.emkDeletePromo}`);
           showToast('Promo deleted');
           loadEmkWaPromos();
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      })
+    );
+  } catch (err) {
+    grid.innerHTML = `<div class="dash-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>${err.message}</p></div>`;
+  }
+}
+
+// ===================================================================
+// INSTAGRAM / FACEBOOK PROMOS — separate from WhatsApp above
+// ===================================================================
+let emkIfPlatformFilter = '';
+
+function wireEmkInstaFbProductSearch() {
+  const input = document.getElementById('emkIfProductSearch');
+  if (!input) return;
+  input.addEventListener(
+    'input',
+    debounce(async () => {
+      const q = input.value.trim();
+      const resultsEl = document.getElementById('emkIfProductResults');
+      if (!q) {
+        resultsEl.innerHTML = '';
+        return;
+      }
+      try {
+        const { products } = await apiGet(`/admin/products?search=${encodeURIComponent(q)}&limit=6`);
+        resultsEl.innerHTML = products.length
+          ? products
+              .map(
+                (p) => `
+          <div class="assigned-attr-row" data-emk-if-pick="${p._id}" data-emk-if-name="${escapeHtml(p.name)}" style="cursor:pointer;">
+            <span class="attr-name">${escapeHtml(p.name)}</span>
+            <span class="text-muted">KSh ${(p.finalPrice || p.sellerPrice || 0).toLocaleString()}</span>
+          </div>`
+              )
+              .join('')
+          : `<div class="assigned-attr-empty">No products found.</div>`;
+
+        resultsEl.querySelectorAll('[data-emk-if-pick]').forEach((row) =>
+          row.addEventListener('click', () => {
+            document.getElementById('emkIfProductId').value = row.dataset.emkIfPick;
+            input.value = row.dataset.emkIfName;
+            resultsEl.innerHTML = '';
+          })
+        );
+      } catch (err) {
+        resultsEl.innerHTML = `<div class="assigned-attr-empty">${err.message}</div>`;
+      }
+    }, 350)
+  );
+}
+
+async function submitEmkInstaFbForm(e) {
+  e.preventDefault();
+  const payload = {
+    productId: document.getElementById('emkIfProductId').value || undefined,
+    customMessage: document.getElementById('emkIfCustomMessage').value.trim(),
+    imageUrl: document.getElementById('emkIfImageUrl').value.trim(),
+    platform: document.getElementById('emkIfPlatform').value,
+    postType: document.getElementById('emkIfPostType').value,
+  };
+  try {
+    await apiPost('/marketing/email/social-promo/generate', payload);
+    showToast('Promo generated');
+    document.getElementById('emkInstaFbForm').reset();
+    document.getElementById('emkIfProductId').value = '';
+    document.getElementById('emkIfProductResults').innerHTML = '';
+    loadEmkInstaFbPromos();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+const IF_PLATFORM_LABEL = { instagram: 'Instagram', facebook: 'Facebook' };
+
+function ifShareActionHtml(promo, caption) {
+  if (promo.platform === 'facebook') {
+    const shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(promo.link || '')}&quote=${encodeURIComponent(caption)}`;
+    return `<a class="act-edit" style="text-decoration:none; display:inline-block;" href="${shareUrl}" target="_blank" rel="noopener">Share</a>`;
+  }
+  return `<span class="text-muted" style="font-size:.72rem; align-self:center;">Copy caption, then post via IG app</span>`;
+}
+
+async function loadEmkInstaFbPromos() {
+  const grid = document.getElementById('emkIfGrid');
+  if (!grid) return;
+  emkIfPlatformFilter = document.getElementById('emkIfFilterSelect')?.value || '';
+  grid.innerHTML = `<div class="spinner"></div>`;
+  try {
+    const qs = emkIfPlatformFilter ? `?platform=${emkIfPlatformFilter}` : '';
+    const { promos } = await apiGet(`/marketing/email/social-promo${qs}`);
+    if (!promos.length) {
+      grid.innerHTML = `<div class="dash-empty"><i class="fa-solid fa-share-nodes"></i><p>No promos generated yet.</p></div>`;
+      return;
+    }
+
+    grid.innerHTML = promos
+      .map(
+        (p) => `
+      <div class="emk-wa-card">
+        ${p.imageUrl ? `<img class="emk-wa-card__img" src="${p.imageUrl}" alt="">` : ''}
+        <div class="emk-wa-card__body">
+          <div style="display:flex; align-items:center; margin-bottom:8px;">
+            <span class="social-platform-badge pf-${p.platform}">${IF_PLATFORM_LABEL[p.platform] || p.platform}</span>
+            <span class="social-posttype-badge">${p.postType === 'story' ? 'Story' : 'Post'}</span>
+          </div>
+          <div style="font-weight:700; font-size:.85rem; margin-bottom:8px;">${escapeHtml(p.title)}</div>
+          ${(p.captions || [])
+            .map(
+              (cap) => `
+            <div class="emk-caption-box">${escapeHtml(cap)}</div>
+            <div class="emk-caption-actions">
+              <button type="button" class="act-edit" data-emk-if-copy="${encodeURIComponent(cap)}">Copy</button>
+              ${ifShareActionHtml(p, cap)}
+            </div>`
+            )
+            .join('')}
+          ${p.imageUrl ? `<a class="act-edit" style="text-decoration:none; display:inline-block; margin-bottom:8px;" href="${p.imageUrl}" download target="_blank" rel="noopener">Download Image</a>` : ''}
+          <button type="button" class="act-reject" data-emk-if-delete="${p._id}" style="width:100%;">Delete</button>
+        </div>
+      </div>`
+      )
+      .join('');
+
+    grid.querySelectorAll('[data-emk-if-copy]').forEach((btn) =>
+      btn.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(decodeURIComponent(btn.dataset.emkIfCopy));
+          showToast('Caption copied');
+        } catch (err) {
+          showToast('Could not copy — select and copy manually', 'error');
+        }
+      })
+    );
+    grid.querySelectorAll('[data-emk-if-delete]').forEach((btn) =>
+      btn.addEventListener('click', async () => {
+        if (!confirm('Delete this promo?')) return;
+        try {
+          await apiDelete(`/marketing/email/social-promo/${btn.dataset.emkIfDelete}`);
+          showToast('Promo deleted');
+          loadEmkInstaFbPromos();
         } catch (err) {
           showToast(err.message, 'error');
         }
