@@ -163,7 +163,7 @@ const SS_AGENT_API = (() => {
     recruitBuyer(payload) {
       return request("/sharing/recruit-buyer", { method: "POST", body: payload });
     },
-        sendInvite(payload) {
+    sendInvite(payload) {
       return request("/sharing/send-invite", { method: "POST", body: payload });
     },
     recruitSeller(payload) {
@@ -173,13 +173,15 @@ const SS_AGENT_API = (() => {
       return request(`/sharing/products/${productId}/promote`, { method: "POST" });
     },
 
-        // ============================================================
-    // WHATSAPP PRODUCT PROMO (NEW — mirrors the admin generator,
-    // scoped to this agent's own referral code)
+    // ============================================================
+    // PRODUCT PROMOS — WhatsApp + Instagram/Facebook (mirrors the admin
+    // generators, scoped to this agent's own referral code)
     // ============================================================
     searchShareProducts(q) {
       return request("/sharing/products/search", { query: { q } });
     },
+
+    // WhatsApp
     generateWhatsappPromo(payload) {
       return request("/sharing/whatsapp-promo/generate", { method: "POST", body: payload });
     },
@@ -190,16 +192,20 @@ const SS_AGENT_API = (() => {
       return request(`/sharing/whatsapp-promo/${id}`, { method: "DELETE" });
     },
 
+    // Instagram / Facebook
+    // payload: { platform: 'instagram'|'facebook', postType: 'post'|'story',
+    //            productId?, customMessage?, imageUrl? }
+    generateSocialPromo(payload) {
+      return request("/sharing/social-promo/generate", { method: "POST", body: payload });
+    },
+    // platform: '' (both) | 'instagram' | 'facebook' — empty values are dropped from the query
+    getSocialPromos(platform) {
+      return request("/sharing/social-promo", { query: { platform } });
+    },
+    deleteSocialPromo(id) {
+      return request(`/sharing/social-promo/${id}`, { method: "DELETE" });
+    },
 
-    generateSocialPromo(payload) {   // { platform, postType, productId?, customMessage?, imageUrl? }
-  // POST  /sharing/social-promo/generate   (body: payload)
-},
-getSocialPromos(platform) {      // platform: '' | 'instagram' | 'facebook'
-  // GET   /sharing/social-promo   (query: platform, omit when empty)
-},
-deleteSocialPromo(id) {
-  // DELETE /sharing/social-promo/:id
-},
     // ============================================================
     // RECRUITMENT CRM (leads)
     // ============================================================
