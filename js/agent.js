@@ -17,6 +17,7 @@ let currentAgent = null;
 let assetsCache = [];
 let leadsCache = [];
 let commissionsCache = [];
+let socialPromosCache = [];
 let activeLeadId = null;
 let activeAssetId = null;
 
@@ -32,7 +33,7 @@ async function init() {
   wireLeads();
   wireProfile();
   wirePayout();
-  wireImageLightbox();   // <-- add this line
+  wireImageLightbox();
   await checkAuth();
 }
 
@@ -68,7 +69,7 @@ function showDashboard() {
 }
 
 // ===================================================================
-// AVATAR HELPERS (NEW)
+// AVATAR HELPERS
 // ===================================================================
 // Toggles between the <img> and the CSS fallback icon depending on
 // whether the agent has actually uploaded a photo. Reused for the
@@ -120,6 +121,7 @@ function switchTab(tab) {
   if (tab === "overview") loadOverview();
   if (tab === "marketing") { loadAssets(); loadMyMarketing(); }
   if (tab === "campaigns") loadCampaigns();
+  if (tab === "sharing") loadSocialSharePromos();
   if (tab === "leads") { loadFollowups(); loadLeads(); }
   if (tab === "commissions") loadCommissions();
   if (tab === "analytics") loadAnalytics();
@@ -137,7 +139,7 @@ function wireOverview() {
   document.getElementById("overviewSeeAllNotif").addEventListener("click", () => switchTab("notifications"));
   document.getElementById("shareProductQuickBtn")?.addEventListener("click", () => {
     switchTab("sharing");
-    setTimeout(() => document.getElementById("productShareInput")?.focus(), 150);
+    setTimeout(() => document.getElementById("productShareSearch")?.focus(), 150);
   });
 }
 
@@ -177,9 +179,9 @@ async function loadOverview() {
 }
 
 // ---------------------------------------------------------------
-// Referral links — FIXED to point at the storefront (SS_SITE_URL),
-// never the API host. Each row now has Copy + a native-share button
-// that opens the phone's share sheet via the Web Share API.
+// Referral links — point at the storefront (SS_SITE_URL), never the
+// API host. Each row has Copy + a native-share button that opens the
+// phone's share sheet via the Web Share API.
 // ---------------------------------------------------------------
 function renderReferralLinks() {
   const grid = document.getElementById("referralLinksGrid");
@@ -202,7 +204,7 @@ function renderReferralLinks() {
     </div>`).join("");
   wireCopyButtons(grid);
   wireNativeShareButtons(grid);
-  refreshQuickActionLinks();   // <-- add this line
+  refreshQuickActionLinks();
 }
 
 async function loadOverviewNotifications() {
@@ -368,7 +370,7 @@ async function loadCampaigns() {
     document.querySelectorAll("[data-view-campaign]").forEach((btn) =>
       btn.addEventListener("click", () => { switchTab("marketing"); document.getElementById("assetSearch").value = ""; loadAssets(); })
     );
-         document.querySelectorAll("[data-download-pack]").forEach((btn) =>
+    document.querySelectorAll("[data-download-pack]").forEach((btn) =>
       btn.addEventListener("click", async () => {
         try {
           const res = await SS_AGENT_API.downloadCampaignPack(btn.dataset.downloadPack);
@@ -421,20 +423,20 @@ function wireSharing() {
   });
 
   wireProductSharePromo();
+  wireSocialSharePromo();
 }
 
-// ===================================================================
-// WHATSAPP PRODUCT PROMO (NEW — mirrors the admin Marketing Center's
-// WhatsApp promo generator, scoped to this agent's own referral code)
-// ===================================================================
-function wireProductSharePromo() {
-  const searchInput = document.getElementById("productShareSearch");
-  const resultsEl = document.getElementById("productShareResults");
-  const hiddenId = document.getElementById("productShareProductId");
+// Shared product search-and-pick widget used by both the WhatsApp and the
+// Instagram/Facebook promo forms. Typing again clears any previous pick.
+function wireProductPicker(searchId, resultsId, hiddenId) {
+  const searchInput = document.getElementById(searchId);
+  const resultsEl = document.getElementById(resultsId);
+  const hiddenEl = document.getElementById(hiddenId);
+  if (!searchInput || !resultsEl || !hiddenEl) return;
 
   searchInput.addEventListener("input", debounce(async () => {
     const q = searchInput.value.trim();
-    hiddenId.value = ""; // typing again clears any previous pick
+    hiddenEl.value = "";
     if (!q) { resultsEl.innerHTML = ""; return; }
     try {
       const { products } = await SS_AGENT_API.searchShareProducts(q);
@@ -448,7 +450,7 @@ function wireProductSharePromo() {
 
       resultsEl.querySelectorAll("[data-pick-product]").forEach((row) =>
         row.addEventListener("click", () => {
-          hiddenId.value = row.dataset.pickProduct;
+          hiddenEl.value = row.dataset.pickProduct;
           searchInput.value = row.dataset.pickName;
           resultsEl.innerHTML = "";
         })
@@ -457,6 +459,17 @@ function wireProductSharePromo() {
       resultsEl.innerHTML = `<div class="text-muted">${err.message}</div>`;
     }
   }, 350));
+}
+
+// ===================================================================
+// WHATSAPP PRODUCT PROMO (mirrors the admin Marketing Center's WhatsApp
+// promo generator, scoped to this agent's own referral code)
+// ===================================================================
+function wireProductSharePromo() {
+  wireProductPicker("productShareSearch", "productShareResults", "productShareProductId");
+
+  const hiddenId = document.getElementById("productShareProductId");
+  const resultsEl = document.getElementById("productShareResults");
 
   document.getElementById("productShareForm").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -535,6 +548,168 @@ async function loadProductSharePromos() {
 }
 
 // ===================================================================
+// INSTAGRAM / FACEBOOK PRODUCT PROMO (NEW — mirrors the admin Marketing
+// Center's Instagram & Facebook generator, scoped to this agent's own
+// referral code)
+// ===================================================================
+const SOCIAL_PLATFORM_LABEL = { instagram: "Instagram", facebook: "Facebook" };
+
+function wireSocialSharePromo() {
+  const form = document.getElementById("socialShareForm");
+  if (!form) return;
+
+  wireProductPicker("socialShareSearch", "socialShareResults", "socialShareProductId");
+
+  const hiddenId = document.getElementById("socialShareProductId");
+  const resultsEl = document.getElementById("socialShareResults");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const payload = {
+      platform: document.getElementById("socialSharePlatform").value,
+      postType: document.getElementById("socialSharePostType").value,
+      productId: hiddenId.value || undefined,
+      customMessage: document.getElementById("socialShareCustomMessage").value.trim(),
+      imageUrl: document.getElementById("socialShareImageUrl").value.trim(),
+    };
+    if (!payload.productId && !payload.customMessage) {
+      ssToast("Pick a product or write a custom message first", "fa-triangle-exclamation");
+      return;
+    }
+    try {
+      await SS_AGENT_API.generateSocialPromo(payload);
+      ssToast("Promo generated", payload.platform === "facebook" ? "fa-brands fa-facebook" : "fa-brands fa-instagram");
+      form.reset();
+      hiddenId.value = "";
+      resultsEl.innerHTML = "";
+      loadSocialSharePromos();
+    } catch (err) { ssToast(err.message, "fa-triangle-exclamation"); }
+  });
+
+  document.getElementById("socialShareFilter")?.addEventListener("change", loadSocialSharePromos);
+}
+
+function socialShareActionHtml(promo, cap) {
+  if (promo.platform === "facebook") {
+    const shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(promo.link || "")}&quote=${encodeURIComponent(cap)}`;
+    return `<a class="act-btn act-primary" style="text-decoration:none;" href="${shareUrl}" target="_blank" rel="noopener"><i class="fa-brands fa-facebook"></i> Share</a>`;
+  }
+  // Instagram has no web share dialog — use the phone's share sheet (image +
+  // caption) where available, otherwise copy the caption.
+  return `<button type="button" class="act-btn act-primary" data-social-native="${promo._id}" data-social-caption="${encodeURIComponent(cap)}"><i class="fa-brands fa-instagram"></i> Share</button>`;
+}
+
+async function loadSocialSharePromos() {
+  const grid = document.getElementById("socialShareGrid");
+  if (!grid) return;
+  const platform = document.getElementById("socialShareFilter")?.value || "";
+  grid.innerHTML = `<div class="spinner"></div>`;
+  try {
+    const { promos } = await SS_AGENT_API.getSocialPromos(platform);
+    socialPromosCache = promos;
+
+    if (!promos.length) {
+      grid.innerHTML = `<div class="dash-empty"><i class="fa-solid fa-share-nodes"></i><p>No Instagram or Facebook promos generated yet.</p></div>`;
+      return;
+    }
+
+    grid.innerHTML = promos.map((p) => `
+      <div class="wa-card" data-promo-id="${p._id}">
+        ${p.imageUrl ? `<img class="wa-card__img" src="${p.imageUrl}" alt="">` : ""}
+        <div class="wa-card__body">
+          <div class="social-badge-row">
+            <span class="social-platform-badge pf-${p.platform}"><i class="fa-brands fa-${p.platform}"></i> ${SOCIAL_PLATFORM_LABEL[p.platform] || escapeHtml(p.platform)}</span>
+            <span class="social-posttype-badge">${p.postType === "story" ? "Story" : "Post"}</span>
+          </div>
+          <div style="font-weight:700; font-size:.85rem; margin-bottom:8px;">${escapeHtml(p.title)}</div>
+          ${p.platform === "instagram" ? `<p class="social-hint">Links in Instagram captions aren't clickable — for a feed post, put your link in your bio; for a story, add it with the link sticker.</p>` : ""}
+          ${(p.captions || []).map((cap) => `
+            <div class="wa-caption-box">${escapeHtml(cap)}</div>
+            <div class="wa-caption-actions">
+              <button type="button" class="act-btn act-outline" data-social-copy="${encodeURIComponent(cap)}">Copy</button>
+              ${socialShareActionHtml(p, cap)}
+            </div>`).join("")}
+          <div class="wa-caption-actions">
+            ${p.link ? `<button type="button" class="act-btn act-outline" data-social-copy-link="${escapeHtml(p.link)}">Copy Link</button>` : ""}
+            ${p.imageUrl ? `<button type="button" class="act-btn act-outline" data-social-download="${p.imageUrl}">Download Image</button>` : ""}
+          </div>
+          <button type="button" class="act-btn act-danger" data-social-delete="${p._id}" style="width:100%;">Delete</button>
+        </div>
+      </div>`).join("");
+
+    grid.querySelectorAll("[data-social-copy]").forEach((btn) =>
+      btn.addEventListener("click", () => {
+        navigator.clipboard.writeText(decodeURIComponent(btn.dataset.socialCopy))
+          .then(() => ssToast("Caption copied", "fa-copy"))
+          .catch(() => ssToast("Could not copy — select and copy manually", "fa-triangle-exclamation"));
+      })
+    );
+    grid.querySelectorAll("[data-social-copy-link]").forEach((btn) =>
+      btn.addEventListener("click", () => {
+        navigator.clipboard.writeText(btn.dataset.socialCopyLink)
+          .then(() => ssToast("Link copied", "fa-copy"))
+          .catch(() => ssToast("Could not copy — select and copy manually", "fa-triangle-exclamation"));
+      })
+    );
+    grid.querySelectorAll("[data-social-download]").forEach((btn) =>
+      btn.addEventListener("click", () => triggerFileDownload(btn.dataset.socialDownload))
+    );
+    grid.querySelectorAll("[data-social-native]").forEach((btn) =>
+      btn.addEventListener("click", () => {
+        const promo = socialPromosCache.find((x) => x._id === btn.dataset.socialNative);
+        shareSocialPromoNative(promo, decodeURIComponent(btn.dataset.socialCaption));
+      })
+    );
+    grid.querySelectorAll("[data-social-delete]").forEach((btn) =>
+      btn.addEventListener("click", async () => {
+        if (!confirm("Delete this promo?")) return;
+        try {
+          await SS_AGENT_API.deleteSocialPromo(btn.dataset.socialDelete);
+          ssToast("Promo deleted");
+          loadSocialSharePromos();
+        } catch (err) { ssToast(err.message, "fa-triangle-exclamation"); }
+      })
+    );
+  } catch (err) {
+    grid.innerHTML = `<div class="dash-empty"><p>${err.message}</p></div>`;
+  }
+}
+
+// Opens the phone's share sheet with the promo image attached (so Instagram
+// receives the picture) and copies the caption first so it can be pasted.
+// Falls back gracefully: text-only share sheet, then plain copy on desktop.
+async function shareSocialPromoNative(promo, caption) {
+  if (!promo) return;
+
+  // Best-effort: put the caption on the clipboard, since Instagram usually
+  // ignores caption text passed through the share sheet.
+  try { await navigator.clipboard.writeText(caption); } catch (_) {}
+
+  if (navigator.share) {
+    try {
+      if (promo.imageUrl && navigator.canShare) {
+        try {
+          const resp = await fetch(promo.imageUrl, { mode: "cors" });
+          const blob = await resp.blob();
+          const file = new File([blob], "promo.jpg", { type: blob.type || "image/jpeg" });
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], text: caption });
+            ssToast("Caption copied — paste it in your post", "fa-copy");
+            return;
+          }
+        } catch (_) { /* image fetch/CORS failed — fall through to text share */ }
+      }
+      await navigator.share({ text: caption });
+      return;
+    } catch (err) {
+      if (err.name === "AbortError") return; // user closed the share sheet
+    }
+  }
+
+  ssToast("Caption copied — download the image and post it in the app", "fa-copy");
+}
+
+// ===================================================================
 // RECRUIT
 // ===================================================================
 function wireRecruit() {
@@ -597,9 +772,8 @@ function wireRecruit() {
 
     try {
       if (channel === "email") {
-        // sendInvite now accepts phone/businessName/location directly and
-        // logs the lead itself — no separate createLead() call needed, which
-        // previously caused a duplicate lead row for every seller email invite.
+        // sendInvite accepts phone/businessName/location directly and logs
+        // the lead itself — no separate createLead() call needed.
         const res = await SS_AGENT_API.sendInvite({ type: "seller", email, name, phone, businessName, location });
         showRecruitResult("rsResult", res.link, null, true);
         ssToast(`Invitation email sent to ${email}`, "fa-paper-plane");
@@ -1049,7 +1223,7 @@ function loadProfileForm() {
 
 
 // ===================================================================
-// IMAGE LIGHTBOX (NEW) — click any avatar with a real photo to view it
+// IMAGE LIGHTBOX — click any avatar with a real photo to view it
 // full-size. No-ops on the fallback icon (no src) so nothing breaks
 // when the agent hasn't uploaded a photo yet.
 // ===================================================================
@@ -1078,12 +1252,12 @@ function wireImageLightbox() {
 }
 
 
-// NEW — forces an actual file download instead of opening the asset in a
-// new tab (which is what window.open(url, "_blank") does for images/PDFs,
-// and looks like "nothing happened"). Fetches the file as a blob and
-// triggers a real Save-As via a temporary <a download> link. Falls back to
-// opening the URL directly if the fetch fails (e.g. the storage host
-// doesn't send CORS headers) so the person can still get the file.
+// Forces an actual file download instead of opening the asset in a new tab
+// (which is what window.open(url, "_blank") does for images/PDFs, and looks
+// like "nothing happened"). Fetches the file as a blob and triggers a real
+// Save-As via a temporary <a download> link. Falls back to opening the URL
+// directly if the fetch fails (e.g. the storage host doesn't send CORS
+// headers) so the person can still get the file.
 async function triggerFileDownload(url, filename) {
   if (!url) return;
   try {
@@ -1104,7 +1278,7 @@ async function triggerFileDownload(url, filename) {
 }
 
 // ===================================================================
-// PAYOUT DETAILS (NEW)
+// PAYOUT DETAILS
 // ===================================================================
 function wirePayout() {
   document.querySelectorAll('#payoutMethodChips input[name="payoutMethod"]').forEach((radio) => {
@@ -1199,9 +1373,9 @@ function wireCopyButtons(scope) {
   });
 }
 
-// NEW — native share (Web Share API) with graceful fallback. Opens the
-// phone's OS share sheet automatically on mobile; falls back to copying
-// the link on desktop browsers that don't support navigator.share.
+// Native share (Web Share API) with graceful fallback. Opens the phone's OS
+// share sheet automatically on mobile; falls back to copying the link on
+// desktop browsers that don't support navigator.share.
 function wireNativeShareButtons(scope) {
   scope.querySelectorAll("[data-native-share]").forEach((btn) => {
     btn.addEventListener("click", async () => {
@@ -1229,9 +1403,6 @@ function wireNativeShareButtons(scope) {
 function escapeHtml(str = "") {
   return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
-
-
-
 
 function debounce(fn, delay) {
   let t;

@@ -189,6 +189,17 @@ const SS_AGENT_API = (() => {
     deleteWhatsappPromo(id) {
       return request(`/sharing/whatsapp-promo/${id}`, { method: "DELETE" });
     },
+
+
+    generateSocialPromo(payload) {   // { platform, postType, productId?, customMessage?, imageUrl? }
+  // POST  /sharing/social-promo/generate   (body: payload)
+},
+getSocialPromos(platform) {      // platform: '' | 'instagram' | 'facebook'
+  // GET   /sharing/social-promo   (query: platform, omit when empty)
+},
+deleteSocialPromo(id) {
+  // DELETE /sharing/social-promo/:id
+},
     // ============================================================
     // RECRUITMENT CRM (leads)
     // ============================================================
