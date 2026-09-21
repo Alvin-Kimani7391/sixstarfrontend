@@ -1160,6 +1160,11 @@
 
     function buyNow(btn) {
       if (btn && btn.classList.contains("is-loading")) return; // no double-fire
+      // We're about to leave for the cart — don't flash the "Added to cart"
+      // overlay (ui.js shows it automatically for every SS_CART.add) just
+      // before navigating. Reset in case the navigation is cancelled.
+      window.__ssSuppressCartToast = true;
+      setTimeout(() => { window.__ssSuppressCartToast = false; }, 3000);
       SS_CART.add(buildPayload(), qty);
       if (btn) btn.classList.add("is-loading");
       location.href = "cart.html";
@@ -1179,6 +1184,9 @@
      instant the shopper reaches it — no scroll-math, no jank — and
      comes back if they scroll past it again. (Falls back to a
      getBoundingClientRect check where IntersectionObserver is missing.)
+     FOOTER: the same observer also watches #site-footer. While the
+     footer is on screen the bar hides as the shopper scrolls DOWN and
+     reappears as soon as they scroll UP (see initStickyBar).
      Tapping a button while a variant hasn't been chosen scrolls to the
      picker and nudges it instead of failing silently. */
 
@@ -1290,30 +1298,50 @@
     addBtn.addEventListener("click", () => onStickyAction("add", addBtn));
     buyBtn.addEventListener("click", () => onStickyAction("buy", buyBtn));
 
-    const state = { scrolled: window.scrollY > 24, panelVisible: false };
+    // Footer zone: once the site footer is on screen the bar stays out of the
+    // way while the shopper keeps scrolling DOWN, and slides straight back in
+    // the moment they scroll UP. Direction is tracked with a small threshold
+    // (and the scroll position is clamped to the page) so a touch jitter or
+    // an iOS rubber-band bounce at the very bottom can't make it flicker.
+    const footerEl = document.getElementById("site-footer");
+    const state = {
+      scrolled: window.scrollY > 24,
+      panelVisible: false,
+      footerVisible: false,
+      scrollingUp: false
+    };
+    let lastY = window.scrollY;
 
     function apply() {
-      const show = state.scrolled && !state.panelVisible;
+      const footerHides = state.footerVisible && !state.scrollingUp;
+      const show = state.scrolled && !state.panelVisible && !footerHides;
       bar.classList.toggle("is-visible", show);
       bar.toggleAttribute("inert", !show);
       bar.setAttribute("aria-hidden", show ? "false" : "true");
       document.body.classList.toggle("pd-sticky-active", show);
     }
 
-    function rectVisible() {
-      const r = panel.getBoundingClientRect();
-      return r.top < window.innerHeight && r.bottom > 0;
+    function rectVisible(el) {
+      if (!el) return false;
+      const r = el.getBoundingClientRect();
+      return r.height > 0 && r.top < window.innerHeight && r.bottom > 0;
     }
 
+    // One observer watches both the purchase panel and the footer.
     let io = null;
     if ("IntersectionObserver" in window) {
       io = new IntersectionObserver((entries) => {
-        state.panelVisible = entries[entries.length - 1].isIntersecting;
+        entries.forEach((entry) => {
+          if (entry.target === panel) state.panelVisible = entry.isIntersecting;
+          else if (entry.target === footerEl) state.footerVisible = entry.isIntersecting;
+        });
         apply();
       }, { threshold: 0 });
       io.observe(panel);
+      if (footerEl) io.observe(footerEl);
     } else {
-      state.panelVisible = rectVisible();
+      state.panelVisible = rectVisible(panel);
+      state.footerVisible = rectVisible(footerEl);
     }
 
     let ticking = false;
@@ -1322,8 +1350,20 @@
       ticking = true;
       requestAnimationFrame(() => {
         ticking = false;
-        state.scrolled = window.scrollY > 24;
-        if (!io) state.panelVisible = rectVisible();
+
+        const maxY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+        const y = Math.max(0, Math.min(window.scrollY, maxY));   // ignore rubber-band overscroll
+        const dy = y - lastY;
+        if (Math.abs(dy) >= 4) {          // accumulate small moves before deciding a direction
+          state.scrollingUp = dy < 0;
+          lastY = y;
+        }
+
+        state.scrolled = y > 24;
+        if (!io) {
+          state.panelVisible = rectVisible(panel);
+          state.footerVisible = rectVisible(footerEl);
+        }
         apply();
       });
     }

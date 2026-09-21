@@ -9,6 +9,10 @@
    - ssShowCartAdded(): top "Added to cart" overlay with a draining
      timer, View cart / Continue shopping, swipe-up to dismiss.
      ssQuickAdd() and ssQuickAddFlashSale() now use it.
+   - The overlay now appears on EVERY page, for every SS_CART.add
+     (see ssInstallCartToastHook near the bottom). Variants are only
+     chosen on product-detail.html; elsewhere the overlay just notes
+     that options are picked in the cart.
    - ssBumpCartBadge(): little bounce on the header cart badge.
    - WhatsApp float can now be pointed at a specific product:
      ssSetWhatsAppProvider(fn, {tip}) / ssRefreshWhatsApp().
@@ -65,6 +69,17 @@ function ssShuffle(arr) {
 }
 
 function ssToast(message, icon = "fa-circle-check") {
+  // NEW — pages that still do `SS_CART.add(...); ssToast("… added to cart")`
+  // would otherwise show BOTH the new top overlay and this old bottom toast.
+  // The cart hook (ssInstallCartToastHook, bottom of this file) stamps
+  // __ssLastCartAddAt on every add, so an "added to cart" toast that follows
+  // within a moment is redundant and skipped. Any other toast is untouched.
+  if (
+    /added to (your )?cart/i.test(String(message)) &&
+    !window.__ssSuppressCartToast &&
+    Date.now() - (window.__ssLastCartAddAt || 0) < 600
+  ) return;
+
   let toast = document.getElementById("toast");
   if (!toast) {
     toast = document.createElement("div");
@@ -260,12 +275,10 @@ function ssQuickAdd(id) {
   // NEW — top overlay with "View cart / Continue" instead of the bottom toast.
   // (To go back to the old behaviour, swap this call for:
   //  ssToast(`${p.name} added to cart${qty > 1 ? ` (${qty} units)` : ""}`, "fa-cart-shopping");)
-  ssShowCartAdded({
-    name: p.name,
-    image: ssImgSized(p, "f_auto,q_auto:good,w_160,h_160,c_fill,dpr_auto"),
-    qty,
-    priceText: ssFmtPrice(p.displayPrice ?? p.finalPrice ?? 0)
-  });
+  // Variants are NOT chosen here — that only happens on product-detail.html.
+  // For a product that has variants, the overlay tells the shopper they'll
+  // pick their options in the cart.
+  ssShowCartAdded(ssCartToastInfo(p, qty));
 }
 
 //skeleton cards for loading state
@@ -1592,12 +1605,7 @@ function ssQuickAddFlashSale(fsId) {
 
   SS_CART.add(cartProduct, 1);
   // NEW — same top overlay as every other add-to-cart.
-  ssShowCartAdded({
-    name: product.name || "Item",
-    image: ssImgSized(product, "f_auto,q_auto:good,w_160,h_160,c_fill,dpr_auto"),
-    qty: 1,
-    priceText: ssFmtPrice(fs.flashSalePrice)
-  });
+  ssShowCartAdded(ssCartToastInfo(cartProduct, 1));
 }
 
 // Fetches /flash-sales/today (live + locked-upcoming) and renders the rail.
@@ -1909,8 +1917,13 @@ function ssShowCartAdded(opts = {}) {
     qty = 1,
     priceText = "",
     variantLabel = "",
+    note = "",
     duration = 5000
   } = opts;
+
+  // Tell the cart hook (ssInstallCartToastHook) that the add which just
+  // happened already has its overlay, so it doesn't add a second one.
+  window.__ssCartToastSeq = window.__ssCartAddSeq || 0;
 
   // one card at a time — swap instantly if another is still showing
   if (window.__ssCartToast) window.__ssCartToast.dismiss(true);
@@ -1937,6 +1950,7 @@ function ssShowCartAdded(opts = {}) {
           <div class="ss-cart-toast__title">Added to your cart</div>
           <div class="ss-cart-toast__name">${ssEscapeHtml(name)}</div>
           ${meta ? `<div class="ss-cart-toast__meta">${ssEscapeHtml(meta)}</div>` : ""}
+          ${note ? `<div class="ss-cart-toast__note"><i class="fa-solid fa-sliders"></i> ${ssEscapeHtml(note)}</div>` : ""}
         </div>
         <button type="button" class="ss-cart-toast__close" aria-label="Dismiss"><i class="fa-solid fa-xmark"></i></button>
       </div>
@@ -2030,7 +2044,109 @@ function ssShowCartAdded(opts = {}) {
 }
 
 
+/* ============================================================
+   NEW — "ADDED TO CART" OVERLAY ON EVERY PAGE
+   ssInstallCartToastHook() wraps SS_CART.add once, so ANY page that
+   adds to the cart (home rails, product grids, category pages,
+   flash sale, wholesale, related products …) gets the same top
+   overlay — no per-page wiring needed.
+
+   How it stays out of the way
+     - Callers that already show a richer overlay (product-detail.js
+       passes the chosen variant + live price) mark themselves via
+       ssShowCartAdded(); the hook sees that and adds nothing extra.
+     - If a refused add returns `false`, nothing is shown.
+     - Set `window.__ssSuppressCartToast = true` before an add to skip
+       the overlay (product-detail's "Buy now" does this, since the
+       page navigates straight to the cart).
+     - Old-style `ssToast("… added to cart")` calls that follow an add
+       are swallowed inside ssToast() so shoppers don't see two messages.
+
+   Variants: they are only ever picked on product-detail.html. From any
+   other page the item goes in without one, and — if the product has
+   variants — the overlay says options are chosen in the cart.
+   ============================================================ */
+window.__ssCartAddSeq = window.__ssCartAddSeq || 0;
+window.__ssCartToastSeq = window.__ssCartToastSeq || 0;
+
+// Unit price that matches how the product will be charged for `qty`.
+function ssCartUnitPrice(p, qty) {
+  const base = p.displayPrice ?? p.finalPrice ?? 0;
+  const sv = p.selectedVariant;
+  if (sv) {
+    if (sv.useCustomPrice && sv.customPrice != null) return Number(sv.customPrice) || 0;
+    return base + (sv.priceAdjustment || 0);
+  }
+  if (p.sellerRole === "wholesaler" && Array.isArray(p.pricingTiers) && p.pricingTiers.length) {
+    let unit = null;
+    [...p.pricingTiers]
+      .sort((a, b) => a.minQty - b.minQty)
+      .forEach(t => { if (qty >= t.minQty) unit = t.price; });
+    if (unit != null) return unit;
+  }
+  return base;
+}
+
+// Turns a product object (as passed to SS_CART.add) into ssShowCartAdded() options.
+function ssCartToastInfo(p, qty) {
+  if (!p) return null;
+  const q = Math.max(1, Number(qty) || 1);
+  const sv = p.selectedVariant || null;
+  const hasVariants = Array.isArray(p.variants) && p.variants.some(v => v && v.isActive !== false);
+  return {
+    name: p.name || "Item",
+    image: ssImgSized(p, "f_auto,q_auto:good,w_160,h_160,c_fill,dpr_auto"),
+    qty: q,
+    priceText: ssFmtPrice(ssCartUnitPrice(p, q)),
+    variantLabel: sv ? (sv.label || "") : "",
+    note: (!sv && hasVariants) ? "Choose your options in the cart" : ""
+  };
+}
+
+function ssInstallCartToastHook() {
+  try {
+    if (typeof SS_CART === "undefined" || !SS_CART || typeof SS_CART.add !== "function") return;
+    if (SS_CART.add.__ssToastHooked) return;   // already wrapped
+
+    const original = SS_CART.add;
+    const hooked = function (...args) {
+      const token = ++window.__ssCartAddSeq;
+      window.__ssLastCartAddAt = Date.now();
+
+      const result = original.apply(this, args);
+      if (result === false) { window.__ssLastCartAddAt = 0; return result; }   // add refused
+
+      const showAuto = () => {
+        window.__ssLastCartAddAt = Date.now();
+        // wait one tick: a caller that shows its own (richer) overlay does so
+        // synchronously right after add(), and bumps __ssCartToastSeq
+        setTimeout(() => {
+          if (window.__ssSuppressCartToast) return;
+          if (window.__ssCartToastSeq >= token) return;
+          const info = ssCartToastInfo(args[0], args[1]);
+          if (info) ssShowCartAdded(info);
+        }, 0);
+      };
+
+      if (result && typeof result.then === "function") result.then(showAuto, () => {});
+      else showAuto();
+      return result;
+    };
+    hooked.__ssToastHooked = true;
+    SS_CART.add = hooked;
+  } catch (_) {
+    // If SS_CART is frozen/sealed the hook can't attach; the explicit
+    // ssShowCartAdded() calls (ssQuickAdd, product-detail…) still work.
+  }
+}
+
+// cart.js normally loads before this file, so wrap right away…
+ssInstallCartToastHook();
+
 document.addEventListener("DOMContentLoaded", () => {
+  // …and once more here in case script order on some page differs.
+  ssInstallCartToastHook();
+
   ssRenderHeader(document.body.dataset.page || "");
   ssRenderFooter();
   ssRenderWhatsApp();

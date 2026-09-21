@@ -3437,3 +3437,81 @@ html, body{ transition:background-color .3s ease, color .3s ease; }
   #cartBtn.ss-bump > i{ animation:none; }
   .wa-float__tip{ animation:none; }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ============================================================
+   >>> DROP-IN SECTION #2 FOR style.css <<<
+   Paste at the very END of style.css, AFTER the previous drop-in
+   (the one containing ".ss-cart-toast"). Nothing else changes.
+
+   Adds the small note line shown inside the "Added to cart"
+   overlay when a product with variants is added from any page
+   other than product-detail.html:
+       "Choose your options in the cart"
+   ============================================================ */
+
+.ss-cart-toast__note{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  margin-top:6px;
+  padding:3px 9px 3px 8px;
+  border-radius:999px;
+  background:rgba(255,90,31,.10);
+  border:1px solid rgba(255,90,31,.22);
+  color:var(--brand-dark,#da5521);
+  font-size:10.5px;
+  font-weight:800;
+  letter-spacing:.1px;
+  max-width:100%;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  /* fades in just after the check badge finishes drawing */
+  opacity:0;
+  transform:translateY(4px);
+}
+.ss-cart-toast__note i{ font-size:9.5px; flex-shrink:0; }
+.ss-cart-toast.is-in .ss-cart-toast__note{
+  animation:ssCtsNoteIn .45s .55s cubic-bezier(.22,1,.36,1) forwards;
+}
+@keyframes ssCtsNoteIn{
+  to{ opacity:1; transform:none; }
+}
+
+/* dark mode: softer fill, lighter brand text so it stays readable on charcoal */
+:root[data-theme="dark"] .ss-cart-toast__note{
+  background:rgba(255,90,31,.14);
+  border-color:rgba(255,138,91,.28);
+  color:var(--brand-light,#FF8A5B);
+}
+
+@media(prefers-reduced-motion:reduce){
+  .ss-cart-toast__note{ opacity:1; transform:none; animation:none !important; }
+}
